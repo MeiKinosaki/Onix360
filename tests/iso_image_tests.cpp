@@ -26,6 +26,8 @@ int main(){
     put_le16(sector,0,0xFFFF); put_le16(sector,2,0xFFFF); put_le32(sector,4,34); put_le32(sector,8,16);
     const std::string name="default.xex"; sector[13]=static_cast<unsigned char>(name.size());
     std::copy(name.begin(),name.end(),sector.begin()+14);
+   }else if(i==34){
+    sector[0]='X'; sector[1]='E'; sector[2]='X'; sector[3]='2';
    }
    out.write(reinterpret_cast<const char*>(sector.data()),sector.size());
   }
@@ -39,6 +41,10 @@ int main(){
  check(image.find_root_file("DEFAULT.XEX",executable),"finds default.xex case-insensitively");
  check(executable.first_sector==34&&executable.size==16,"reads executable extent");
  check(!executable.is_directory,"identifies executable as a file");
+ std::array<std::uint8_t,4> xex_magic{};
+ check(image.read_file_range(executable,0,xex_magic.data(),xex_magic.size()),"reads executable header range");
+ check(xex_magic[0]=='X'&&xex_magic[1]=='E'&&xex_magic[2]=='X'&&xex_magic[3]=='2',"reads XEX2 header signature");
+ check(!image.read_file_range(executable,15,xex_magic.data(),2),"rejects reads beyond file extent");
  std::array<std::uint8_t,IsoImage::kSectorSize> data{};
  check(image.read_sector(32,data.data(),data.size()),"reads sector on demand");
  image.close(); check(!image.is_open(),"close releases image"); std::remove(path.c_str());
