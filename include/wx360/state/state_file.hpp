@@ -36,7 +36,7 @@ public:
   char magic[8]{};in.read(magic,8);if(!in||std::string(magic,8)!=std::string("WX360ST\0",8))return fail(error,"invalid save-state signature");
   std::uint32_t version=0;std::uint64_t ram_size=0,payload_size=0,expected=0;
   if(!read32(in,version)||!read64(in,ram_size)||!read64(in,payload_size)||!read64(in,expected))return fail(error,"truncated save-state header");
-  constexpr std::uint64_t cpu_bytes=32ULL*8+4ULL*8+4+4+4; // GPRs, PC/LR/CTR/XER/MSR, CR and FPSCR
+  constexpr std::uint64_t cpu_bytes=32ULL*8+5ULL*8+4+4; // GPRs, PC/LR/CTR/XER/MSR, CR and FPSCR
   if(version!=kVersion)return fail(error,"unsupported save-state version");
   if(ram_size>kMaxRamBytes||payload_size!=cpu_bytes+ram_size)return fail(error,"invalid save-state payload size");
   std::vector<std::uint8_t> payload(static_cast<std::size_t>(payload_size));
