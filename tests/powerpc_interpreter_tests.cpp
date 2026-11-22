@@ -89,6 +89,26 @@ int main() {
     check(execute(s, d_form(13, 27, 26, 1)) == StepResult::Executed, "ADDIC. executes");
     check(s.gpr[27] == 8 && s.condition_field(0) == 0x5, "ADDIC. updates CR0 and preserves XER[SO]");
 
+    // ADDE and SUBFE consume and update XER[CA].
+    constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
+    s.gpr[3] = UINT64_MAX;
+    s.gpr[4] = 0;
+    s.xer |= xer_ca;
+    check(execute(s, x_form(5, 3, 4, 138)) == StepResult::Executed, "ADDE executes");
+    check(s.gpr[5] == 0 && (s.xer & xer_ca) != 0, "ADDE consumes carry-in and sets carry-out");
+    s.gpr[3] = 5;
+    s.gpr[4] = 3;
+    s.xer |= xer_ca;
+    check(execute(s, x_form(6, 3, 4, 136)) == StepResult::Executed, "SUBFE executes");
+    check(s.gpr[6] == UINT64_MAX - 1U && (s.xer & xer_ca) != 0,
+          "SUBFE computes complemented minuend with carry-in");
+    s.gpr[3] = 5;
+    s.gpr[4] = 3;
+    s.xer &= ~xer_ca;
+    check(execute(s, x_form(6, 3, 4, 136)) == StepResult::Executed, "SUBFE executes without carry-in");
+    check(s.gpr[6] == UINT64_MAX - 2U && (s.xer & xer_ca) == 0,
+          "SUBFE clears carry-out when borrow occurs");
+
     std::array<std::uint8_t, 64> ram{};
     s.gpr[21] = 0x12345678U;
     check(execute(s, d_form(36, 21, 0, 8), ram) == StepResult::Executed, "STW executes");
