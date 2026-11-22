@@ -12,7 +12,7 @@ class AuroraWindow {
 public:
  int run(HINSTANCE instance,int show) {
   WNDCLASSW wc{};wc.lpfnWndProc=window_proc;wc.hInstance=instance;wc.lpszClassName=L"WX360AuroraWindow";
-  wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hbrBackground=nullptr;
+  wc.hCursor=LoadCursorW(nullptr,MAKEINTRESOURCEW(32512));wc.hbrBackground=nullptr;
   RegisterClassW(&wc);instance_=instance;
   HWND window=CreateWindowExW(0,wc.lpszClassName,L"WX360 | Aurora-style Dashboard",WS_OVERLAPPEDWINDOW,
     CW_USEDEFAULT,CW_USEDEFAULT,1180,760,nullptr,nullptr,instance,this);
