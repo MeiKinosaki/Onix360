@@ -121,7 +121,6 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             state.set_condition_field(bf, field | ((state.xer >> 31U) & 1U));
             break;
         }
-        case 40: // subf (OE=0 only)
         case 28:  // and
             result = state.gpr[d.rt] & state.gpr[d.rb];
             destination = d.ra;
