@@ -35,6 +35,15 @@ public:
   file_.clear(); file_.seekg(static_cast<std::streamoff>(off)); file_.read(reinterpret_cast<char*>(out),static_cast<std::streamsize>(n));
   return file_.gcount()==static_cast<std::streamsize>(n);
  }
+ // Reads a bounded portion of a file without loading the whole ISO or file.
+ bool read_file_range(const XdvdfsFileEntry& entry,std::uint32_t offset,std::uint8_t* output,std::size_t count) {
+  if(!is_open()||entry.is_directory||(!output&&count)||offset>entry.size||count>entry.size-offset) return false;
+  std::uint64_t absolute=static_cast<std::uint64_t>(entry.first_sector)*kSectorSize+offset;
+  if(absolute>image_size_||count>image_size_-absolute) return false;
+  file_.clear(); file_.seekg(static_cast<std::streamoff>(absolute));
+  file_.read(reinterpret_cast<char*>(output),static_cast<std::streamsize>(count));
+  return file_.gcount()==static_cast<std::streamsize>(count);
+ }
  // Traverses the XDVDFS root directory's offset-linked entry tree.
  bool find_root_file(std::string_view wanted,XdvdfsFileEntry& result) {
   if(!is_open()||wanted.empty()) return false;
