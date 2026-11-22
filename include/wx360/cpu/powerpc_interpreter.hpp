@@ -278,6 +278,30 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             writes_result = true;
             break;
         }
+        case 202: { // addze (OE=0 only): RT = RA + XER[CA]
+            if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
+            const std::uint64_t lhs = state.gpr[d.ra];
+            const std::uint64_t carry_in = (state.xer >> 29U) & 1U;
+            result = lhs + carry_in;
+            constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
+            state.xer = (carry_in != 0 && result == 0)
+                ? (state.xer | xer_ca) : (state.xer & ~xer_ca);
+            destination = d.rt;
+            writes_result = true;
+            break;
+        }
+        case 200: { // subfze (OE=0 only): RT = ~RA + XER[CA]
+            if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
+            const std::uint64_t lhs = ~state.gpr[d.ra];
+            const std::uint64_t carry_in = (state.xer >> 29U) & 1U;
+            result = lhs + carry_in;
+            constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
+            state.xer = (carry_in != 0 && result == 0)
+                ? (state.xer | xer_ca) : (state.xer & ~xer_ca);
+            destination = d.rt;
+            writes_result = true;
+            break;
+        }
         case 266: // add (OE=0 only)
             if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
             result = state.gpr[d.ra] + state.gpr[d.rb];
