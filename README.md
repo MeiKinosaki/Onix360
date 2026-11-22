@@ -15,7 +15,7 @@
 
 O interpretador inicial contém suporte experimental para:
 
-- Aritmética/lógica: ADDI, ADDIS, ADDIC, ADDIC., SUBFIC, ADD, ADDE, ADDZE, SUBF, SUBFE, SUBFZE, NEG, AND, OR e XOR.
+- Aritmética/lógica: ADDI, ADDIS, ADDIC, ADDIC., SUBFIC, ADD, ADDE, ADDME, ADDZE, SUBF, SUBFE, SUBFME, SUBFZE, NEG, AND, OR e XOR.
 - Comparação: CMP e CMPL.
 - Rotação/máscara: RLWINM.
 - Branches: B e BC.
@@ -41,7 +41,7 @@ O projeto não ativa flags de AVX/AVX2. SSE2 é a base pretendida para x86-64.
 - [x] Estrutura C++/CMake e CI Windows/Linux.
 - [x] Estado arquitetural inicial de uma thread (GPRs, PC, LR, CTR, XER, CR, MSR e FPSCR).
 - [x] Interpretador PowerPC inicial e testes unitários.
-- [x] B/BC, ADDIC/ADDIC., ADDE/SUBFE/ADDZE/SUBFZE (código e testes adicionados), acessos de byte/palavra/meia-palavra (LBZ/LWZ/LHZ/LHA e STB/STW/STH), formas update e testes de buffer big-endian adicionados.
+- [x] B/BC, ADDIC/ADDIC., ADDE/ADDME/SUBFE/SUBFME/ADDZE/SUBFZE (código e testes adicionados), acessos de byte/palavra/meia-palavra (LBZ/LWZ/LHZ/LHA e STB/STW/STH), formas update e testes de buffer big-endian adicionados.
 - [ ] Validação final do CI para o commit mais recente em Windows e Linux.
 - [ ] Cobertura mais ampla da ISA Xenon, branches, exceções e semântica de overflow/carry.
 - [ ] Memória do Xbox 360, MMU, BAT/TLB.
