@@ -28,7 +28,7 @@ O interpretador inicial contém suporte experimental para:
 
 - Leitor inicial de arquivos ISO com leitura de setores sob demanda.
 - Validação experimental do descritor XDVDFS e verificação dos limites da imagem.
-- Ainda não enumera entradas de diretório, não localiza `default.xex` e não conecta ISO ao carregador de executáveis.
+- Parser experimental da árvore de diretório da raiz e busca de arquivo por nome; leitura parcial de arquivo para evitar carregar a imagem inteira.
 - O suporte completo exige parser XDVDFS, resolução de caminhos e integração com o futuro loader XEX.
 
 ## Build no Windows
@@ -46,12 +46,12 @@ O projeto não ativa flags de AVX/AVX2. SSE2 é a base pretendida para x86-64.
 ## Estado do projeto
 
 - [x] Estrutura C++/CMake e CI Windows/Linux.
-- [x] Estado arquitetural inicial de uma thread (GPRs, PC, LR, CTR, XER, CR, MSR e FPSCR).
+- [x] Estado arquitetural inicial de uma thread (GPRs, PC, LR, CTR, XER, CR, MSR e FPSCR).\n- [x] Formato versionado de save state para estado da CPU Xenon e RAM, com verificação de integridade e limite de memória (testes adicionados; CI pendente).
 - [x] Interpretador PowerPC inicial e testes unitários.
 - [x] B/BC, ADDIC/ADDIC., ADDE/ADDME/SUBFE/SUBFME/ADDZE/SUBFZE (código e testes adicionados), acessos de byte/palavra/meia-palavra (LBZ/LWZ/LHZ/LHA e STB/STW/STH), formas update e testes de buffer big-endian adicionados.
 - [ ] Validação final do CI para o commit mais recente em Windows e Linux.
 - [ ] Cobertura mais ampla da ISA Xenon, branches, exceções e semântica de overflow/carry.
-- [x] Leitor ISO inicial: validação do descritor XDVDFS e leitura sob demanda de setores (testes adicionados; aguardando CI).\n- [ ] Parser de diretórios XDVDFS e localização de `default.xex` dentro da ISO.\n- [ ] Integração ISO/XEX ao carregador.\n- [ ] Memória do Xbox 360, MMU, BAT/TLB.
+- [x] Leitor ISO inicial: validação do descritor XDVDFS e leitura sob demanda de setores (testes adicionados; aguardando CI).\n- [x] Parser experimental da árvore XDVDFS da raiz e busca de `default.xex` (testes enviados ao CI).\n- [ ] Navegação recursiva XDVDFS e integração ISO/XEX ao carregador.\n- [ ] Snapshot completo do sistema: GPU, áudio, dispositivos, timers, kernel e estado de todos os threads.\n- [ ] Memória do Xbox 360, MMU, BAT/TLB.
 - [ ] GPU Xenos, áudio, kernel/HAL e carregador XEX.
 - [ ] Execução de jogos.
 
