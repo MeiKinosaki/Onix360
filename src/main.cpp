@@ -1,13 +1,13 @@
-#include <cstdint>
+#include "wx360/cpu/xenon_state.hpp"
+
 #include <iostream>
 #include <string_view>
 
 namespace {
-constexpr std::string_view kVersion = "0.1b";
-
+constexpr std::string_view kVersion = "0.2b";
 bool has_sse2() noexcept {
 #if defined(_M_X64) || defined(__x86_64__)
-    return true; // SSE2 is mandatory in the x86-64 architecture baseline.
+    return true;
 #elif defined(_M_IX86) && defined(_MSC_VER)
     int cpu_info[4]{};
     __cpuid(cpu_info, 1);
@@ -20,19 +20,21 @@ bool has_sse2() noexcept {
     return false;
 #endif
 }
-} // namespace
+}
 
 int main() {
     std::cout << "WX360 - Windows Xbox 360 Emulator\n"
               << "Version: " << kVersion << "\n"
               << "CPU baseline: x86-64 / SSE2; AVX2 is not required.\n";
-
     if (!has_sse2()) {
         std::cerr << "This build requires an SSE2-capable CPU.\n";
         return 1;
     }
 
-    std::cout << "Runtime check: SSE2 available.\n"
-              << "Status: foundation only; Xenon emulation is not implemented yet.\n";
+    wx360::cpu::XenonThreadState thread;
+    thread.reset(0x10000);
+    std::cout << "Xenon thread state initialized; entry PC = 0x"
+              << std::hex << thread.pc << std::dec << "\n"
+              << "Status: architectural state only; instruction execution is not implemented yet.\n";
     return 0;
 }
