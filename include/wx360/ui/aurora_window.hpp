@@ -24,7 +24,7 @@ private:
   AuroraWindow* self=reinterpret_cast<AuroraWindow*>(GetWindowLongPtrW(h,GWLP_USERDATA));
   if(m==WM_NCCREATE){auto* cs=reinterpret_cast<CREATESTRUCTW*>(l);self=static_cast<AuroraWindow*>(cs->lpCreateParams);SetWindowLongPtrW(h,GWLP_USERDATA,reinterpret_cast<LONG_PTR>(self));}
   if(!self)return DefWindowProcW(h,m,w,l);
-  switch(m){case WM_PAINT:self->paint(h);return 0;case WM_ERASEBKGND:return 1;case WM_DESTROY:PostQuitMessage(0);return 0;case WM_KEYDOWN:if(w==VK_ESCAPE)DestroyWindow(h);else if(w==VK_DOWN||w==VK_RIGHT){self->selected_nav_=(self->selected_nav_+1)%5;InvalidateRect(h,nullptr,FALSE);}else if(w==VK_UP||w==VK_LEFT){self->selected_nav_=(self->selected_nav_+4)%5;InvalidateRect(h,nullptr,FALSE);}return 0;case WM_LBUTTONDOWN:{int y=GET_Y_LPARAM(l);if(y>=105&&y<345){int index=(y-105)/48;if(index>=0&&index<5){self->selected_nav_=index;InvalidateRect(h,nullptr,FALSE);}}return 0;}}
+  switch(m){case WM_PAINT:self->paint(h);return 0;case WM_ERASEBKGND:return 1;case WM_DESTROY:PostQuitMessage(0);return 0;case WM_KEYDOWN:if(w==VK_ESCAPE)DestroyWindow(h);else if(w==VK_DOWN||w==VK_RIGHT){self->selected_nav_=(self->selected_nav_+1)%5;InvalidateRect(h,nullptr,FALSE);}else if(w==VK_UP||w==VK_LEFT){self->selected_nav_=(self->selected_nav_+4)%5;InvalidateRect(h,nullptr,FALSE);}return 0;case WM_LBUTTONDOWN:{int y=static_cast<short>(HIWORD(l));if(y>=105&&y<345){int index=(y-105)/48;if(index>=0&&index<5){self->selected_nav_=index;InvalidateRect(h,nullptr,FALSE);}}return 0;}}
   return DefWindowProcW(h,m,w,l);
  }
  void draw_text(HDC dc,int x,int y,const wchar_t* value,COLORREF color) {
