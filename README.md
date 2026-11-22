@@ -31,7 +31,7 @@ O interpretador inicial contém suporte experimental para:
 - Parser experimental da árvore de diretório da raiz e busca de arquivo por nome; leitura parcial de arquivo para evitar carregar a imagem inteira.
 - O suporte completo exige parser XDVDFS, resolução de caminhos e integração com o futuro loader XEX.
 
-## Build no Windows
+## Biblioteca de capas (em desenvolvimento)\n\n- Cache local por identificador de jogo, em `covers/` quando essa pasta for fornecida ao componente.\n- Busca automática de capa ausente por uma camada de transporte configurável; o componente recebe URL e gravação temporária, depois publica o arquivo no cache.\n- Reutilização de capas já armazenadas, enumeração da cache e validação de identificadores para impedir traversal de diretórios.\n- O projeto ainda não inclui cliente HTTP, provedor de metadados/capas, identificação automática de Title ID a partir de XEX/ISO nem interface gráfica. Portanto, a obtenção online real ainda depende da integração desses componentes.\n\n## Build no Windows
 
 Requisitos: CMake 3.20+ e compilador C++20 (Visual Studio 2022 ou MinGW-w64 recente).
 
@@ -51,7 +51,7 @@ O projeto não ativa flags de AVX/AVX2. SSE2 é a base pretendida para x86-64.
 - [x] B/BC, ADDIC/ADDIC., ADDE/ADDME/SUBFE/SUBFME/ADDZE/SUBFZE (código e testes adicionados), acessos de byte/palavra/meia-palavra (LBZ/LWZ/LHZ/LHA e STB/STW/STH), formas update e testes de buffer big-endian adicionados.
 - [ ] Validação final do CI para o commit mais recente em Windows e Linux.
 - [ ] Cobertura mais ampla da ISA Xenon, branches, exceções e semântica de overflow/carry.
-- [x] Leitor ISO inicial: validação do descritor XDVDFS e leitura sob demanda de setores (testes adicionados; aguardando CI).\n- [x] Parser experimental da árvore XDVDFS da raiz e busca de `default.xex` (testes enviados ao CI).\n- [ ] Navegação recursiva XDVDFS e integração ISO/XEX ao carregador.\n- [ ] Integração dos slots com pausa/retomada do loop de emulação e interface gráfica.\n- [ ] Snapshot completo do sistema: GPU, áudio, dispositivos, timers, kernel e estado de todos os threads.\n- [ ] Memória do Xbox 360, MMU, BAT/TLB.
+- [x] Leitor ISO inicial: validação do descritor XDVDFS e leitura sob demanda de setores (testes adicionados; aguardando CI).\n- [x] Parser experimental da árvore XDVDFS da raiz e busca de `default.xex` (testes enviados ao CI).\n- [ ] Navegação recursiva XDVDFS e integração ISO/XEX ao carregador.\n- [x] Biblioteca inicial de capas com cache local, fluxo de download injetável e testes automatizados.\n- [ ] Integrar cliente HTTP e provedor de metadados/capas, identificar jogos automaticamente e exibir capas na biblioteca gráfica.\n- [ ] Integração dos slots com pausa/retomada do loop de emulação e interface gráfica.\n- [ ] Snapshot completo do sistema: GPU, áudio, dispositivos, timers, kernel e estado de todos os threads.\n- [ ] Memória do Xbox 360, MMU, BAT/TLB.
 - [ ] GPU Xenos, áudio, kernel/HAL e carregador XEX.
 - [ ] Execução de jogos.
 
