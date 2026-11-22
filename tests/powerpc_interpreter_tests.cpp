@@ -137,6 +137,23 @@ int main() {
     check(s.gpr[8] == UINT64_MAX - 5U && (s.xer & xer_ca) == 0,
           "SUBFZE computes complement without carry-in");
 
+    // ADDME and SUBFME compute operand + carry-in - 1.
+    s.gpr[3] = 0;
+    s.xer |= xer_ca;
+    check(execute(s, x_form(9, 3, 0, 234)) == StepResult::Executed, "ADDME executes");
+    check(s.gpr[9] == 0 && (s.xer & xer_ca) == 0,
+          "ADDME with carry-in one returns zero without carry-out");
+    s.gpr[3] = 0;
+    s.xer &= ~xer_ca;
+    check(execute(s, x_form(9, 3, 0, 234)) == StepResult::Executed, "ADDME executes without carry-in");
+    check(s.gpr[9] == UINT64_MAX && (s.xer & xer_ca) == 0,
+          "ADDME without carry-in wraps to all ones");
+    s.gpr[3] = 5;
+    s.xer |= xer_ca;
+    check(execute(s, x_form(10, 3, 0, 232)) == StepResult::Executed, "SUBFME executes");
+    check(s.gpr[10] == UINT64_MAX - 5U && (s.xer & xer_ca) == 0,
+          "SUBFME computes complemented operand plus carry-in minus one");
+
     std::array<std::uint8_t, 64> ram{};
     s.gpr[21] = 0x12345678U;
     check(execute(s, d_form(36, 21, 0, 8), ram) == StepResult::Executed, "STW executes");
