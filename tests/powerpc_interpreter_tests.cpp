@@ -80,6 +80,18 @@ int main() {
     check(execute(s, x_form(8, 16, 9, 444, true)) == StepResult::Executed, "OR. record form executes");
     check(s.condition_field(0) == 0x5, "record form updates CR0 GT and SO");
 
+    // SUBFIC computes SIMM - RA and sets CA when no borrow occurs.
+    s.gpr[2] = 3;
+    check(execute(s, d_form(8, 9, 2, 5)) == StepResult::Executed, "SUBFIC executes");
+    check(s.gpr[9] == 2 && (s.xer & xer_ca) != 0, "SUBFIC sets carry when no borrow");
+    s.gpr[2] = 8;
+    check(execute(s, d_form(8, 9, 2, 5)) == StepResult::Executed, "SUBFIC executes with borrow");
+    check(s.gpr[9] == UINT64_MAX - 2U && (s.xer & xer_ca) == 0,
+          "SUBFIC clears carry when borrow occurs");
+    s.gpr[2] = 7;
+    check(execute(s, x_form(10, 2, 0, 104)) == StepResult::Executed, "NEG executes");
+    check(s.gpr[10] == UINT64_MAX - 6U, "NEG computes two's-complement negation");
+
     // ADDIC updates XER[CA] on unsigned carry-out; ADDIC. also records CR0.
     s.gpr[26] = UINT64_MAX;
     check(execute(s, d_form(12, 27, 26, 1)) == StepResult::Executed, "ADDIC executes");
