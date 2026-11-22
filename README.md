@@ -2,7 +2,7 @@
 
 **Windows Xbox 360 Emulator** — projeto experimental de emulação do Xbox 360 para Windows x64, com foco em computadores modestos.
 
-> **Estado:** v0.1b — fundação do projeto. Ainda não executa jogos comerciais.
+> **Estado:** v0.2b — estado arquitetural inicial da thread Xenon implementado; testes adicionados, aguardando CI. Ainda não executa jogos comerciais.
 
 ## Objetivos de compatibilidade
 
@@ -24,8 +24,8 @@
 
 | Versão | Escopo |
 |---|---|
-| v0.1b | Estrutura C++/CMake, detecção de recursos x86-64 e CI inicial |
-| v0.2b | Estado arquitetural e decodificação PowerPC básica |
+| v0.1b | Estrutura C++/CMake e baseline SSE2 |
+| v0.2b | Estado arquitetural inicial Xenon e testes unitários |
 | v0.3b | Interpretação de instruções Xenon e testes |
 | v0.4b | Memória, MMU e exceções |
 | v0.5b | Fundamentos da GPU Xenos |
@@ -46,9 +46,9 @@ cmake --build build --config Release
 
 ## Estado real
 
-- [x] Repositório inicial e escopo documentados.
-- [ ] Núcleo de CPU Xenon.
-- [ ] Decodificador PowerPC.
+- [x] Repositório inicial e escopo documentados.\n- [x] Estado arquitetural inicial da CPU e testes unitários adicionados.\n- [ ] CI Windows/Linux aprovado.
+- [x] Estrutura de estado de uma thread Xenon (GPRs, PC, LR, CTR, XER, CR, MSR e FPSCR).
+- [ ] Decodificador PowerPC e execução de instruções.
 - [ ] MMU e memória do Xbox 360.
 - [ ] GPU Xenos.
 - [ ] Áudio, kernel e carregamento XEX.
