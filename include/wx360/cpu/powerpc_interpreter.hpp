@@ -3,12 +3,14 @@
 #include "wx360/cpu/xenon_state.hpp"
 
 #include <cstdint>
+#include <span>
 
 namespace wx360::cpu {
 
 enum class StepResult {
     Executed,
     UnsupportedInstruction,
+    MemoryFault,
 };
 
 struct DecodedInstruction {
@@ -61,14 +63,81 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
 }
 
 [[nodiscard]] inline StepResult execute(
-    XenonThreadState& state, std::uint32_t instruction) noexcept {
+    XenonThreadState& state, std::uint32_t instruction,
+    std::span<std::uint8_t> memory = {}) noexcept {
     const auto d = decode(instruction);
     std::uint64_t result = 0;
     bool writes_result = false;
     bool record_32bit = false;
     std::uint8_t destination = d.rt;
+    bool branch_taken = false;
+    std::uint64_t branch_target = 0;
 
     switch (d.primary_opcode) {
+    case 18: { // b
+        std::int32_t displacement = static_cast<std::int32_t>(instruction & 0x03FFFFFCU);
+        if ((displacement & 0x02000000) != 0) displacement |= static_cast<std::int32_t>(0xFC000000U);
+        const bool absolute = (instruction & 2U) != 0;
+        const bool link = (instruction & 1U) != 0;
+        branch_target = absolute ? static_cast<std::uint64_t>(static_cast<std::int64_t>(displacement))
+                                 : static_cast<std::uint64_t>(static_cast<std::int64_t>(state.pc) + displacement);
+        if (link) state.lr = state.pc + 4U;
+        branch_taken = true;
+        break;
+    }
+    case 16: { // bc
+        const unsigned bo = (instruction >> 21U) & 0x1FU;
+        const unsigned bi = (instruction >> 16U) & 0x1FU;
+        bool condition_ok = (bo & 0x10U) != 0;
+        if (!condition_ok) {
+            const unsigned cr_bit = (state.cr >> (31U - bi)) & 1U;
+            condition_ok = cr_bit == ((bo >> 3U) & 1U);
+        }
+        bool count_ok = true;
+        if ((bo & 0x04U) == 0) {
+            --state.ctr;
+            count_ok = ((state.ctr != 0) != ((bo & 0x02U) != 0));
+        }
+        const std::int32_t displacement = static_cast<std::int16_t>(instruction & 0xFFFCU);
+        const bool absolute = (instruction & 2U) != 0;
+        const bool link = (instruction & 1U) != 0;
+        branch_taken = condition_ok && count_ok;
+        if (branch_taken) {
+            branch_target = absolute ? static_cast<std::uint64_t>(static_cast<std::int64_t>(displacement))
+                                     : static_cast<std::uint64_t>(static_cast<std::int64_t>(state.pc) + displacement);
+        }
+        if (link) state.lr = state.pc + 4U;
+        break;
+    }
+    case 32: case 34: case 36: case 38: { // lwz, lbz, stw, stb
+        const std::int64_t displacement = d.immediate;
+        const std::uint64_t base = d.ra == 0 ? 0 : state.gpr[d.ra];
+        const std::uint64_t address = static_cast<std::uint64_t>(static_cast<std::int64_t>(base) + displacement);
+        const bool word_access = d.primary_opcode == 32 || d.primary_opcode == 36;
+        const std::size_t width = word_access ? 4U : 1U;
+        if (address > memory.size() || width > memory.size() - static_cast<std::size_t>(address))
+            return StepResult::MemoryFault;
+        const auto offset = static_cast<std::size_t>(address);
+        if (d.primary_opcode == 32) {
+            result = (static_cast<std::uint32_t>(memory[offset]) << 24U) |
+                     (static_cast<std::uint32_t>(memory[offset + 1]) << 16U) |
+                     (static_cast<std::uint32_t>(memory[offset + 2]) << 8U) |
+                     static_cast<std::uint32_t>(memory[offset + 3]);
+            writes_result = true;
+        } else if (d.primary_opcode == 34) {
+            result = memory[offset];
+            writes_result = true;
+        } else if (d.primary_opcode == 36) {
+            const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[d.rt]);
+            memory[offset] = static_cast<std::uint8_t>(value >> 24U);
+            memory[offset + 1] = static_cast<std::uint8_t>(value >> 16U);
+            memory[offset + 2] = static_cast<std::uint8_t>(value >> 8U);
+            memory[offset + 3] = static_cast<std::uint8_t>(value);
+        } else {
+            memory[offset] = static_cast<std::uint8_t>(state.gpr[d.rt]);
+        }
+        break;
+    }
     case 14: // addi
         result = state.gpr[d.ra] +
                  static_cast<std::uint64_t>(static_cast<std::int64_t>(d.immediate));
@@ -166,7 +235,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         }
     }
 
-    state.pc += 4;
+    state.pc = branch_taken ? branch_target : state.pc + 4U;
     return StepResult::Executed;
 }
 
