@@ -10,7 +10,7 @@ void check(bool ok,const char* message){if(!ok){std::cerr<<"FAIL: "<<message<<'\
 bool fake_download(std::string_view url,const std::filesystem::path& path,void* context){
  auto* calls=static_cast<unsigned*>(context);++*calls;
  if(url!="https://covers.example/game.jpg")return false;
- std::ofstream out(path,std::ios::binary);out<<"JPEG-DATA";return static_cast<bool>(out);
+ std::ofstream out(path,std::ios::binary);const unsigned char jpeg[]={0xFF,0xD8,0xFF,0xD9};out.write(reinterpret_cast<const char*>(jpeg),sizeof(jpeg));return static_cast<bool>(out);
 }
 bool failed_download(std::string_view,const std::filesystem::path&,void*){return false;}
 }
