@@ -55,5 +55,5 @@ endif()
 
 # Deliberately do not enable AVX/AVX2 compiler targets.
 if(WIN32)
-  target_compile_definitions(wx360 PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+  target_compile_definitions(wx360 PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)\n  target_link_libraries(wx360 PRIVATE winhttp)
 endif()
