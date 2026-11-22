@@ -1,6 +1,7 @@
 #pragma once
 #include <cctype>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -32,7 +33,11 @@ public:
   std::filesystem::remove(temporary,ec);ec.clear();
   if(!download(game.image_url,temporary,context)){std::filesystem::remove(temporary,ec);return false;}
   auto size=std::filesystem::file_size(temporary,ec);
-  if(ec||size==0){std::filesystem::remove(temporary,ec);return false;}
+  if(ec||size<4||size>8ULL*1024ULL*1024ULL){std::filesystem::remove(temporary,ec);return false;}
+  std::ifstream image(temporary,std::ios::binary);
+  unsigned char signature[2]{},tail[2]{};image.read(reinterpret_cast<char*>(signature),2);
+  image.seekg(-2,std::ios::end);image.read(reinterpret_cast<char*>(tail),2);
+  if(!image||signature[0]!=0xFF||signature[1]!=0xD8||tail[0]!=0xFF||tail[1]!=0xD9){image.close();std::filesystem::remove(temporary,ec);return false;}
   std::filesystem::rename(temporary,target,ec);
   if(ec){std::filesystem::remove(temporary,ec);return false;}
   return true;
