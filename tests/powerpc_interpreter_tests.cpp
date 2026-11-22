@@ -109,6 +109,22 @@ int main() {
     check(s.gpr[6] == UINT64_MAX - 2U && (s.xer & xer_ca) == 0,
           "SUBFE clears carry-out when borrow occurs");
 
+    // ADDZE and SUBFZE use XER[CA] as their carry-in.
+    s.gpr[3] = UINT64_MAX;
+    s.xer |= xer_ca;
+    check(execute(s, x_form(7, 3, 0, 202)) == StepResult::Executed, "ADDZE executes");
+    check(s.gpr[7] == 0 && (s.xer & xer_ca) != 0, "ADDZE wraps and retains carry-out");
+    s.gpr[3] = 5;
+    s.xer |= xer_ca;
+    check(execute(s, x_form(8, 3, 0, 200)) == StepResult::Executed, "SUBFZE executes");
+    check(s.gpr[8] == UINT64_MAX - 4U && (s.xer & xer_ca) == 0,
+          "SUBFZE computes complement plus carry-in");
+    s.gpr[3] = 5;
+    s.xer &= ~xer_ca;
+    check(execute(s, x_form(8, 3, 0, 200)) == StepResult::Executed, "SUBFZE executes without carry-in");
+    check(s.gpr[8] == UINT64_MAX - 5U && (s.xer & xer_ca) == 0,
+          "SUBFZE computes complement without carry-in");
+
     std::array<std::uint8_t, 64> ram{};
     s.gpr[21] = 0x12345678U;
     check(execute(s, d_form(36, 21, 0, 8), ram) == StepResult::Executed, "STW executes");
