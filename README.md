@@ -46,12 +46,12 @@ O projeto não ativa flags de AVX/AVX2. SSE2 é a base pretendida para x86-64.
 ## Estado do projeto
 
 - [x] Estrutura C++/CMake e CI Windows/Linux.
-- [x] Estado arquitetural inicial de uma thread (GPRs, PC, LR, CTR, XER, CR, MSR e FPSCR).\n- [x] Formato versionado de save state para estado da CPU Xenon e RAM, com verificação de integridade e limite de memória (testes adicionados; CI pendente).
+- [x] Estado arquitetural inicial de uma thread (GPRs, PC, LR, CTR, XER, CR, MSR e FPSCR).\n- [x] Formato versionado de save state para estado da CPU Xenon e RAM, com verificação de integridade e limite de memória.\n- [x] Gerenciador inicial de 10 slots independentes para salvar, carregar, verificar e apagar snapshots CPU/RAM; testes adicionados ao CI.
 - [x] Interpretador PowerPC inicial e testes unitários.
 - [x] B/BC, ADDIC/ADDIC., ADDE/ADDME/SUBFE/SUBFME/ADDZE/SUBFZE (código e testes adicionados), acessos de byte/palavra/meia-palavra (LBZ/LWZ/LHZ/LHA e STB/STW/STH), formas update e testes de buffer big-endian adicionados.
 - [ ] Validação final do CI para o commit mais recente em Windows e Linux.
 - [ ] Cobertura mais ampla da ISA Xenon, branches, exceções e semântica de overflow/carry.
-- [x] Leitor ISO inicial: validação do descritor XDVDFS e leitura sob demanda de setores (testes adicionados; aguardando CI).\n- [x] Parser experimental da árvore XDVDFS da raiz e busca de `default.xex` (testes enviados ao CI).\n- [ ] Navegação recursiva XDVDFS e integração ISO/XEX ao carregador.\n- [ ] Snapshot completo do sistema: GPU, áudio, dispositivos, timers, kernel e estado de todos os threads.\n- [ ] Memória do Xbox 360, MMU, BAT/TLB.
+- [x] Leitor ISO inicial: validação do descritor XDVDFS e leitura sob demanda de setores (testes adicionados; aguardando CI).\n- [x] Parser experimental da árvore XDVDFS da raiz e busca de `default.xex` (testes enviados ao CI).\n- [ ] Navegação recursiva XDVDFS e integração ISO/XEX ao carregador.\n- [ ] Integração dos slots com pausa/retomada do loop de emulação e interface gráfica.\n- [ ] Snapshot completo do sistema: GPU, áudio, dispositivos, timers, kernel e estado de todos os threads.\n- [ ] Memória do Xbox 360, MMU, BAT/TLB.
 - [ ] GPU Xenos, áudio, kernel/HAL e carregador XEX.
 - [ ] Execução de jogos.
 
