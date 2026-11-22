@@ -72,6 +72,8 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
     std::uint8_t destination = d.rt;
     bool branch_taken = false;
     std::uint64_t branch_target = 0;
+    bool update_base = false;
+    std::uint64_t updated_address = 0;
 
     switch (d.primary_opcode) {
     case 18: { // b
@@ -109,11 +111,17 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         if (link) state.lr = state.pc + 4U;
         break;
     }
-    case 32: case 34: case 36: case 38: { // lwz, lbz, stw, stb
+    case 32: case 33: case 34: case 35: case 36: case 37: case 38: case 39: { // D-form loads/stores
         const std::int64_t displacement = d.immediate;
         const std::uint64_t base = d.ra == 0 ? 0 : state.gpr[d.ra];
         const std::uint64_t address = static_cast<std::uint64_t>(static_cast<std::int64_t>(base) + displacement);
-        const bool word_access = d.primary_opcode == 32 || d.primary_opcode == 36;
+        const bool word_access = d.primary_opcode == 32 || d.primary_opcode == 33 ||
+                                 d.primary_opcode == 36 || d.primary_opcode == 37;
+        const bool load = d.primary_opcode <= 35;
+        const bool update = d.primary_opcode == 33 || d.primary_opcode == 35 ||
+                            d.primary_opcode == 37 || d.primary_opcode == 39;
+        if (update && d.ra == 0) return StepResult::UnsupportedInstruction;
+        if (update && load && d.ra == d.rt) return StepResult::UnsupportedInstruction;
         const std::size_t width = word_access ? 4U : 1U;
         if (address > memory.size() || width > memory.size() - static_cast<std::size_t>(address))
             return StepResult::MemoryFault;
@@ -124,10 +132,10 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
                      (static_cast<std::uint32_t>(memory[offset + 2]) << 8U) |
                      static_cast<std::uint32_t>(memory[offset + 3]);
             writes_result = true;
-        } else if (d.primary_opcode == 34) {
+        } else if (d.primary_opcode == 34 || d.primary_opcode == 35) {
             result = memory[offset];
             writes_result = true;
-        } else if (d.primary_opcode == 36) {
+        } else if (d.primary_opcode == 36 || d.primary_opcode == 37) {
             const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[d.rt]);
             memory[offset] = static_cast<std::uint8_t>(value >> 24U);
             memory[offset + 1] = static_cast<std::uint8_t>(value >> 16U);
@@ -136,6 +144,19 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         } else {
             memory[offset] = static_cast<std::uint8_t>(state.gpr[d.rt]);
         }
+        if (update) { update_base = true; updated_address = address; }
+        break;
+    }
+    case 12: case 13: { // addic / addic.
+        const std::uint64_t lhs = state.gpr[d.ra];
+        const std::uint64_t rhs = static_cast<std::uint64_t>(static_cast<std::int64_t>(d.immediate));
+        result = lhs + rhs;
+        const bool carry = result < lhs;
+        constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
+        state.xer = carry ? (state.xer | xer_ca) : (state.xer & ~xer_ca);
+        writes_result = true;
+        // ADDIC. updates CR0; ADDIC does not.
+        if (d.primary_opcode == 13) update_cr0(state, result, std::uint64_t{1} << 63U);
         break;
     }
     case 14: // addi
@@ -235,6 +256,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         }
     }
 
+    if (update_base) state.gpr[d.ra] = updated_address;
     state.pc = branch_taken ? branch_target : state.pc + 4U;
     return StepResult::Executed;
 }
