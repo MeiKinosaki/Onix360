@@ -40,6 +40,7 @@ struct DecodedInstruction {
     const auto d = decode(instruction);
     std::uint64_t result = 0;
     bool writes_result = false;
+    std::uint8_t destination = d.rt;
 
     switch (d.primary_opcode) {
     case 14: // addi
@@ -56,19 +57,23 @@ struct DecodedInstruction {
         switch (d.xo) {
         case 28:  // and
             result = state.gpr[d.rt] & state.gpr[d.rb];
+            destination = d.ra;
             writes_result = true;
             break;
         case 266: // add (OE=0 only)
             if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
             result = state.gpr[d.ra] + state.gpr[d.rb];
+            destination = d.rt;
             writes_result = true;
             break;
         case 316: // xor
             result = state.gpr[d.rt] ^ state.gpr[d.rb];
+            destination = d.ra;
             writes_result = true;
             break;
         case 444: // or
             result = state.gpr[d.rt] | state.gpr[d.rb];
+            destination = d.ra;
             writes_result = true;
             break;
         default:
@@ -80,8 +85,6 @@ struct DecodedInstruction {
     }
 
     if (writes_result) {
-        const bool is_x_form = d.primary_opcode == 31;
-        const std::uint8_t destination = is_x_form ? d.ra : d.rt;
         state.gpr[destination] = result;
 
         if (d.record) {
