@@ -112,8 +112,8 @@ int main() {
     s.gpr[4] = 3;
     s.xer |= xer_ca;
     check(execute(s, x_form(6, 3, 4, 136)) == StepResult::Executed, "SUBFE executes");
-    check(s.gpr[6] == UINT64_MAX - 1U && (s.xer & xer_ca) != 0,
-          "SUBFE computes complemented minuend with carry-in");
+    check(s.gpr[6] == UINT64_MAX - 1U && (s.xer & xer_ca) == 0,
+          "SUBFE computes complemented minuend and clears carry when no unsigned carry-out");
     s.gpr[3] = 5;
     s.gpr[4] = 3;
     s.xer &= ~xer_ca;
