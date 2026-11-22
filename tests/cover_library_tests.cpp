@@ -1,5 +1,4 @@
 #include "wx360/library/cover_library.hpp"
-#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -12,7 +11,8 @@ bool fake_download(std::string_view url,const std::filesystem::path& path,void* 
  if(url!="https://covers.example/game.jpg")return false;
  std::ofstream out(path,std::ios::binary);const unsigned char jpeg[]={0xFF,0xD8,0xFF,0xD9};out.write(reinterpret_cast<const char*>(jpeg),sizeof(jpeg));return static_cast<bool>(out);
 }
-bool failed_download(std::string_view,const std::filesystem::path&,void*){return false;}\nbool html_download(std::string_view,const std::filesystem::path& path,void*){std::ofstream out(path,std::ios::binary);out<<"<html>not an image</html>";return static_cast<bool>(out);}
+bool failed_download(std::string_view,const std::filesystem::path&,void*){return false;}
+bool html_download(std::string_view,const std::filesystem::path& path,void*){std::ofstream out(path,std::ios::binary);out<<"<html>not an image</html>";return static_cast<bool>(out);}
 }
 int main(){
  using namespace wx360::covers;
@@ -29,6 +29,9 @@ int main(){
  check(!library.ensure_cover(invalid,fake_download,&calls),"rejects unsafe game identifier");
  CoverRecord broken{"GAME-FAIL","Broken","https://covers.example/fail.jpg"};
  check(!library.ensure_cover(broken,failed_download,nullptr),"does not publish failed download");
- check(!library.has_cover(broken.game_id),"failed download leaves no cached cover");\n CoverRecord html{"GAME-HTML","HTML response","https://covers.example/html.jpg"};\n check(!library.ensure_cover(html,html_download,nullptr),"rejects non-JPEG response");\n check(!library.has_cover(html.game_id),"invalid image is not cached");
+ check(!library.has_cover(broken.game_id),"failed download leaves no cached cover");
+ CoverRecord html{"GAME-HTML","HTML response","https://covers.example/html.jpg"};
+ check(!library.ensure_cover(html,html_download,nullptr),"rejects non-JPEG response");
+ check(!library.has_cover(html.game_id),"invalid image is not cached");
  std::filesystem::remove_all(dir,ec);return failures?EXIT_FAILURE:EXIT_SUCCESS;
 }
