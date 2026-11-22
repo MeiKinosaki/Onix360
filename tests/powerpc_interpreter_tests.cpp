@@ -111,7 +111,7 @@ int main() {
     s.gpr[28] = 16;
     s.gpr[30] = 0xA1B2C3D4U;
     check(execute(s, d_form(37, 30, 28, 4), ram) == StepResult::Executed, "STWU executes");
-    check(s.gpr[28] == 20 && ram[16] == 0xA1 && ram[19] == 0xD4,
+    check(s.gpr[28] == 20 && ram[20] == 0xA1 && ram[23] == 0xD4,
           "STWU stores and updates RA");
     s.gpr[28] = 63;
     const auto ra_before_fault = s.gpr[28];
