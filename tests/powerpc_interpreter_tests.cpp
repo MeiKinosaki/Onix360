@@ -141,8 +141,8 @@ int main() {
     s.gpr[3] = 0;
     s.xer |= xer_ca;
     check(execute(s, x_form(9, 3, 0, 234)) == StepResult::Executed, "ADDME executes");
-    check(s.gpr[9] == 0 && (s.xer & xer_ca) == 0,
-          "ADDME with carry-in one returns zero without carry-out");
+    check(s.gpr[9] == 0 && (s.xer & xer_ca) != 0,
+          "ADDME with carry-in one returns zero and sets carry-out");
     s.gpr[3] = 0;
     s.xer &= ~xer_ca;
     check(execute(s, x_form(9, 3, 0, 234)) == StepResult::Executed, "ADDME executes without carry-in");
@@ -151,7 +151,7 @@ int main() {
     s.gpr[3] = 5;
     s.xer |= xer_ca;
     check(execute(s, x_form(10, 3, 0, 232)) == StepResult::Executed, "SUBFME executes");
-    check(s.gpr[10] == UINT64_MAX - 5U && (s.xer & xer_ca) == 0,
+    check(s.gpr[10] == UINT64_MAX - 5U && (s.xer & xer_ca) != 0,
           "SUBFME computes complemented operand plus carry-in minus one");
 
     std::array<std::uint8_t, 64> ram{};
