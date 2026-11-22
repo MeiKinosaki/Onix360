@@ -87,7 +87,7 @@ int main() {
           "ADDIC wraps and sets XER carry");
     s.gpr[26] = 7;
     check(execute(s, d_form(13, 27, 26, 1)) == StepResult::Executed, "ADDIC. executes");
-    check(s.gpr[27] == 8 && s.condition_field(0) == 0x4, "ADDIC. updates CR0");
+    check(s.gpr[27] == 8 && s.condition_field(0) == 0x5, "ADDIC. updates CR0 and preserves XER[SO]");
 
     std::array<std::uint8_t, 64> ram{};
     s.gpr[21] = 0x12345678U;
