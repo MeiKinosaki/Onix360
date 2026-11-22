@@ -35,6 +35,7 @@ constexpr std::uint32_t x_form(unsigned rt, unsigned ra, unsigned rb, unsigned x
 
 int main() {
     using namespace wx360::cpu;
+    constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
     XenonThreadState s;
     s.reset(0x1000);
     s.gpr[3] = 10;
@@ -102,7 +103,6 @@ int main() {
     check(s.gpr[27] == 8 && s.condition_field(0) == 0x5, "ADDIC. updates CR0 and preserves XER[SO]");
 
     // ADDE and SUBFE consume and update XER[CA].
-    constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
     s.gpr[3] = UINT64_MAX;
     s.gpr[4] = 0;
     s.xer |= xer_ca;
