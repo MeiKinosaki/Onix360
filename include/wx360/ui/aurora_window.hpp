@@ -24,7 +24,7 @@ private:
   AuroraWindow* self=reinterpret_cast<AuroraWindow*>(GetWindowLongPtrW(h,GWLP_USERDATA));
   if(m==WM_NCCREATE){auto* cs=reinterpret_cast<CREATESTRUCTW*>(l);self=static_cast<AuroraWindow*>(cs->lpCreateParams);SetWindowLongPtrW(h,GWLP_USERDATA,reinterpret_cast<LONG_PTR>(self));}
   if(!self)return DefWindowProcW(h,m,w,l);
-  switch(m){case WM_PAINT:self->paint(h);return 0;case WM_ERASEBKGND:return 1;case WM_DESTROY:PostQuitMessage(0);return 0;case WM_KEYDOWN:if(w==VK_ESCAPE)DestroyWindow(h);return 0;}
+  switch(m){case WM_PAINT:self->paint(h);return 0;case WM_ERASEBKGND:return 1;case WM_DESTROY:PostQuitMessage(0);return 0;case WM_KEYDOWN:if(w==VK_ESCAPE)DestroyWindow(h);else if(w==VK_DOWN||w==VK_RIGHT){self->selected_nav_=(self->selected_nav_+1)%5;InvalidateRect(h,nullptr,FALSE);}else if(w==VK_UP||w==VK_LEFT){self->selected_nav_=(self->selected_nav_+4)%5;InvalidateRect(h,nullptr,FALSE);}return 0;case WM_LBUTTONDOWN:{int y=GET_Y_LPARAM(l);if(y>=105&&y<345){int index=(y-105)/48;if(index>=0&&index<5){self->selected_nav_=index;InvalidateRect(h,nullptr,FALSE);}}return 0;}}
   return DefWindowProcW(h,m,w,l);
  }
  void paint(HWND h) {
@@ -36,7 +36,7 @@ private:
   HFONT normal=CreateFontW(18,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
   auto old=SelectObject(dc,title);TextOutW(dc,28,28,L"WX360",5);SelectObject(dc,normal);
   const wchar_t* nav[]={L"INICIO",L"BIBLIOTECA",L"ARQUIVOS",L"SAVE STATES",L"CONFIGURACOES"};
-  for(int i=0;i<5;++i){if(i==1){RECT hi{12,105+i*48,198,145+i*48};HBRUSH accent=CreateSolidBrush(RGB(0,116,153));FillRect(dc,&hi,accent);DeleteObject(accent);}TextOutW(dc,28,112+i*48,nav[i],lstrlenW(nav[i]));}
+  for(int i=0;i<5;++i){if(i==selected_nav_){RECT hi{12,105+i*48,198,145+i*48};HBRUSH accent=CreateSolidBrush(RGB(0,116,153));FillRect(dc,&hi,accent);DeleteObject(accent);}TextOutW(dc,28,112+i*48,nav[i],lstrlenW(nav[i]));}
   SelectObject(dc,title);TextOutW(dc,250,35,L"BIBLIOTECA DE JOGOS",19);
   SelectObject(dc,normal);SetTextColor(dc,RGB(130,205,225));TextOutW(dc,252,78,L"Dashboard inspirado no Aurora | WX360",39);
   RECT hero{250,125,r.right-30,275};HBRUSH panel=CreateSolidBrush(RGB(23,43,62));FillRect(dc,&hero,panel);DeleteObject(panel);
@@ -52,6 +52,7 @@ private:
   SetTextColor(dc,RGB(110,135,158));TextOutW(dc,252,r.bottom-38,L"WX360 v0.3b  |  CPU Xenon em desenvolvimento  |  ESC para sair",63);
   SelectObject(dc,old);DeleteObject(title);DeleteObject(normal);EndPaint(h,&ps);
  }
+ int selected_nav_=1;
  HINSTANCE instance_{};
 };
 }
