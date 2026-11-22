@@ -2,7 +2,7 @@
 
 **Windows Xbox 360 Emulator** — projeto experimental de emulação do Xbox 360 para Windows x64, com foco em computadores modestos.
 
-> **Estado:** v0.3b — estado arquitetural e subconjunto inicial do interpretador PowerPC implementados; CI em correção após falha de configuração CMake. Ainda não executa jogos comerciais.
+> **Estado:** v0.3b — interpretador PowerPC ampliado com SUBF, CMP, CMPL e RLWINM; correção de regressão aritmética em andamento. Ainda não executa jogos comerciais.
 
 ## Objetivos de compatibilidade
 
@@ -46,7 +46,7 @@ cmake --build build --config Release
 
 ## Estado real
 
-- [x] Repositório inicial e escopo documentados.\n- [x] Estado arquitetural inicial da CPU e testes unitários adicionados.\n- [ ] CI Windows/Linux aprovado.
+- [x] Repositório inicial e escopo documentados.\n- [x] Estado arquitetural inicial da CPU e testes unitários adicionados.\n- [x] CI Windows/Linux aprovado para o subconjunto anterior; nova rodada de validação pendente.
 - [x] Estrutura de estado de uma thread Xenon (GPRs, PC, LR, CTR, XER, CR, MSR e FPSCR).
 - [x] Decodificador e interpretador inicial: ADDI, ADDIS, ADD, AND, OR e XOR.\n- [ ] Cobertura ampla da ISA Xenon, overflow, branches, loads/stores, FPU e VMX.
 - [ ] MMU e memória do Xbox 360.
