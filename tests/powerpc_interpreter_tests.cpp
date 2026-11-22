@@ -1,5 +1,6 @@
 #include "wx360/cpu/powerpc_interpreter.hpp"
 
+#include <array>
 #include <cstdlib>
 #include <iostream>
 
@@ -10,6 +11,10 @@ void check(bool condition, const char* message) {
         std::cerr << "FAIL: " << message << '\n';
         ++failures;
     }
+}
+constexpr std::uint32_t branch_form(unsigned op, unsigned bo, unsigned bi, unsigned displacement, bool link = false) {
+    return (op << 26U) | ((bo & 31U) << 21U) | ((bi & 31U) << 16U) |
+           (displacement & 0xFFFCU) | (link ? 1U : 0U);
 }
 constexpr std::uint32_t d_form(unsigned op, unsigned rt, unsigned ra, unsigned imm) {
     return (op << 26U) | (rt << 21U) | (ra << 16U) | (imm & 0xFFFFU);
@@ -74,6 +79,36 @@ int main() {
     s.xer = (std::uint64_t{1} << 31U);
     check(execute(s, x_form(8, 16, 9, 444, true)) == StepResult::Executed, "OR. record form executes");
     check(s.condition_field(0) == 0x5, "record form updates CR0 GT and SO");
+
+    std::array<std::uint8_t, 64> ram{};
+    s.gpr[21] = 0x12345678U;
+    check(execute(s, d_form(36, 21, 0, 8), ram) == StepResult::Executed, "STW executes");
+    check(ram[8] == 0x12 && ram[9] == 0x34 && ram[10] == 0x56 && ram[11] == 0x78,
+          "STW stores big-endian word");
+    s.gpr[22] = 0;
+    check(execute(s, d_form(32, 22, 0, 8), ram) == StepResult::Executed, "LWZ executes");
+    check(s.gpr[22] == 0x12345678U, "LWZ loads big-endian word");
+    ram[12] = 0xAB;
+    check(execute(s, d_form(34, 23, 0, 12), ram) == StepResult::Executed, "LBZ executes");
+    check(s.gpr[23] == 0xAB, "LBZ zero extends byte");
+    s.gpr[24] = 0xCD;
+    check(execute(s, d_form(38, 24, 0, 13), ram) == StepResult::Executed, "STB executes");
+    check(ram[13] == 0xCD, "STB stores low byte");
+    const auto before_fault_pc = s.pc;
+    check(execute(s, d_form(32, 25, 0, 63), ram) == StepResult::MemoryFault,
+          "out-of-range LWZ reports memory fault");
+    check(s.pc == before_fault_pc, "memory fault does not advance PC");
+
+    const auto branch_pc = s.pc;
+    check(execute(s, (18U << 26U) | 0x10U | 1U) == StepResult::Executed, "B with link executes");
+    check(s.pc == branch_pc + 0x10U && s.lr == branch_pc + 4U, "B updates PC and LR");
+    const auto bc_pc = s.pc;
+    s.set_condition_field(0, 0x2);
+    check(execute(s, branch_form(16, 12, 2, 0x20U)) == StepResult::Executed, "BC conditional branch executes");
+    check(s.pc == bc_pc + 0x20U, "BC takes branch when CR bit matches BO");
+    const auto not_taken_pc = s.pc;
+    check(execute(s, branch_form(16, 4, 2, 0x20U)) == StepResult::Executed, "BC not-taken path executes");
+    check(s.pc == not_taken_pc + 4U, "BC advances normally when condition fails");
 
     const auto old_pc = s.pc;
     check(execute(s, 0xFFFFFFFFU) == StepResult::UnsupportedInstruction, "unknown instruction is rejected");
