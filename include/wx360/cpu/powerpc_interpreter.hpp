@@ -162,6 +162,15 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         if (update) { update_base = true; updated_address = address; }
         break;
     }
+    case 8: { // subfic: RT = SIMM - RA; XER[CA] indicates no borrow
+        const std::uint64_t lhs = static_cast<std::uint64_t>(static_cast<std::int64_t>(d.immediate));
+        const std::uint64_t rhs = state.gpr[d.ra];
+        result = lhs - rhs;
+        constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
+        state.xer = lhs >= rhs ? (state.xer | xer_ca) : (state.xer & ~xer_ca);
+        writes_result = true;
+        break;
+    }
     case 12: case 13: { // addic / addic.
         const std::uint64_t lhs = state.gpr[d.ra];
         const std::uint64_t rhs = static_cast<std::uint64_t>(static_cast<std::int64_t>(d.immediate));
@@ -232,6 +241,13 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             destination = d.ra;
             writes_result = true;
             break;
+        case 104: { // neg (OE=0 only): RT = -RA
+            if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
+            result = std::uint64_t{0} - state.gpr[d.ra];
+            destination = d.rt;
+            writes_result = true;
+            break;
+        }
         case 138: { // adde (OE=0 only): RA + RB + XER[CA]
             if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
             const std::uint64_t lhs = state.gpr[d.ra];
