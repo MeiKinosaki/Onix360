@@ -86,6 +86,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         const auto rotated = static_cast<std::uint32_t>(rotate_left_32(
             static_cast<std::uint32_t>(state.gpr[d.rt]), shift));
         result = rotated & mask32(mb, me);
+        destination = d.ra;
         writes_result = true;
         record_32bit = true;
         break;
