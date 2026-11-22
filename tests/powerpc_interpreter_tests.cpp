@@ -46,7 +46,7 @@ int main() {
 
     s.gpr[13] = 20;
     s.gpr[14] = 22;
-    check(execute(s, x_form(0, 15, 14, 266)) == StepResult::Executed, "ADD executes");
+    check(execute(s, x_form(15, 13, 14, 266)) == StepResult::Executed, "ADD executes");
     check(s.gpr[15] == 42, "ADD computes sum");
 
     s.xer = (std::uint64_t{1} << 31U);
