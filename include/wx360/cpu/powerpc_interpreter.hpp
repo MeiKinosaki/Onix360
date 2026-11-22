@@ -129,6 +129,12 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             break;
         case 266: // add (OE=0 only)
             if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
+            result = state.gpr[d.ra] + state.gpr[d.rb];
+            destination = d.rt;
+            writes_result = true;
+            break;
+        case 40: // subf (OE=0 only)
+            if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
             result = state.gpr[d.rb] - state.gpr[d.ra];
             destination = d.rt;
             writes_result = true;
