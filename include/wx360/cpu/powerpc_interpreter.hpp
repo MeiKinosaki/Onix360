@@ -114,7 +114,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
     case 32: case 33: case 34: case 35: case 36: case 37: case 38: case 39: { // D-form loads/stores
         const std::int64_t displacement = d.immediate;
         const std::uint64_t base = d.ra == 0 ? 0 : state.gpr[d.ra];
-        const std::uint64_t address = static_cast<std::uint64_t>(static_cast<std::int64_t>(base) + displacement);
+        const std::uint64_t address = base + static_cast<std::uint64_t>(displacement);
         const bool word_access = d.primary_opcode == 32 || d.primary_opcode == 33 ||
                                  d.primary_opcode == 36 || d.primary_opcode == 37;
         const bool load = d.primary_opcode <= 35;
