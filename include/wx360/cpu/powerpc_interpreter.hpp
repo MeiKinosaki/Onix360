@@ -111,18 +111,21 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         if (link) state.lr = state.pc + 4U;
         break;
     }
-    case 32: case 33: case 34: case 35: case 36: case 37: case 38: case 39: { // D-form loads/stores
+    case 32: case 33: case 34: case 35: case 36: case 37: case 38: case 39:
+    case 40: case 41: case 42: case 43: case 44: case 45: { // D-form byte/halfword/word loads and stores
         const std::int64_t displacement = d.immediate;
         const std::uint64_t base = d.ra == 0 ? 0 : state.gpr[d.ra];
         const std::uint64_t address = base + static_cast<std::uint64_t>(displacement);
         const bool word_access = d.primary_opcode == 32 || d.primary_opcode == 33 ||
                                  d.primary_opcode == 36 || d.primary_opcode == 37;
-        const bool load = d.primary_opcode <= 35;
+        const bool halfword_access = d.primary_opcode >= 40 && d.primary_opcode <= 45;
+        const bool load = d.primary_opcode <= 35 || (d.primary_opcode >= 40 && d.primary_opcode <= 43);
         const bool update = d.primary_opcode == 33 || d.primary_opcode == 35 ||
-                            d.primary_opcode == 37 || d.primary_opcode == 39;
+                            d.primary_opcode == 37 || d.primary_opcode == 39 ||
+                            d.primary_opcode == 41 || d.primary_opcode == 43 || d.primary_opcode == 45;
         if (update && d.ra == 0) return StepResult::UnsupportedInstruction;
         if (update && load && d.ra == d.rt) return StepResult::UnsupportedInstruction;
-        const std::size_t width = word_access ? 4U : 1U;
+        const std::size_t width = word_access ? 4U : (halfword_access ? 2U : 1U);
         if (address > memory.size() || width > memory.size() - static_cast<std::size_t>(address))
             return StepResult::MemoryFault;
         const auto offset = static_cast<std::size_t>(address);
@@ -135,6 +138,18 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         } else if (d.primary_opcode == 34 || d.primary_opcode == 35) {
             result = memory[offset];
             writes_result = true;
+        } else if (d.primary_opcode == 40 || d.primary_opcode == 41 ||
+                   d.primary_opcode == 42 || d.primary_opcode == 43) {
+            const std::uint16_t value = static_cast<std::uint16_t>(
+                (static_cast<std::uint16_t>(memory[offset]) << 8U) | memory[offset + 1]);
+            result = (d.primary_opcode == 42 || d.primary_opcode == 43)
+                ? static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int16_t>(value)))
+                : value;
+            writes_result = true;
+        } else if (d.primary_opcode == 44 || d.primary_opcode == 45) {
+            const std::uint16_t value = static_cast<std::uint16_t>(state.gpr[d.rt]);
+            memory[offset] = static_cast<std::uint8_t>(value >> 8U);
+            memory[offset + 1] = static_cast<std::uint8_t>(value);
         } else if (d.primary_opcode == 36 || d.primary_opcode == 37) {
             const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[d.rt]);
             memory[offset] = static_cast<std::uint8_t>(value >> 24U);
