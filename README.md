@@ -15,11 +15,11 @@
 
 O interpretador inicial contém suporte experimental para:
 
-- Aritmética/lógica: ADDI, ADDIS, ADD, SUBF, AND, OR e XOR.
+- Aritmética/lógica: ADDI, ADDIS, ADDIC, ADDIC., ADD, SUBF, AND, OR e XOR.
 - Comparação: CMP e CMPL.
 - Rotação/máscara: RLWINM.
 - Branches: B e BC.
-- Memória: LWZ, LBZ, STW e STB, usando um buffer de memória fornecido pelo chamador e big-endian.
+- Memória: LWZ, LWZU, LBZ, STW, STWU e STB, usando um buffer de memória fornecido pelo chamador e big-endian; formas update atualizam RA após acesso bem-sucedido.
 - Resultado de execução distingue instrução não suportada e falha de acesso ao buffer.
 
 **Limitações conhecidas:** subconjunto muito pequeno da ISA; sem execução completa de threads, exceções, MMU, BAT/TLB, FPU/VMX, dispositivos, kernel ou GPU. A semântica de branches e condições ainda precisa de expansão e validação contra a especificação PowerPC/Xenon.
@@ -41,7 +41,7 @@ O projeto não ativa flags de AVX/AVX2. SSE2 é a base pretendida para x86-64.
 - [x] Estrutura C++/CMake e CI Windows/Linux.
 - [x] Estado arquitetural inicial de uma thread (GPRs, PC, LR, CTR, XER, CR, MSR e FPSCR).
 - [x] Interpretador PowerPC inicial e testes unitários.
-- [x] B/BC, LWZ/LBZ/STW/STB e testes de buffer big-endian adicionados.
+- [x] B/BC, ADDIC/ADDIC., LWZ/LBZ/STW/STB e formas update com testes de buffer big-endian adicionados.
 - [ ] Validação final do CI para o commit mais recente em Windows e Linux.
 - [ ] Cobertura mais ampla da ISA Xenon, branches, exceções e semântica de overflow/carry.
 - [ ] Memória do Xbox 360, MMU, BAT/TLB.
