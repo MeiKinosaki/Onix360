@@ -232,6 +232,36 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             destination = d.ra;
             writes_result = true;
             break;
+        case 138: { // adde (OE=0 only): RA + RB + XER[CA]
+            if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
+            const std::uint64_t lhs = state.gpr[d.ra];
+            const std::uint64_t rhs = state.gpr[d.rb];
+            const std::uint64_t carry_in = (state.xer >> 29U) & 1U;
+            const std::uint64_t partial = lhs + rhs;
+            const bool carry1 = partial < lhs;
+            result = partial + carry_in;
+            const bool carry2 = result < partial;
+            constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
+            state.xer = (carry1 || carry2) ? (state.xer | xer_ca) : (state.xer & ~xer_ca);
+            destination = d.rt;
+            writes_result = true;
+            break;
+        }
+        case 136: { // subfe (OE=0 only): ~RA + RB + XER[CA]
+            if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
+            const std::uint64_t lhs = ~state.gpr[d.ra];
+            const std::uint64_t rhs = state.gpr[d.rb];
+            const std::uint64_t carry_in = (state.xer >> 29U) & 1U;
+            const std::uint64_t partial = lhs + rhs;
+            const bool carry1 = partial < lhs;
+            result = partial + carry_in;
+            const bool carry2 = result < partial;
+            constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
+            state.xer = (carry1 || carry2) ? (state.xer | xer_ca) : (state.xer & ~xer_ca);
+            destination = d.rt;
+            writes_result = true;
+            break;
+        }
         case 266: // add (OE=0 only)
             if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
             result = state.gpr[d.ra] + state.gpr[d.rb];
