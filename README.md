@@ -15,7 +15,7 @@
 
 O interpretador inicial contém suporte experimental para:
 
-- Aritmética/lógica: ADDI, ADDIS, ADDIC, ADDIC., ADD, ADDE, ADDZE, SUBF, SUBFE, SUBFZE, AND, OR e XOR.
+- Aritmética/lógica: ADDI, ADDIS, ADDIC, ADDIC., SUBFIC, ADD, ADDE, ADDZE, SUBF, SUBFE, SUBFZE, NEG, AND, OR e XOR.
 - Comparação: CMP e CMPL.
 - Rotação/máscara: RLWINM.
 - Branches: B e BC.
