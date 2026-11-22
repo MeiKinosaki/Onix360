@@ -1,10 +1,11 @@
-#include "wx360/cpu/xenon_state.hpp"
+#include "wx360/cpu/powerpc_interpreter.hpp"
 
+#include <iomanip>
 #include <iostream>
 #include <string_view>
 
 namespace {
-constexpr std::string_view kVersion = "0.2b";
+constexpr std::string_view kVersion = "0.3b";
 bool has_sse2() noexcept {
 #if defined(_M_X64) || defined(__x86_64__)
     return true;
@@ -30,11 +31,13 @@ int main() {
         std::cerr << "This build requires an SSE2-capable CPU.\n";
         return 1;
     }
-
     wx360::cpu::XenonThreadState thread;
     thread.reset(0x10000);
-    std::cout << "Xenon thread state initialized; entry PC = 0x"
+    const auto result = wx360::cpu::execute(thread, 0x38600001U); // addi r3,r0,1
+    std::cout << "Interpreter smoke test: "
+              << (result == wx360::cpu::StepResult::Executed ? "instruction executed" : "unsupported")
+              << "; r3=" << thread.gpr[3] << "; PC=0x"
               << std::hex << thread.pc << std::dec << "\n"
-              << "Status: architectural state only; instruction execution is not implemented yet.\n";
-    return 0;
+              << "Status: limited PowerPC interpreter; not a complete Xenon CPU.\n";
+    return result == wx360::cpu::StepResult::Executed && thread.gpr[3] == 1 ? 0 : 2;
 }
