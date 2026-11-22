@@ -134,6 +134,30 @@ int main() {
     check(execute(s, branch_form(16, 4, 2, 0x20U)) == StepResult::Executed, "BC not-taken path executes");
     check(s.pc == not_taken_pc + 4U, "BC advances normally when condition fails");
 
+    // Halfword accesses are big-endian; LHA sign-extends while LHZ zero-extends.
+    ram[24] = 0x80;
+    ram[25] = 0x01;
+    check(execute(s, d_form(40, 16, 0, 24), ram) == StepResult::Executed, "LHZ executes");
+    check(s.gpr[16] == 0x8001, "LHZ zero-extends big-endian halfword");
+    check(execute(s, d_form(42, 17, 0, 24), ram) == StepResult::Executed, "LHA executes");
+    check(s.gpr[17] == 0xFFFFFFFFFFFF8001ULL, "LHA sign-extends big-endian halfword");
+    s.gpr[18] = 0x1234;
+    check(execute(s, d_form(44, 18, 0, 26), ram) == StepResult::Executed, "STH executes");
+    check(ram[26] == 0x12 && ram[27] == 0x34, "STH stores big-endian halfword");
+    s.gpr[28] = 28;
+    check(execute(s, d_form(41, 19, 28, 0), ram) == StepResult::Executed, "LHZU executes");
+    check(s.gpr[19] == 0 && s.gpr[28] == 28, "LHZU loads and updates RA");
+    s.gpr[28] = 30;
+    s.gpr[20] = 0xBEEF;
+    check(execute(s, d_form(45, 20, 28, 0), ram) == StepResult::Executed, "STHU executes");
+    check(ram[30] == 0xBE && ram[31] == 0xEF && s.gpr[28] == 30,
+          "STHU stores and updates RA");
+    s.gpr[28] = 63;
+    const auto halfword_ra_before_fault = s.gpr[28];
+    check(execute(s, d_form(41, 19, 28, 0), ram) == StepResult::MemoryFault,
+          "LHZU reports out-of-range access");
+    check(s.gpr[28] == halfword_ra_before_fault, "LHZU fault leaves RA unchanged");
+
     const auto old_pc = s.pc;
     check(execute(s, 0xFFFFFFFFU) == StepResult::UnsupportedInstruction, "unknown instruction is rejected");
     check(s.pc == old_pc, "unsupported instruction does not advance PC");
