@@ -302,6 +302,20 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             writes_result = true;
             break;
         }
+        case 234: case 232: { // addme / subfme (OE=0 only): lhs + XER[CA] - 1
+            if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
+            const std::uint64_t lhs = d.xo == 234 ? state.gpr[d.ra] : ~state.gpr[d.ra];
+            const std::uint64_t carry_in = (state.xer >> 29U) & 1U;
+            const std::uint64_t partial = lhs + UINT64_MAX;
+            const bool carry1 = partial < lhs;
+            result = partial + carry_in;
+            const bool carry2 = result < partial;
+            constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
+            state.xer = (carry1 || carry2) ? (state.xer | xer_ca) : (state.xer & ~xer_ca);
+            destination = d.rt;
+            writes_result = true;
+            break;
+        }
         case 266: // add (OE=0 only)
             if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
             result = state.gpr[d.ra] + state.gpr[d.rb];
