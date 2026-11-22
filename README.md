@@ -34,9 +34,10 @@ O interpretador inicial contém suporte experimental para:
 ## Interface Windows inspirada no Aurora (protótipo)
 
 - Janela Win32 leve com tema escuro azul/ciano, navegação lateral e painéis de biblioteca.
-- Estrutura visual inicial para Início, Biblioteca, Arquivos, Save States e Configurações.
-- Destaque de navegação por teclado (setas) e mouse no menu lateral; a troca de seção ainda não altera o conteúdo principal.
-- O protótipo ainda usa cartões demonstrativos: não possui renderização real das capas, seleção por controle, busca/filtros funcionais, importação de jogos pela interface nem ações conectadas aos slots.
+- Telas separadas para Início, Biblioteca, Arquivos, Save States e Configurações, com conteúdo informativo específico por seção.
+- Destaque de navegação por teclado (setas) e mouse no menu lateral.
+- A Biblioteca ainda não indexa jogos nem desenha capas reais; Arquivos não importa jogos e os slots exibidos ainda não consultam o gerenciador de save states.
+- Busca/filtros, seleção por controle, ações de importação e configurações efetivas continuam pendentes.
 
 ## Biblioteca de capas (em desenvolvimento)
 
@@ -73,8 +74,8 @@ O projeto não ativa flags de AVX/AVX2. SSE2 é a base pretendida para x86-64.
 - [ ] Navegação recursiva XDVDFS e integração ISO/XEX ao carregador.
 - [x] Biblioteca de capas com cache local, downloader HTTPS WinHTTP no Windows e validação JPEG.
 - [ ] Integrar catálogo/provedor de metadados, identificar jogos automaticamente e exibir capas reais na biblioteca gráfica.
-- [x] Protótipo inicial de dashboard Win32 inspirado no Aurora, com seleção visual do menu por teclado/mouse.
-- [ ] Conectar navegação, seleção por controle/mouse, importação de jogos, biblioteca de capas e gerenciamento dos save states à interface.
+- [x] Dashboard Win32 inspirado no Aurora com telas distintas e seleção de menu por teclado/mouse.
+- [ ] Conectar a biblioteca a jogos indexados e capas reais; ligar importação ISO/XEX/GOD e gerenciamento dos save states; adicionar busca, filtros e controle Xbox 360.
 - [ ] Integração dos slots com pausa/retomada do loop de emulação e interface gráfica.
 - [ ] Snapshot completo do sistema: GPU, áudio, dispositivos, timers, kernel e estado de todos os threads.
 - [ ] Memória do Xbox 360, MMU, BAT/TLB.
