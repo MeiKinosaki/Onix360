@@ -1,4 +1,8 @@
 #include "wx360/cpu/powerpc_interpreter.hpp"
+#include "wx360/ui/aurora_window.hpp"
+#if defined(_WIN32)
+#include <windows.h>
+#endif
 
 #include <iomanip>
 #include <iostream>
@@ -39,5 +43,11 @@ int main() {
               << "; r3=" << thread.gpr[3] << "; PC=0x"
               << std::hex << thread.pc << std::dec << "\n"
               << "Status: limited PowerPC interpreter; not a complete Xenon CPU.\n";
-    return result == wx360::cpu::StepResult::Executed && thread.gpr[3] == 1 ? 0 : 2;
+    if (result != wx360::cpu::StepResult::Executed || thread.gpr[3] != 1) return 2;
+#if defined(_WIN32)
+    wx360::ui::AuroraWindow dashboard;
+    return dashboard.run(GetModuleHandleW(nullptr), SW_SHOW);
+#else
+    return 0;
+#endif
 }
