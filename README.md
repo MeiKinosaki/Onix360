@@ -1,57 +1,66 @@
 # WX360
 
-**Windows Xbox 360 Emulator** — projeto experimental de emulação do Xbox 360 para Windows x64, com foco em computadores modestos.
+**Windows Xbox 360 Emulator** — emulador experimental do Xbox 360 para Windows x64, com foco em computadores modestos.
 
-> **Estado:** v0.3b — interpretador PowerPC ampliado com SUBF, CMP, CMPL e RLWINM; interpretador ampliado com branches B/BC e acessos LWZ/LBZ/STW/STB; validação automatizada pendente. Ainda não executa jogos comerciais.
+> **Versão em desenvolvimento:** v0.3b. O projeto ainda não executa jogos comerciais.
 
-## Objetivos de compatibilidade
+## Objetivos
 
 - Windows 10/11 de 64 bits.
-- Processadores x86-64 com **SSE2 como baseline**.
-- Não exigir AVX nem AVX2.
-- Meta de uso: computadores com até 4 GB de RAM (não é garantia de que jogos completos rodarão nessa memória).
+- x86-64 com SSE2 como baseline; AVX e AVX2 não são requisitos.
+- Meta de otimização para computadores com até 4 GB de RAM; isso não garante que jogos completos rodem nessa capacidade.
 - Arquitetura modular para CPU Xenon, memória, GPU Xenos, áudio e kernel.
 
-## Princípios técnicos
+## Implementação atual — CPU PowerPC/Xenon
 
-1. Separar instruções PowerPC em módulos testáveis.
-2. Manter caminhos escalares/SSE2; AVX e AVX2 nunca podem ser requisitos.
-3. Medir memória por subsistema e evitar alocações grandes desnecessárias.
-4. Não declarar compatibilidade, testes, builds ou execução de jogos sem evidência reproduzível.
-5. Distinguir código implementado de funcionalidades ainda planejadas.
+O interpretador inicial contém suporte experimental para:
 
-## Plano de versões
+- Aritmética/lógica: ADDI, ADDIS, ADD, SUBF, AND, OR e XOR.
+- Comparação: CMP e CMPL.
+- Rotação/máscara: RLWINM.
+- Branches: B e BC.
+- Memória: LWZ, LBZ, STW e STB, usando um buffer de memória fornecido pelo chamador e big-endian.
+- Resultado de execução distingue instrução não suportada e falha de acesso ao buffer.
 
-| Versão | Escopo |
-|---|---|
-| v0.1b | Estrutura C++/CMake e baseline SSE2 |
-| v0.2b | Estado arquitetural inicial Xenon e testes unitários |
-| v0.3b | Interpretador PowerPC inicial: ADDI, ADDIS, ADD, AND, OR, XOR |
-| v0.4b | Memória, MMU e exceções |
-| v0.5b | Fundamentos da GPU Xenos |
-| v0.6b | Áudio e subsistemas do sistema |
-| v0.7b | Carregador inicial de executáveis XEX |
-| v0.8b | Kernel/HAL e serviços necessários |
-| v0.9b | Integração, profiling e otimização |
-| v1.0 | Marco de estabilidade baseado em testes e compatibilidade demonstrada |
+**Limitações conhecidas:** subconjunto muito pequeno da ISA; sem execução completa de threads, exceções, MMU, BAT/TLB, FPU/VMX, dispositivos, kernel ou GPU. A semântica de branches e condições ainda precisa de expansão e validação contra a especificação PowerPC/Xenon.
 
-## Build (Windows)
+## Build no Windows
 
-Requisitos de desenvolvimento: CMake 3.20+ e compilador C++20 (Visual Studio 2022 ou MinGW-w64 recente).
+Requisitos: CMake 3.20+ e compilador C++20 (Visual Studio 2022 ou MinGW-w64 recente).
 
 ```powershell
 cmake -S . -B build -A x64
 cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
 ```
 
-## Estado real
+O projeto não ativa flags de AVX/AVX2. SSE2 é a base pretendida para x86-64.
 
-- [x] Repositório inicial e escopo documentados.\n- [x] Estado arquitetural inicial da CPU e testes unitários adicionados.\n- [x] CI Windows/Linux aprovado para o subconjunto anterior; nova rodada de validação pendente.
-- [x] Estrutura de estado de uma thread Xenon (GPRs, PC, LR, CTR, XER, CR, MSR e FPSCR).
-- [x] Decodificador e interpretador inicial: ADDI, ADDIS, ADD, AND, OR e XOR.\n- [ ] Cobertura ampla da ISA Xenon, overflow, branches, loads/stores, FPU e VMX.
-- [ ] MMU e memória do Xbox 360.
-- [ ] GPU Xenos.
-- [ ] Áudio, kernel e carregamento XEX.
+## Estado do projeto
+
+- [x] Estrutura C++/CMake e CI Windows/Linux.
+- [x] Estado arquitetural inicial de uma thread (GPRs, PC, LR, CTR, XER, CR, MSR e FPSCR).
+- [x] Interpretador PowerPC inicial e testes unitários.
+- [x] B/BC, LWZ/LBZ/STW/STB e testes de buffer big-endian adicionados.
+- [ ] Validação final do CI para o commit mais recente em Windows e Linux.
+- [ ] Cobertura mais ampla da ISA Xenon, branches, exceções e semântica de overflow/carry.
+- [ ] Memória do Xbox 360, MMU, BAT/TLB.
+- [ ] GPU Xenos, áudio, kernel/HAL e carregador XEX.
 - [ ] Execução de jogos.
 
-**Aviso:** o limite de 4 GB é uma meta de otimização, não uma promessa de desempenho ou compatibilidade. A emulação completa do Xbox 360 é um projeto de grande porte.
+## Plano de versões
+
+| Versão | Marco |
+|---|---|
+| v0.1b | Estrutura e baseline SSE2 |
+| v0.2b | Estado arquitetural Xenon |
+| v0.3b | Interpretador PowerPC inicial e testes |
+| v0.4b | Memória do sistema, MMU e exceções |
+| v0.5b | Fundamentos da GPU Xenos |
+| v0.6b | Áudio e subsistemas |
+| v0.7b | Carregador XEX |
+| v0.8b | Kernel/HAL e serviços |
+| v0.9b | Integração e otimização |
+| v1.0 | Marco de estabilidade baseado em evidências |
+
+**Regra de qualidade:** não declarar builds, testes, compatibilidade ou execução de jogos como concluídos sem evidência reproduzível.
