@@ -24,6 +24,13 @@ O interpretador inicial contém suporte experimental para:
 
 **Limitações conhecidas:** subconjunto muito pequeno da ISA; sem execução completa de threads, exceções, MMU, BAT/TLB, FPU/VMX, dispositivos, kernel ou GPU. A semântica de branches e condições ainda precisa de expansão e validação contra a especificação PowerPC/Xenon.
 
+## Imagens de disco Xbox 360 (em desenvolvimento)
+
+- Leitor inicial de arquivos ISO com leitura de setores sob demanda.
+- Validação experimental do descritor XDVDFS e verificação dos limites da imagem.
+- Ainda não enumera entradas de diretório, não localiza `default.xex` e não conecta ISO ao carregador de executáveis.
+- O suporte completo exige parser XDVDFS, resolução de caminhos e integração com o futuro loader XEX.
+
 ## Build no Windows
 
 Requisitos: CMake 3.20+ e compilador C++20 (Visual Studio 2022 ou MinGW-w64 recente).
@@ -44,7 +51,7 @@ O projeto não ativa flags de AVX/AVX2. SSE2 é a base pretendida para x86-64.
 - [x] B/BC, ADDIC/ADDIC., ADDE/ADDME/SUBFE/SUBFME/ADDZE/SUBFZE (código e testes adicionados), acessos de byte/palavra/meia-palavra (LBZ/LWZ/LHZ/LHA e STB/STW/STH), formas update e testes de buffer big-endian adicionados.
 - [ ] Validação final do CI para o commit mais recente em Windows e Linux.
 - [ ] Cobertura mais ampla da ISA Xenon, branches, exceções e semântica de overflow/carry.
-- [ ] Memória do Xbox 360, MMU, BAT/TLB.
+- [x] Leitor ISO inicial: validação do descritor XDVDFS e leitura sob demanda de setores (testes adicionados; aguardando CI).\n- [ ] Parser de diretórios XDVDFS e localização de `default.xex` dentro da ISO.\n- [ ] Integração ISO/XEX ao carregador.\n- [ ] Memória do Xbox 360, MMU, BAT/TLB.
 - [ ] GPU Xenos, áudio, kernel/HAL e carregador XEX.
 - [ ] Execução de jogos.
 
