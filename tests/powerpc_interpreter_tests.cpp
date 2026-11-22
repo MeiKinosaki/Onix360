@@ -80,6 +80,15 @@ int main() {
     check(execute(s, x_form(8, 16, 9, 444, true)) == StepResult::Executed, "OR. record form executes");
     check(s.condition_field(0) == 0x5, "record form updates CR0 GT and SO");
 
+    // ADDIC updates XER[CA] on unsigned carry-out; ADDIC. also records CR0.
+    s.gpr[26] = UINT64_MAX;
+    check(execute(s, d_form(12, 27, 26, 1)) == StepResult::Executed, "ADDIC executes");
+    check(s.gpr[27] == 0 && (s.xer & (std::uint64_t{1} << 29U)) != 0,
+          "ADDIC wraps and sets XER carry");
+    s.gpr[26] = 7;
+    check(execute(s, d_form(13, 27, 26, 1)) == StepResult::Executed, "ADDIC. executes");
+    check(s.gpr[27] == 8 && s.condition_field(0) == 0x4, "ADDIC. updates CR0");
+
     std::array<std::uint8_t, 64> ram{};
     s.gpr[21] = 0x12345678U;
     check(execute(s, d_form(36, 21, 0, 8), ram) == StepResult::Executed, "STW executes");
@@ -94,6 +103,21 @@ int main() {
     s.gpr[24] = 0xCD;
     check(execute(s, d_form(38, 24, 0, 13), ram) == StepResult::Executed, "STB executes");
     check(ram[13] == 0xCD, "STB stores low byte");
+
+    // Update forms write the effective address back to RA only after success.
+    s.gpr[28] = 4;
+    check(execute(s, d_form(33, 29, 28, 8), ram) == StepResult::Executed, "LWZU executes");
+    check(s.gpr[29] == 0 && s.gpr[28] == 12, "LWZU loads and updates RA");
+    s.gpr[28] = 16;
+    s.gpr[30] = 0xA1B2C3D4U;
+    check(execute(s, d_form(37, 30, 28, 4), ram) == StepResult::Executed, "STWU executes");
+    check(s.gpr[28] == 20 && ram[16] == 0xA1 && ram[19] == 0xD4,
+          "STWU stores and updates RA");
+    s.gpr[28] = 63;
+    const auto ra_before_fault = s.gpr[28];
+    check(execute(s, d_form(33, 29, 28, 1), ram) == StepResult::MemoryFault,
+          "LWZU reports out-of-range access");
+    check(s.gpr[28] == ra_before_fault, "LWZU fault leaves RA unchanged");
     const auto before_fault_pc = s.pc;
     check(execute(s, d_form(32, 25, 0, 63), ram) == StepResult::MemoryFault,
           "out-of-range LWZ reports memory fault");
