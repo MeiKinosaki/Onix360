@@ -27,29 +27,53 @@ private:
   switch(m){case WM_PAINT:self->paint(h);return 0;case WM_ERASEBKGND:return 1;case WM_DESTROY:PostQuitMessage(0);return 0;case WM_KEYDOWN:if(w==VK_ESCAPE)DestroyWindow(h);else if(w==VK_DOWN||w==VK_RIGHT){self->selected_nav_=(self->selected_nav_+1)%5;InvalidateRect(h,nullptr,FALSE);}else if(w==VK_UP||w==VK_LEFT){self->selected_nav_=(self->selected_nav_+4)%5;InvalidateRect(h,nullptr,FALSE);}return 0;case WM_LBUTTONDOWN:{int y=GET_Y_LPARAM(l);if(y>=105&&y<345){int index=(y-105)/48;if(index>=0&&index<5){self->selected_nav_=index;InvalidateRect(h,nullptr,FALSE);}}return 0;}}
   return DefWindowProcW(h,m,w,l);
  }
+ void draw_text(HDC dc,int x,int y,const wchar_t* value,COLORREF color) {
+  SetTextColor(dc,color);TextOutW(dc,x,y,value,lstrlenW(value));
+ }
+ void panel(HDC dc,int x,int y,int width,int height,COLORREF color) {
+  RECT box{x,y,x+width,y+height};HBRUSH brush=CreateSolidBrush(color);FillRect(dc,&box,brush);DeleteObject(brush);
+ }
  void paint(HWND h) {
   PAINTSTRUCT ps{};HDC dc=BeginPaint(h,&ps);RECT r{};GetClientRect(h,&r);
-  HBRUSH bg=CreateSolidBrush(RGB(15,22,35));FillRect(dc,&r,bg);DeleteObject(bg);
-  RECT sidebar{0,0,210,r.bottom};HBRUSH side=CreateSolidBrush(RGB(10,16,27));FillRect(dc,&sidebar,side);DeleteObject(side);
-  SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(235,244,255));
+  panel(dc,0,0,r.right,r.bottom,RGB(15,22,35));
+  panel(dc,0,0,210,r.bottom,RGB(10,16,27));
+  SetBkMode(dc,TRANSPARENT);
   HFONT title=CreateFontW(30,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
   HFONT normal=CreateFontW(18,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
-  auto old=SelectObject(dc,title);TextOutW(dc,28,28,L"WX360",5);SelectObject(dc,normal);
+  HGDIOBJ old=SelectObject(dc,title);draw_text(dc,28,28,L"WX360",RGB(235,244,255));SelectObject(dc,normal);
   const wchar_t* nav[]={L"INICIO",L"BIBLIOTECA",L"ARQUIVOS",L"SAVE STATES",L"CONFIGURACOES"};
-  for(int i=0;i<5;++i){if(i==selected_nav_){RECT hi{12,105+i*48,198,145+i*48};HBRUSH accent=CreateSolidBrush(RGB(0,116,153));FillRect(dc,&hi,accent);DeleteObject(accent);}TextOutW(dc,28,112+i*48,nav[i],lstrlenW(nav[i]));}
-  SelectObject(dc,title);TextOutW(dc,250,35,L"BIBLIOTECA DE JOGOS",19);
-  SelectObject(dc,normal);SetTextColor(dc,RGB(130,205,225));TextOutW(dc,252,78,L"Dashboard inspirado no Aurora | WX360",39);
-  RECT hero{250,125,r.right-30,275};HBRUSH panel=CreateSolidBrush(RGB(23,43,62));FillRect(dc,&hero,panel);DeleteObject(panel);
-  SetTextColor(dc,RGB(255,255,255));SelectObject(dc,title);TextOutW(dc,278,155,L"SEUS JOGOS EM UM SO LUGAR",27);
-  SelectObject(dc,normal);SetTextColor(dc,RGB(174,197,215));TextOutW(dc,280,205,L"Capas, favoritos, formatos ISO e XEX - interface inicial",57);
-  const wchar_t* tiles[]={L"ADICIONAR JOGO",L"ULTIMO JOGO",L"SAVE STATE"};
-  for(int i=0;i<3;++i){int x=250+i*250;RECT tile{x,315,x+225,510};HBRUSH t=CreateSolidBrush(RGB(27,39,56));FillRect(dc,&tile,t);DeleteObject(t);
-   RECT stripe{x,315,x+225,322};HBRUSH a=CreateSolidBrush(RGB(0,166,204));FillRect(dc,&stripe,a);DeleteObject(a);
-   SetTextColor(dc,RGB(240,247,255));TextOutW(dc,x+18,350,tiles[i],lstrlenW(tiles[i]));
-   SetTextColor(dc,RGB(140,165,188));const wchar_t* desc=i==0?L"Adicionar ISO / XEX":(i==1?L"Nenhum jogo iniciado":L"10 slots planejados");
-   TextOutW(dc,x+18,395,desc,lstrlenW(desc));
+  for(int i=0;i<5;++i){if(i==selected_nav_)panel(dc,12,105+i*48,186,40,RGB(0,116,153));draw_text(dc,28,112+i*48,nav[i],RGB(235,244,255));}
+  const wchar_t* headings[]={L"INICIO",L"BIBLIOTECA DE JOGOS",L"ARQUIVOS DE JOGOS",L"SAVE STATES",L"CONFIGURACOES"};
+  draw_text(dc,250,35,headings[selected_nav_],RGB(255,255,255));
+  draw_text(dc,252,78,L"Dashboard inspirado no Aurora | WX360",RGB(130,205,225));
+  panel(dc,250,125,r.right-280,135,RGB(23,43,62));
+  if(selected_nav_==0){
+   draw_text(dc,278,155,L"BEM-VINDO AO WX360",RGB(255,255,255));
+   draw_text(dc,280,205,L"Emulador experimental Xbox 360 para Windows x64",RGB(174,197,215));
+   const wchar_t* cards[]={L"BIBLIOTECA",L"FORMATOS",L"SAVE STATES"};
+   const wchar_t* details[]={L"Gerencie sua colecao",L"ISO e XEX em desenvolvimento",L"10 slots CPU/RAM"};
+   for(int i=0;i<3;++i){int x=250+i*250;panel(dc,x,300,225,170,RGB(27,39,56));panel(dc,x,300,225,7,RGB(0,166,204));draw_text(dc,x+18,340,cards[i],RGB(240,247,255));draw_text(dc,x+18,385,details[i],RGB(140,165,188));}
+  } else if(selected_nav_==1){
+   draw_text(dc,278,155,L"SUA BIBLIOTECA",RGB(255,255,255));
+   draw_text(dc,280,205,L"Nenhum jogo foi indexado nesta versao.",RGB(174,197,215));
+   draw_text(dc,252,300,L"Os formatos ISO/XEX ainda precisam ser ligados ao catalogo da interface.",RGB(190,205,220));
+   draw_text(dc,252,340,L"As capas serao exibidas aqui quando a identificacao e o catalogo estiverem integrados.",RGB(140,165,188));
+  } else if(selected_nav_==2){
+   draw_text(dc,278,155,L"FONTES DE JOGOS",RGB(255,255,255));
+   draw_text(dc,280,205,L"Formatos planejados: ISO, XEX e GOD.",RGB(174,197,215));
+   draw_text(dc,252,300,L"Importacao e varredura de pastas ainda nao estao conectadas.",RGB(190,205,220));
+   draw_text(dc,252,340,L"Esta tela e informativa; nenhum arquivo sera aberto por enquanto.",RGB(140,165,188));
+  } else if(selected_nav_==3){
+   draw_text(dc,278,155,L"10 SLOTS DISPONIVEIS NO GERENCIADOR",RGB(255,255,255));
+   draw_text(dc,280,205,L"Save State atual: CPU Xenon e RAM.",RGB(174,197,215));
+   for(int i=0;i<10;++i){int col=i%5,row=i/5,x=250+col*170,y=300+row*105;panel(dc,x,y,150,78,RGB(27,39,56));draw_text(dc,x+14,y+18,(std::wstring(L"SLOT ")+std::to_wstring(i+1)).c_str(),RGB(240,247,255));draw_text(dc,x+14,y+46,L"Sem dados conectados",RGB(140,165,188));}
+  } else {
+   draw_text(dc,278,155,L"COMPATIBILIDADE E DESEMPENHO",RGB(255,255,255));
+   draw_text(dc,280,205,L"Baseline x86-64 / SSE2; AVX2 nao e obrigatorio.",RGB(174,197,215));
+   draw_text(dc,252,300,L"Perfil de memoria, renderer grafico e configuracoes por jogo ainda pendentes.",RGB(190,205,220));
+   draw_text(dc,252,340,L"Meta: PCs Windows 10/11 com ate 4 GB RAM (sem garantia de jogos completos).",RGB(140,165,188));
   }
-  SetTextColor(dc,RGB(110,135,158));TextOutW(dc,252,r.bottom-38,L"WX360 v0.3b  |  CPU Xenon em desenvolvimento  |  ESC para sair",63);
+  draw_text(dc,252,r.bottom-38,L"WX360 v0.3b | CPU Xenon em desenvolvimento | ESC para sair",RGB(110,135,158));
   SelectObject(dc,old);DeleteObject(title);DeleteObject(normal);EndPaint(h,&ps);
  }
  int selected_nav_=1;
