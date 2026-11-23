@@ -19,6 +19,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
+      - name: Resolve independent LZX encoder modules
+        run: go mod tidy
+        working-directory: tools/lzx-reference
       - name: Generate independent LZX positive reference vector
         run: go run .
         working-directory: tools/lzx-reference
