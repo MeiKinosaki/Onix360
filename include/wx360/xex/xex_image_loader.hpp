@@ -36,12 +36,7 @@ struct LaunchPlan {
     Header header{};
     std::filesystem::path source;
     std::uint64_t file_size{};
-    std::uint32_t entry_point{}; // XEX virtual entry point
-    std::uint64_t mapped_entry_point{}; // guest physical address after PE/MMU mapping
-    bool decryption_complete{};
-    bool decompression_complete{};
-    bool pe_mapped{};
-    bool kernel_imports_resolved{};
+    std::uint32_t entry_point{}; // XEX virtual entry point; inspection only
 };
 
 struct FullXexImage {
@@ -116,97 +111,58 @@ public:
     }
 
     [[nodiscard]] static kernel::ImportResolveError resolve_kernel_imports(
-        LaunchPlan& plan,
         std::span<const kernel::XexImport> imports,
         const kernel::XexImportResolver& resolver,
         memory::PhysicalMemory& guest_memory) {
-        const auto status = resolver.resolve(imports, guest_memory);
-        plan.kernel_imports_resolved = status == kernel::ImportResolveError::None;
-        return status;
+        return resolver.resolve(imports, guest_memory);
     }
 
-    // Strict first production path: accept only unencrypted/uncompressed XEX2
-    // images with no import-library directory, verify the complete page-hash
-    // chain, map PE sections, then mint the unforgeable launch token.
-    [[nodiscard]] static std::optional<ValidatedXexImage> load_uncompressed_validated(
+    // Single production launch API. The loader selects the transform from
+    // parsed XEX metadata, verifies the page-hash chain, maps PE sections and
+    // returns an opaque token only after every required stage succeeds.
+    // RSA signature verification and import-library resolution remain separate
+    // trust/loader stages and are not implied by this token.
+    [[nodiscard]] static std::optional<ValidatedXexImage> load_validated(
         const FullXexImage& image,
         memory::PhysicalMemory& guest_memory,
         std::uint64_t physical_base,
-        std::uint32_t guest_image_base) {
-        if (image.format.encryption != XexEncryption::None ||
-            image.format.compression != XexCompression::None ||
-            image.header.has_import_libraries ||
+        std::uint32_t guest_image_base,
+        crypto::XexKeySet key_set = crypto::XexKeySet::Retail) {
+        if (image.header.has_import_libraries ||
             image.security.image_size != image.format.image_size ||
             image.header.entry_point == 0)
             return std::nullopt;
-        const auto offset = static_cast<std::size_t>(image.header.pe_data_offset);
-        const auto length = static_cast<std::size_t>(image.format.image_size);
-        if (offset > image.bytes.size() || length > image.bytes.size() - offset)
-            return std::nullopt;
-        const auto pe = std::span<const std::uint8_t>(image.bytes).subspan(offset, length);
-        if (verify_page_hashes(pe, image.security) != PageHashResult::Ok)
-            return std::nullopt;
-        const auto mapped = XexPeMapper::map(
-            pe, guest_memory, physical_base, guest_image_base, image.header.entry_point);
-        if (!mapped) return std::nullopt;
-        return ValidatedXexImage(mapped.mapped_entry);
-    }
 
-    // Full Normal/LZX production path. It refuses missing keys, invalid
-    // block SHA-1, invalid page-descriptor chain, malformed LZX and PE mapping.
-    [[nodiscard]] static std::optional<ValidatedXexImage> load_normal_lzx_validated(
-        const FullXexImage& image,
-        crypto::XexKeySet key_set,
-        memory::PhysicalMemory& guest_memory,
-        std::uint64_t physical_base,
-        std::uint32_t guest_image_base) {
-        if (image.format.compression != XexCompression::Normal ||
-            image.header.has_import_libraries ||
-            image.security.image_size != image.format.image_size ||
-            image.header.entry_point == 0)
-            return std::nullopt;
-        const auto offset = static_cast<std::size_t>(image.header.pe_data_offset);
-        if (offset > image.bytes.size()) return std::nullopt;
         std::vector<std::uint8_t> transformed;
-        const auto payload = std::span<const std::uint8_t>(image.bytes).subspan(offset);
-        if (transform_normal_lzx_verified(
-                image.security, key_set, image.format, payload, transformed) !=
-            NormalTransformError::Ok)
+        if (image.format.compression == XexCompression::None &&
+            image.format.encryption == XexEncryption::None) {
+            const auto offset = static_cast<std::size_t>(image.header.pe_data_offset);
+            const auto length = static_cast<std::size_t>(image.format.image_size);
+            if (offset > image.bytes.size() || length > image.bytes.size() - offset)
+                return std::nullopt;
+            const auto pe = std::span<const std::uint8_t>(image.bytes).subspan(offset, length);
+            if (verify_page_hashes(pe, image.security) != PageHashResult::Ok)
+                return std::nullopt;
+            transformed.assign(pe.begin(), pe.end());
+        } else if (image.format.compression == XexCompression::Normal) {
+            const auto offset = static_cast<std::size_t>(image.header.pe_data_offset);
+            if (offset > image.bytes.size()) return std::nullopt;
+            const auto payload = std::span<const std::uint8_t>(image.bytes).subspan(offset);
+            if (transform_normal_lzx_verified(
+                    image.security, key_set, image.format, payload, transformed) !=
+                NormalTransformError::Ok)
+                return std::nullopt;
+        } else {
+            return std::nullopt;
+        }
+
+        if (transformed.size() != image.format.image_size)
             return std::nullopt;
         const auto mapped = XexPeMapper::map(
             transformed, guest_memory, physical_base, guest_image_base,
             image.header.entry_point);
         if (!mapped) return std::nullopt;
         return ValidatedXexImage(mapped.mapped_entry);
-    }
-
-    // Safe end-to-end path for XEX images explicitly marked unencrypted and
-    // uncompressed. The loader derives completion from parsed metadata rather
-    // than accepting caller-supplied success flags. This does not authenticate
-    // the RSA signature or claim retail/devkit trust.
-    [[nodiscard]] static LoadError map_uncompressed_pe(
-        const FullXexImage& image,
-        LaunchPlan& plan,
-        memory::PhysicalMemory& guest_memory,
-        std::uint64_t physical_base,
-        std::uint32_t guest_image_base) {
-        if (image.format.encryption != XexEncryption::None ||
-            image.format.compression != XexCompression::None)
-            return LoadError::TransformIncomplete;
-        const auto offset = static_cast<std::size_t>(image.header.pe_data_offset);
-        const auto length = static_cast<std::size_t>(image.format.image_size);
-        if (offset > image.bytes.size() || length > image.bytes.size() - offset ||
-            length != image.security.image_size)
-            return LoadError::ImageNotMapped;
-        const auto pe = std::span<const std::uint8_t>(image.bytes).subspan(offset, length);
-        const auto mapped = XexPeMapper::map(
-            pe, guest_memory, physical_base, guest_image_base, plan.entry_point);
-        if (!mapped) return LoadError::PeMappingFailed;
-        plan.decryption_complete = true;
-        plan.decompression_complete = true;
-        plan.pe_mapped = true;
-        plan.mapped_entry_point = mapped.mapped_entry;
-        return LoadError::None;
     }
 
     [[nodiscard]] static crypto::AesResult decrypt_normal_payload(
