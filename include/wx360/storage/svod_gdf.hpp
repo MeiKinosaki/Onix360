@@ -293,8 +293,17 @@ private:
                (static_cast<std::uint32_t>(p[2]) << 16) | (static_cast<std::uint32_t>(p[3]) << 24);
     }
     static bool safe_name(const std::string& name) {
-        return !name.empty() && name != "." && name != ".." &&
-               name.find_first_of("/\\:\\") == std::string::npos;
+        if (name.empty() || name == "." || name == ".." ||
+            name.find('\\0') != std::string::npos || name.back() == '.' ||
+            name.back() == ' ')
+            return false;
+        for (const unsigned char ch : name) {
+            if (ch < 0x20u || ch == '<' || ch == '>' || ch == ':' ||
+                ch == '"' || ch == '/' || ch == '\\\\' ||
+                ch == '|' || ch == '?' || ch == '*')
+                return false;
+        }
+        return true;
     }
 };
 
