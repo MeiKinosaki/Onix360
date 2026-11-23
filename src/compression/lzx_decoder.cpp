@@ -5,6 +5,7 @@
 #include <cstring>
 #include <limits>
 #include <new>
+#include <stdexcept>
 
 extern "C" {
 #include <system.h>
