@@ -277,6 +277,19 @@ int main() {
           "SRAD handles shift amount 64");
     check(s.gpr[13] == 0 && (s.xer & xer_ca) == 0,
           "SRAD shift by 64 produces zero for positive operands");
+    s.gpr[1] = 0x8000000000000001ULL;
+    s.gpr[2] = 64;
+    s.xer &= ~xer_ca;
+    check(execute(s, x_form(1, 14, 2, 794)) == StepResult::Executed,
+          "SRAD handles a negative operand shifted by 64");
+    check(s.gpr[14] == UINT64_MAX && (s.xer & xer_ca) != 0,
+          "SRAD shift by 64 sign-fills and sets CA for discarded one bits");
+    s.gpr[1] = 0x8000000000000000ULL;
+    s.xer |= xer_ca;
+    check(execute(s, x_form(1, 15, 2, 794)) == StepResult::Executed,
+          "SRAD handles negative shift by 64 with no discarded one bits");
+    check(s.gpr[15] == UINT64_MAX && (s.xer & xer_ca) == 0,
+          "SRAD shift by 64 clears CA when lower bits are all zero");
 
     std::array<std::uint8_t, 64> ram{};
     s.gpr[21] = 0x12345678U;
