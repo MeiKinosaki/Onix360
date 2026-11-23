@@ -62,7 +62,7 @@ public:
         const auto selected_entry_rva = xex_entry_point == 0 ? entry_rva :
             (xex_entry_point >= guest_image_base ? xex_entry_point - guest_image_base : 0xFFFFFFFFu);
         if (size_of_image == 0 || size_of_image > 512u * 1024u * 1024u ||
-            size_of_headers > image.size() || size_of_headers > size_of_image ||
+            size_of_headers == 0 || size_of_headers > image.size() || size_of_headers > size_of_image ||
             selected_entry_rva >= size_of_image)
             return fail(PeMapError::InvalidImageRange);
         const auto section_table = optional + optional_size;
