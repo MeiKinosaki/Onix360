@@ -27,6 +27,8 @@ struct StfsPackageHeader {
     std::uint32_t unallocated_block_count{};
     std::uint32_t data_file_count{};
     std::uint64_t data_file_size{};
+    std::uint8_t volume_flags{};
+    bool read_only_format{};
     std::string title_name;
     std::string publisher_name;
 };
@@ -96,6 +98,8 @@ public:
         header.volume_type = volume_type == 0 ? StfsVolumeType::Stfs : StfsVolumeType::Svod;
         header.data_file_count = be32(bytes.data() + 0x39D);
         header.data_file_size = be64(bytes.data() + 0x3A1);
+        header.volume_flags = volume[2];
+        header.read_only_format = (header.volume_flags & 0x01u) != 0;
 
         // The 0x24-byte STFS descriptor has LE16/LE24 block fields.
         // SVOD has a different descriptor layout and is deliberately not
