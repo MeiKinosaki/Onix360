@@ -34,20 +34,17 @@ int main(){
        decoded.size()!=16 || !std::equal(decoded.begin(),decoded.end(),plain.begin())){
         std::cerr<<"XEX zero-IV CBC known-answer vector failed\\n";return EXIT_FAILURE;
     }
-    // Exercise XEX session-key unwrapping with the documented zero devkit key.
-    auto encrypted_session_key=key;
-    const Aes128Key devkit_master{};
-    AES_ctx wrap_ctx{};
-    AES_init_ctx(&wrap_ctx,devkit_master.data());
-    AES_ECB_encrypt(&wrap_ctx,encrypted_session_key.data());
-    wx360::xex::SecurityInfo security{};
-    security.encrypted_image_key=encrypted_session_key;
-    std::vector<std::uint8_t> xex_decrypted;
-    if(wx360::xex::XexImageLoader::decrypt_xex_normal_payload(
-           security,XexKeySet::Devkit,zero_iv_cipher,xex_decrypted)!=AesResult::Ok ||
-       xex_decrypted.size()!=16 ||
-       !std::equal(xex_decrypted.begin(),xex_decrypted.end(),plain.begin())){
-        std::cerr<<"XEX devkit session-key unwrap/decrypt integration failed\\n";
+    // Devkit key material is intentionally not embedded in this repository.
+    // The loader must fail closed rather than treating an all-zero key as valid.
+    if (wx360::xex::XexImageLoader::decrypt_xex_normal_payload(
+            wx360::xex::SecurityInfo{}, XexKeySet::Devkit, zero_iv_cipher, decoded) !=
+        AesResult::KeyUnavailable) {
+        std::cerr << "XEX Devkit path accepted an unavailable master key\\n";
+        return EXIT_FAILURE;
+    }
+    if (!xex_master_key_available(XexKeySet::Retail) ||
+        xex_master_key_available(XexKeySet::Devkit)) {
+        std::cerr << "XEX master-key availability policy failed\\n";
         return EXIT_FAILURE;
     }
     std::array<std::uint8_t,15> invalid{};
