@@ -147,9 +147,19 @@ public:
             const auto length = le32(raw + 8);
             const auto attributes = raw[12];
             const auto name_length = static_cast<std::size_t>(raw[13]);
-            if (name_length == 0 || name_length > 255 ||
-                in_block + 14u + name_length > kBlockSize) return false;
-            std::string name(reinterpret_cast<const char*>(raw + 14), name_length);
+            if (name_length == 0 || name_length > 255) return false;
+            std::string name;
+            const auto available = kBlockSize - (in_block + 14u);
+            name.assign(reinterpret_cast<const char*>(raw + 14),
+                        std::min(name_length, static_cast<std::size_t>(available)));
+            if (name_length > available) {
+                std::array<std::uint8_t,kBlockSize> next_block{};
+                if (directory_block + block_delta >= 0xFFFFFFFFu ||
+                    !read_block(directory_block + static_cast<std::uint32_t>(block_delta) + 1u,
+                                next_block)) return false;
+                name.append(reinterpret_cast<const char*>(next_block.data()),
+                            name_length - available);
+            }
             if (!safe_name(name)) return false;
             if (left && !walk_directory(directory_block, left, parent, depth + 1)) return false;
             const bool is_directory = (attributes & 0x10u) != 0;
@@ -219,7 +229,7 @@ public:
                 const auto physical_size = std::filesystem::file_size(fragment, size_error);
                 if (size_error || offset >= physical_size) return false;
                 const auto amount = static_cast<std::size_t>(std::min<std::uint64_t>(
-                    {kBlockSize, size - done, physical_size - offset}));
+                    {static_cast<std::uint64_t>(kBlockSize), size - done, physical_size - offset}));
                 if (amount == 0) return false;
                 std::ifstream in(fragment, std::ios::binary);
                 if (!in) return false;
