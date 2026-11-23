@@ -113,6 +113,16 @@ O interpretador inicial contém suporte experimental para:
 - Testes sintéticos adicionados para GDF single-file, extração, inspeção XEX e handoff protegido ao núcleo Xenon.
 - **Limitações críticas:** ainda não implementa descriptografia/descompressão XEX, interpretação de security info, mapeamento PE real, relocations, imports do kernel nem autenticação SHA-1/RSA. Portanto, o plano XEX ainda não é produzido como pronto para execução e jogos comerciais não estão executáveis. A leitura de fragmentos reais e layouts complexos requer validação adicional.
 
+## Mapeador PE XEX e infraestrutura de importações Xenon
+
+- Foi adicionado um mapeador PE32 limitado ao formato PowerPC big-endian/Xbox (machine 0x01F2, subsystem Xbox), com validação de cabeçalhos, limites de seções, cópia dos dados raw e permissões de página.
+- Relocations PE32 do tipo HIGHLOW são aplicadas com delta de endereço; tipos não suportados são recusados.
+- O entry point XEX pode selecionar o RVA dentro da imagem PE e é convertido para o endereço físico mapeado.
+- `XexImageLoader::map_transformed_pe` só marca descriptografia/descompressão como concluídas quando o chamador fornece explicitamente um buffer PE já transformado. Esta função não descriptografa nem descomprime o contêiner XEX.
+- Foi adicionada infraestrutura de resolução de imports por biblioteca/ordinal, com registro explícito de exports, comparação de nomes sem diferenciar maiúsculas e escrita big-endian dos thunks. Imports sem export registrado são recusados.
+- Testes sintéticos cobrem mapeamento de seção executável, permissões de página, registro de exports e recusa de ordinal ausente.
+- **Limitações críticas:** ainda não existe parser do cabeçalho de segurança XEX para extrair/validar a chave AES, RSA retail/devkit, descriptografia AES-CBC, descompressão BASIC/LZX, parser do diretório de importações XEX nem tabela real de exports de xboxkrnl/xam. Portanto, a resolução atual é infraestrutura genérica e não resolve por si só imports de jogos comerciais. O primeiro boot comercial ainda não foi alcançado.
+
 ## Biblioteca portátil ISO/XEX
 
 - O scanner percorre recursivamente `WX360-data/roms` e identifica extensões `.iso` e `.xex` sem diferenciar maiúsculas/minúsculas.
@@ -172,14 +182,18 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 - [x] Dashboard Win32 inspirado no Aurora com telas distintas e seleção de menu por teclado/mouse.
 - [x] Scanner inicial de diretórios GOD/XBLA/DLC/Title Update e candidatos a pacotes STFS por extensão (identificação de caminho, sem validação interna).
 - [x] Parser inicial do cabeçalho/descritor STFS, metadados básicos e rejeição de SVOD não suportado (testes sintéticos adicionados; CI ainda não validado).
-- [x] Leitura inicial das cadeias de blocos STFS e extração segura de arquivo individual (testes adicionados; execução ainda não confirmada).\n- [x] Reconstrução inicial da hierarquia STFS e extração recursiva limitada (testes adicionados; execução ainda não confirmada).\n- [x] Inspeção inicial do descritor/layout SVOD e descoberta dos fragmentos GOD Data000x.\n- [ ] Percurso completo da árvore GDF/SVOD, montagem dos extents, validação RSA/SHA-1 e carregamento XEX.
+- [x] Leitura inicial das cadeias de blocos STFS e extração segura de arquivo individual (testes adicionados; execução ainda não confirmada).\n- [x] Reconstrução inicial da hierarquia STFS e extração recursiva limitada (testes adicionados; execução ainda não confirmada).\n- [x] Inspeção inicial do descritor/layout SVOD e descoberta dos fragmentos GOD Data000x.\n- [x] Percurso inicial da árvore GDF/SVOD, montagem de blocos e extração recursiva experimental (sem validação com fragmentos GOD reais; CI pendente).
+- [ ] Validar mapeamento SVOD com pacote GOD real e arquivos Data000x.
 - [ ] Conectar a biblioteca a jogos indexados e capas reais; ligar importação ISO/XEX/GOD e gerenciamento dos save states; adicionar busca, filtros e controle Xbox 360.
 - [ ] Integração dos slots com pausa/retomada do loop de emulação e interface gráfica.
 - [ ] Snapshot completo do sistema: GPU, áudio, dispositivos, timers, kernel e estado de todos os threads.
 - [x] Memória física experimental com permissões de página e fetch de instrução integrado ao núcleo Xenon (testes adicionados; CI pendente).
 - [ ] MMU, memória virtual, BAT/TLB e proteção dos acessos de dados.
 - [x] Parser inicial do cabeçalho XEX2 e diretório opcional (testes adicionados; CI pendente).
-- [ ] Descriptografia/descompressão XEX, mapeamento PE e carregamento completo.
+- [ ] Descriptografia AES-CBC e descompressão BASIC/LZX do XEX2.
+- [x] Mapeador PE32 PowerPC inicial, seções, permissões e relocations HIGHLOW (testes sintéticos adicionados; CI pendente).
+- [x] Infraestrutura de resolução de imports por biblioteca/ordinal (sem catálogo real de exports xboxkrnl/xam; CI pendente).
+- [ ] Parser da tabela XEX de imports e integração com exports reais do kernel Xbox 360.
 - [ ] GPU Xenos, áudio, kernel/HAL, exceções/interrupções e execução multicore.
 - [ ] Execução de jogos.
 
