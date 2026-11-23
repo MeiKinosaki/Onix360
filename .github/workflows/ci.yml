@@ -11,12 +11,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            platform: Win32
+          - os: ubuntu-latest
+            platform: i686
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Configure
-        run: cmake -S . -B build -DBUILD_TESTING=ON
+      - name: Install 32-bit Linux toolchain
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y g++-multilib
+      - name: Configure Windows x86
+        if: runner.os == 'Windows'
+        run: cmake -S . -B build -A Win32 -DBUILD_TESTING=ON
+      - name: Configure Linux i686 without SSE
+        if: runner.os == 'Linux'
+        run: cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_CXX_FLAGS="-m32" -DCMAKE_EXE_LINKER_FLAGS="-m32"
       - name: Build
         run: cmake --build build --config Release --parallel 2
       - name: Test
