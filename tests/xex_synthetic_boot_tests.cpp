@@ -91,7 +91,16 @@ int main() {
     if (mapped != xex::LoadError::None || !plan.pe_mapped) {
         std::cerr << "Synthetic XEX2 PE mapping failed\n"; return EXIT_FAILURE;
     }
-    plan.kernel_imports_resolved = true; // fixture has no import directory
+    // The fixture has no imports, but still exercise the production resolver
+    // instead of manually asserting that import resolution succeeded.
+    kernel::XexImportResolver resolver;
+    const std::vector<kernel::XexImport> imports;
+    if (xex::XexImageLoader::resolve_kernel_imports(plan, imports, resolver, ram) !=
+            kernel::ImportResolveError::None ||
+        !plan.kernel_imports_resolved) {
+        std::cerr << "Synthetic XEX2 import-resolution stage failed\\n";
+        return EXIT_FAILURE;
+    }
     machine::XenonCore core;
     if (core.start_xex(plan, ram) != machine::LaunchResult::Started) {
         std::cerr << "XenonCore rejected the mapped synthetic XEX2\n"; return EXIT_FAILURE;
