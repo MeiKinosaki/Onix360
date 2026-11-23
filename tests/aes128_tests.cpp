@@ -1,4 +1,5 @@
 #include "wx360/crypto/aes128.hpp"
+#include "wx360/xex/xex_image_loader.hpp"
 #include <array>
 #include <algorithm>
 #include <cstdint>
@@ -32,6 +33,22 @@ int main(){
     if(aes128_xex_cbc_decrypt(key,zero_iv_cipher,decoded)!=AesResult::Ok ||
        decoded.size()!=16 || !std::equal(decoded.begin(),decoded.end(),plain.begin())){
         std::cerr<<"XEX zero-IV CBC known-answer vector failed\\n";return EXIT_FAILURE;
+    }
+    // Exercise XEX session-key unwrapping with the documented zero devkit key.
+    auto encrypted_session_key=key;
+    const Aes128Key devkit_master{};
+    AES_ctx wrap_ctx{};
+    AES_init_ctx(&wrap_ctx,devkit_master.data());
+    AES_ECB_encrypt(&wrap_ctx,encrypted_session_key.data());
+    wx360::xex::SecurityInfo security{};
+    security.encrypted_image_key=encrypted_session_key;
+    std::vector<std::uint8_t> xex_decrypted;
+    if(wx360::xex::XexImageLoader::decrypt_xex_normal_payload(
+           security,XexKeySet::Devkit,zero_iv_cipher,xex_decrypted)!=AesResult::Ok ||
+       xex_decrypted.size()!=16 ||
+       !std::equal(xex_decrypted.begin(),xex_decrypted.end(),plain.begin())){
+        std::cerr<<"XEX devkit session-key unwrap/decrypt integration failed\\n";
+        return EXIT_FAILURE;
     }
     std::array<std::uint8_t,15> invalid{};
     if(aes128_cbc_decrypt(key,iv,invalid,decoded)!=AesResult::InvalidLength){
