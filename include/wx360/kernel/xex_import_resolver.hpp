@@ -43,20 +43,21 @@ public:
         for (const auto& item : imports) {
             const auto found = exports_.find(make_key(item.library, item.ordinal));
             if (found == exports_.end()) return ImportResolveError::MissingExport;
-            if (item.thunk_address > guest_memory.size() ||
-                4 > guest_memory.size() - item.thunk_address)
+            if (guest_memory.check_access(item.thunk_address, 4, memory::Access::Write) !=
+                memory::MemoryResult::Ok)
                 return ImportResolveError::InvalidThunk;
             patches.emplace_back(item.thunk_address, found->second);
         }
-        // Validate the complete import set before modifying guest memory.
-        auto bytes = guest_memory.raw_bytes();
+        // Validate all writable thunk ranges before applying any patch.
         for (const auto& patch : patches) {
-            const auto address = static_cast<std::size_t>(patch.first);
             const auto value = patch.second;
-            bytes[address] = static_cast<std::uint8_t>(value >> 24);
-            bytes[address + 1] = static_cast<std::uint8_t>(value >> 16);
-            bytes[address + 2] = static_cast<std::uint8_t>(value >> 8);
-            bytes[address + 3] = static_cast<std::uint8_t>(value);
+            const std::uint8_t be[4] = {
+                static_cast<std::uint8_t>(value >> 24),
+                static_cast<std::uint8_t>(value >> 16),
+                static_cast<std::uint8_t>(value >> 8),
+                static_cast<std::uint8_t>(value)};
+            if (guest_memory.write(patch.first, be) != memory::MemoryResult::Ok)
+                return ImportResolveError::MemoryWriteFailed;
         }
         return ImportResolveError::None;
     }
