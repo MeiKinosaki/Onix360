@@ -6,6 +6,7 @@
 #include <string>
 #include <system_error>
 #include <vector>
+#include "wx360/xex/xex_image_loader.hpp"
 
 namespace wx360::storage {
 
@@ -16,6 +17,18 @@ struct GameFile {
 
 class GameLibrary {
 public:
+    // Opens a library entry through the full metadata reader. This is inspection
+    // only: it never maps guest memory or starts a Xenon execution session.
+    [[nodiscard]] static xex::LoadError open_xex(
+        const GameFile& game, xex::FullXexImage& output) {
+        auto extension = game.path.extension().string();
+        std::transform(extension.begin(), extension.end(), extension.begin(),
+            [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        if (game.format != "XEX" || extension != ".xex")
+            return xex::LoadError::InvalidHeader;
+        return xex::XexImageLoader::read_complete(game.path, output);
+    }
+
     [[nodiscard]] static std::vector<GameFile> scan(
         const std::filesystem::path& root) {
         std::vector<GameFile> games;
