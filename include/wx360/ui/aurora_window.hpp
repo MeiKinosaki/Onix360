@@ -8,6 +8,7 @@
 #include <vector>
 #include "wx360/storage/data_directories.hpp"
 #include "wx360/storage/game_library.hpp"
+#include "wx360/storage/content_library.hpp"
 namespace wx360::ui {
 struct Tile { std::wstring title; std::wstring detail; };
 class AuroraWindow {
@@ -16,6 +17,7 @@ public:
   rom_root_=std::move(rom_root);
   if(rom_root_.empty()) rom_root_=DataDirectories::default_root()/"roms";
   games_=GameLibrary::scan(rom_root_);
+  content_entries_=ContentLibrary::scan(rom_root_);
   WNDCLASSW wc{};wc.lpfnWndProc=window_proc;wc.hInstance=instance;wc.lpszClassName=L"WX360AuroraWindow";
   wc.hCursor=LoadCursorW(nullptr,MAKEINTRESOURCEW(32512));wc.hbrBackground=nullptr;
   RegisterClassW(&wc);instance_=instance;
@@ -73,10 +75,20 @@ private:
    }
    draw_text(dc,252,r.bottom-68,rom_root_.wstring().c_str(),RGB(110,135,158));
   } else if(selected_nav_==2){
-   draw_text(dc,278,155,L"FONTES DE JOGOS",RGB(255,255,255));
-   draw_text(dc,280,205,L"Formatos planejados: ISO, XEX e GOD.",RGB(174,197,215));
-   draw_text(dc,252,300,L"Importacao e varredura de pastas ainda nao estao conectadas.",RGB(190,205,220));
-   draw_text(dc,252,340,L"Esta tela e informativa; nenhum arquivo sera aberto por enquanto.",RGB(140,165,188));
+   draw_text(dc,278,155,L"FORMATOS CONTENT DETECTADOS",RGB(255,255,255));
+   draw_text(dc,280,205,L"Pastas GOD/XBLA/DLC/TU e candidatos STFS identificados:",RGB(174,197,215));
+   if(content_entries_.empty()) {
+    draw_text(dc,252,300,L"Nenhum item Content/GOD encontrado em WX360-data/roms.",RGB(190,205,220));
+   } else {
+    const int visible=std::min<int>(static_cast<int>(content_entries_.size()),7);
+    for(int i=0;i<visible;++i) {
+     const auto label=std::wstring(content_entries_[static_cast<std::size_t>(i)].format.begin(),
+                                   content_entries_[static_cast<std::size_t>(i)].format.end())
+                      +L" | "+content_entries_[static_cast<std::size_t>(i)].path.filename().wstring();
+     draw_text(dc,252,280+i*34,label.c_str(),RGB(220,232,245));
+    }
+   }
+   draw_text(dc,252,r.bottom-68,L"Identificacao de pastas/arquivos apenas; parser STFS e execucao ainda pendentes.",RGB(140,165,188));
   } else if(selected_nav_==3){
    draw_text(dc,278,155,L"10 SLOTS DISPONIVEIS NO GERENCIADOR",RGB(255,255,255));
    draw_text(dc,280,205,L"Save State atual: CPU Xenon e RAM.",RGB(174,197,215));
@@ -93,6 +105,7 @@ private:
  int selected_nav_=1;
  std::filesystem::path rom_root_;
  std::vector<storage::GameFile> games_;
+ std::vector<storage::ContentEntry> content_entries_;
  HINSTANCE instance_{};
 };
 }
