@@ -67,10 +67,10 @@ O interpretador inicial contém suporte experimental para:
 - Interpreta contagem de blocos LE16, índice de bloco LE24 e metadados gerais BE.
 - Rejeita magic desconhecido, cabeçalho truncado, tamanho declarado fora dos limites, descritor inválido, contagens inconsistentes e volume SVOD ainda não suportado.
 - Testes sintéticos verificam extração básica, magic inválido e recusa segura de SVOD.
-- A enumeração inicial da tabela de diretórios lê entradas de 0x40 bytes, nomes, flags, blocos válidos/alocados, bloco inicial, índice do diretório pai e tamanho do arquivo.
-- O mapeamento de blocos e a cadeia da tabela usam os níveis de hash STFS (170 blocos por tabela L0) para pacotes STFS read-only; formatos graváveis e SVOD são recusados nesta etapa.
+- A enumeração da tabela de diretórios lê entradas de 0x40 bytes: nomes, flags, blocos válidos/alocados, bloco inicial, índice do diretório pai e tamanho.
+- O mapeamento de blocos e a cadeia da tabela usam os níveis de hash STFS (170 blocos por tabela L0) para pacotes read-only; formatos graváveis e SVOD são recusados nesta etapa.
 - A interface mostra a quantidade de entradas quando a tabela pode ser lida.
-- Teste sintético cobre a leitura de uma entrada `default.xex` no diretório raiz.
+- Testes sintéticos cobrem uma entrada `default.xex` e uma tabela encadeada de dois blocos.
 - **Limite:** não verifica RSA/assinaturas nem SHA-1, não reconstrói hierarquias de diretórios, não percorre ainda as cadeias de blocos de dados dos arquivos e não extrai conteúdo. Cabeçalho/tabela estruturalmente válidos não comprovam autenticidade ou integridade.
 
 ## Biblioteca Xbox 360 Content/GOD (identificação inicial)
