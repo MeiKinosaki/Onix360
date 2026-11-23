@@ -32,6 +32,14 @@ enum class XexKeySet : std::uint8_t { Retail, Devkit };
     return {};
 }
 
+// XEX2 Normal encryption starts with a zero CBC chaining value.
+[[nodiscard]] inline AesResult aes128_xex_cbc_decrypt(
+    const Aes128Key& key, std::span<const std::uint8_t> input,
+    std::vector<std::uint8_t>& output) {
+    const Aes128Key zero_iv{};
+    return aes128_cbc_decrypt(key, zero_iv, input, output);
+}
+
 // XEX stores the session key encrypted under a console-family master key.
 // This routine only unwraps the 16-byte field; callers must select the
 // correct retail/devkit key and validate the resulting image separately.
