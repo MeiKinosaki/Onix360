@@ -36,6 +36,14 @@ int main() {
     check(core.start_xex(pending_plan, ram) == machine::LaunchResult::ImageNotMapped,
           "XEX handoff refuses an image that has not been mapped");
 
+    pending_plan.decryption_complete = true;
+    pending_plan.decompression_complete = true;
+    pending_plan.pe_mapped = true;
+    pending_plan.kernel_imports_resolved = true;
+    pending_plan.mapped_entry_point = 0x100;
+    check(core.start_xex(pending_plan, ram) == machine::LaunchResult::EntryPointNotExecutable,
+          "XEX handoff rejects a mapped entry point without execute permission");
+
     check(ram.set_page_permissions(0x100, memory::PhysicalMemory::page_size,
           static_cast<std::uint8_t>(memory::Access::Read) |
           static_cast<std::uint8_t>(memory::Access::Execute)) == memory::MemoryResult::Ok,
