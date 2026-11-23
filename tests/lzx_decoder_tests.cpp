@@ -27,19 +27,23 @@ int main() {
         return EXIT_FAILURE;
     }
     // Regular LZX stream: one uncompressed block containing "ABC".
-    // Header words are little-endian; block type=3, output length=3.
+    // The uncompressed-block grammar is independent of the configured window;
+    // exercise the full supported 15..21-bit window range with this vector.
     const std::array<std::uint8_t, 19> uncompressed_vector{
         0x00, 0x30, 0x30, 0x00,
         0,0,0,0, 0,0,0,0, 0,0,0,0,
         'A','B','C'
     };
-    std::vector<std::uint8_t> decoded;
-    const auto valid = wx360::compression::decode_lzx(
-        uncompressed_vector, 15, 0, 3, decoded);
-    if (valid != wx360::compression::LzxError::None ||
-        decoded != std::vector<std::uint8_t>{'A','B','C'}) {
-        std::cerr << "LZX uncompressed-block conformance vector failed\\n";
-        return EXIT_FAILURE;
+    for (const auto bits : windows) {
+        std::vector<std::uint8_t> decoded;
+        const auto valid = wx360::compression::decode_lzx(
+            uncompressed_vector, bits, 0, 3, decoded);
+        if (valid != wx360::compression::LzxError::None ||
+            decoded != std::vector<std::uint8_t>{'A','B','C'}) {
+            std::cerr << "LZX uncompressed-block vector failed for window "
+                      << bits << '\\n';
+            return EXIT_FAILURE;
+        }
     }
     std::cout << "LZX window validation and malformed-input tests passed\n";
     return EXIT_SUCCESS;
