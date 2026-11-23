@@ -256,6 +256,28 @@ int main() {
     check(s.gpr[10] == UINT64_MAX - 5U && (s.xer & xer_ca) != 0,
           "SUBFME computes complemented operand plus carry-in minus one");
 
+    // Doubleword arithmetic shift must sign-fill and update XER[CA].
+    s.gpr[1] = 0x8000000000000003ULL;
+    s.gpr[2] = 1;
+    s.xer &= ~xer_ca;
+    check(execute(s, x_form(1, 11, 2, 794)) == StepResult::Executed,
+          "SRAD executes for a negative operand");
+    check(s.gpr[11] == 0xC000000000000001ULL && (s.xer & xer_ca) != 0,
+          "SRAD sign-fills and sets CA for discarded one bits");
+    s.gpr[1] = 0x8000000000000000ULL;
+    s.gpr[2] = 1;
+    s.xer |= xer_ca;
+    check(execute(s, x_form(1, 12, 2, 794)) == StepResult::Executed,
+          "SRAD executes when discarded bits are zero");
+    check(s.gpr[12] == 0xC000000000000000ULL && (s.xer & xer_ca) == 0,
+          "SRAD clears CA when no discarded one bits are shifted out");
+    s.gpr[1] = 0x7FFFFFFFFFFFFFFFULL;
+    s.gpr[2] = 64;
+    check(execute(s, x_form(1, 13, 2, 794)) == StepResult::Executed,
+          "SRAD handles shift amount 64");
+    check(s.gpr[13] == 0 && (s.xer & xer_ca) == 0,
+          "SRAD shift by 64 produces zero for positive operands");
+
     std::array<std::uint8_t, 64> ram{};
     s.gpr[21] = 0x12345678U;
     check(execute(s, d_form(36, 21, 0, 8), ram) == StepResult::Executed, "STW executes");
