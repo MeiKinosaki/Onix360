@@ -44,33 +44,29 @@ enum class NormalBlockError : std::uint8_t {
     std::size_t blocks=0;
     while(descriptor.block_size) {
         if(++blocks>65536) return NormalBlockError::TooManyBlocks;
-        if(descriptor.block_size>stream.size()-cursor)
+        if(descriptor.block_size<24 || descriptor.block_size>stream.size()-cursor)
             return NormalBlockError::InvalidBlockSize;
         const auto block=stream.subspan(cursor,descriptor.block_size);
-        if(!crypto::sha1(block).operator==(descriptor.hash))
+        if(crypto::sha1(block)!=descriptor.hash)
             return NormalBlockError::HashMismatch;
-        cursor+=descriptor.block_size;
-        if(cursor>stream.size() || stream.size()-cursor<24)
-            return NormalBlockError::TruncatedHeader;
         NormalBlockDescriptor next;
-        const auto next_result=read_normal_block_descriptor(stream,cursor,next);
+        const auto next_result=read_normal_block_descriptor(block,0,next);
         if(next_result!=NormalBlockError::Ok) return next_result;
-        const auto payload=stream.subspan(cursor+24,descriptor.block_size>=24?0:0);
-        (void)payload;
-        std::size_t pos=0;
+        std::size_t pos=24;
         while(pos<block.size()) {
             if(block.size()-pos<2) return NormalBlockError::TruncatedChunk;
             const std::size_t chunk=(std::size_t(block[pos])<<8)|block[pos+1];
             pos+=2;
             if(!chunk) break;
-            if(chunk>block.size()-pos || chunk>expected_output_size-decoded.size())
+            if(chunk>block.size()-pos || decoded.size()>expected_output_size ||
+               chunk>expected_output_size-decoded.size())
                 return NormalBlockError::TruncatedChunk;
             decoded.insert(decoded.end(),block.begin()+static_cast<std::ptrdiff_t>(pos),
                            block.begin()+static_cast<std::ptrdiff_t>(pos+chunk));
             pos+=chunk;
         }
+        cursor+=descriptor.block_size;
         descriptor=next;
-        cursor+=24;
     }
     if(decoded.size()!=expected_output_size) return NormalBlockError::InvalidOutputSize;
     output=std::move(decoded);
