@@ -183,6 +183,32 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         if (d.primary_opcode == 13) update_cr0(state, result, std::uint64_t{1} << 63U);
         break;
     }
+    case 24: case 25: case 26: case 27: case 28: case 29: { // immediate logical operations
+        const std::uint64_t imm = static_cast<std::uint16_t>(instruction & 0xFFFFU);
+        const std::uint64_t shifted_imm = imm << ((d.primary_opcode == 25 ||
+                                                   d.primary_opcode == 27 ||
+                                                   d.primary_opcode == 29) ? 16U : 0U);
+        const std::uint64_t source = state.gpr[d.rt];
+        switch (d.primary_opcode) {
+        case 24: case 25: // ori / oris
+            result = source | shifted_imm;
+            break;
+        case 26: case 27: // xori / xoris
+            result = source ^ shifted_imm;
+            break;
+        case 28: case 29: // andi. / andis.
+            result = source & shifted_imm;
+            break;
+        default:
+            return StepResult::UnsupportedInstruction;
+        }
+        destination = d.ra;
+        writes_result = true;
+        // ANDI. and ANDIS. always update CR0; they have no Rc bit.
+        if (d.primary_opcode == 28 || d.primary_opcode == 29)
+            update_cr0(state, result, std::uint64_t{1} << 63U);
+        break;
+    }
     case 14: // addi
         result = state.gpr[d.ra] +
                  static_cast<std::uint64_t>(static_cast<std::int64_t>(d.immediate));
