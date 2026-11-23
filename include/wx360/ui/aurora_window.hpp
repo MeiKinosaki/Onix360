@@ -15,6 +15,7 @@
 #include "wx360/storage/game_library.hpp"
 #include "wx360/storage/content_library.hpp"
 #include "wx360/state/state_slots.hpp"
+#include "wx360/ui/slot_visual_state.hpp"
 #include "wx360/xex/xex_image_loader.hpp"
 
 namespace wx360::ui {
@@ -142,8 +143,11 @@ private:
  }
 
  void refresh_slots() {
-  for (unsigned i = 0; i < state::StateSlots::kSlotCount; ++i)
-   slot_labels_[i] = state_slots_.exists(i) ? L"OCUPADO" : L"VAZIO";
+  for (unsigned i = 0; i < state::StateSlots::kSlotCount; ++i) {
+   const auto status = slot_visual_state(state_slots_, i);
+   slot_labels_[i] = status == SlotVisualState::Empty ? L"VAZIO" :
+       status == SlotVisualState::Valid ? L"VALIDO" : L"INVALIDO";
+  }
  }
 
  void inspect_slot(unsigned slot) {
