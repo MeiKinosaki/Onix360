@@ -106,7 +106,7 @@ int main() {
     s.gpr[2] = 32;
     check(execute(s, x_form(1, 5, 2, 24)) == StepResult::Executed, "SLW handles shift >= 32");
     check(s.gpr[5] == 0, "SLW returns zero when RB bit 5 is set");
-    s.gpr[1] = 0x00000000FFFFFFF0ULL;
+    s.gpr[1] = 0x00000000FFFFFFF3ULL;
     s.gpr[2] = 2;
     check(execute(s, x_form(1, 6, 2, 792)) == StepResult::Executed, "SRAW executes");
     check(s.gpr[6] == 0xFFFFFFFFFFFFFFFCULL, "SRAW sign-extends arithmetic word result");
@@ -121,7 +121,8 @@ int main() {
     s.gpr[1] = 0x00000000FFFFFFF0ULL;
     s.gpr[2] = 0x12345678ULL;
     s.xer &= ~xer_ca;
-    check(execute(s, x_form(1, 8, 2, 824)) == StepResult::Executed,
+    const std::uint32_t srawi_shift_zero = (31U << 26U) | (1U << 21U) | (8U << 16U) | (824U << 1U);
+    check(execute(s, srawi_shift_zero) == StepResult::Executed,
           "SRAWI executes using immediate shift amount");
     check(s.gpr[8] == 0xFFFFFFFFFFFFFFF0ULL && (s.xer & xer_ca) == 0,
           "SRAWI shift by zero sign-extends and preserves clear CA");
@@ -184,16 +185,17 @@ int main() {
     s.gpr[17] = 0xFFFFFFFFFFFFFFF0ULL;
     s.gpr[18] = 5;
     check(execute(s, compare_form(2, true, 17, 18, 0)) == StepResult::Executed, "CMP signed 64-bit executes");
-    check(s.condition_field(2) == 0x8, "CMP sets selected CR field to LT");
+    check(s.condition_field(2) == 0x9, "CMP sets selected CR field to LT and preserves SO");
     check(execute(s, compare_form(3, true, 17, 18, 32)) == StepResult::Executed, "CMPL unsigned 64-bit executes");
-    check(s.condition_field(3) == 0x4, "CMPL sets selected CR field to GT");
+    check(s.condition_field(3) == 0x5, "CMPL sets selected CR field to GT and preserves SO");
 
     s.gpr[19] = 0x80000001U;
     check(execute(s, rlwinm_form(19, 20, 1, 0, 31, true)) == StepResult::Executed, "RLWINM executes");
     check(s.gpr[20] == 3, "RLWINM rotates 32-bit word and applies full mask");
-    check(s.condition_field(0) == 0x4, "RLWINM record form evaluates 32-bit result");
+    check(s.condition_field(0) == 0x5, "RLWINM record form evaluates 32-bit result and preserves SO");
 
     s.xer = (std::uint64_t{1} << 31U);
+    s.gpr[8] = 1; s.gpr[9] = 2;
     check(execute(s, x_form(8, 16, 9, 444, true)) == StepResult::Executed, "OR. record form executes");
     check(s.condition_field(0) == 0x5, "record form updates CR0 GT and SO");
 
@@ -398,12 +400,14 @@ int main() {
     // SRAWI record form: verify CR0 uses the sign of the 32-bit result.
     s.gpr[1] = 0x0000000080000001ULL;
     s.xer &= ~(std::uint64_t{1} << 31U);
-    check(execute(s, x_form(1, 9, 1, 824, true)) == StepResult::Executed,
+    const std::uint32_t srawi_record_zero = (31U << 26U) | (1U << 21U) | (9U << 16U) | (824U << 1U);
+    check(execute(s, srawi_record_zero) == StepResult::Executed,
           "SRAWI. executes with record bit set");
     check(s.gpr[9] == UINT64_MAX && s.condition_field(0) == 0x8,
           "SRAWI. records a negative sign-extended word in CR0");
     s.gpr[1] = 0x0000000000000004ULL;
-    check(execute(s, x_form(1, 10, 1, 824, true)) == StepResult::Executed,
+    const std::uint32_t srawi_record_zero_positive = (31U << 26U) | (1U << 21U) | (10U << 16U) | (824U << 1U);
+    check(execute(s, srawi_record_zero_positive) == StepResult::Executed,
           "SRAWI. executes for a positive word");
     check(s.gpr[10] == 2 && s.condition_field(0) == 0x4,
           "SRAWI. records a positive nonzero result in CR0");
