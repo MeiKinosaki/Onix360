@@ -39,7 +39,7 @@ void put_utf16be(std::vector<std::uint8_t>& b, std::size_t o, const char* s) {
 int main() {
     int failures=0;
     const auto path=std::filesystem::temp_directory_path()/"wx360_stfs_header_test.con";
-    std::vector<std::uint8_t> bytes(wx360::storage::StfsPackageParser::kMetadataHeaderSize,0);
+    std::vector<std::uint8_t> bytes(0xC000,0);
     bytes[0]='C';bytes[1]='O';bytes[2]='N';bytes[3]=' ';
     put_be32(bytes,0x340,static_cast<std::uint32_t>(bytes.size()));
     put_be32(bytes,0x344,0x00007000);
@@ -47,6 +47,7 @@ int main() {
     put_be64(bytes,0x34C,0x12345678);
     put_be32(bytes,0x360,0x4D5307E6);
     bytes[0x379]=0x24;
+    bytes[0x37B]=0x01; // read-only STFS: one backing block per hash table
     put_le16(bytes,0x379+3,1);
     put_le24(bytes,0x379+5,0);
     put_be32(bytes,0x379+0x1C,10);
@@ -55,6 +56,15 @@ int main() {
     put_be64(bytes,0x3A1,0x12345678);
     put_utf16be(bytes,0x1611,"Publisher");
     put_utf16be(bytes,0x1691,"Test Game");
+    const std::size_t table = 0xB000;
+    const char* filename = "default.xex";
+    for (std::size_t i=0; filename[i]; ++i) bytes[table+i]=static_cast<std::uint8_t>(filename[i]);
+    bytes[table+0x28]=static_cast<std::uint8_t>(0x40u | 11u);
+    put_le24(bytes,table+0x29,1);
+    put_le24(bytes,table+0x2C,1);
+    put_le24(bytes,table+0x2F,1);
+    bytes[table+0x32]=0xFF; bytes[table+0x33]=0xFF;
+    put_be32(bytes,table+0x34,0x1800);
     {
         std::ofstream out(path,std::ios::binary);
         out.write(reinterpret_cast<const char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()));
@@ -65,6 +75,14 @@ int main() {
        parsed.header.file_table_block_count!=1 || parsed.header.allocated_block_count!=10 ||
        parsed.header.title_name!="Test Game" || parsed.header.publisher_name!="Publisher") {
         std::cerr<<"Valid synthetic STFS metadata was not parsed\n";++failures;
+    }
+    auto file_table=wx360::storage::StfsPackageParser::read_file_table(path,parsed.header);
+    if(!file_table || file_table.entries.size()!=1 ||
+       file_table.entries[0].name!="default.xex" ||
+       file_table.entries[0].parent_directory_index!=0xFFFFu ||
+       file_table.entries[0].file_size!=0x1800u ||
+       file_table.entries[0].starting_block!=1u) {
+        std::cerr<<"Read-only STFS file table was not parsed correctly\\n";++failures;
     }
 
     bytes[0]='X';
