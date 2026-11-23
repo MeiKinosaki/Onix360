@@ -11,6 +11,8 @@ enum class RunResult : std::uint8_t {
     FetchFault,
     UnsupportedInstruction,
     DataMemoryFault,
+    InstructionAlignmentFault,
+    DataAlignmentFault,
 };
 
 enum class LaunchResult : std::uint8_t { Started, EntryPointNotExecutable };
@@ -31,12 +33,15 @@ struct XenonCore {
     [[nodiscard]] RunResult step(memory::PhysicalMemory& ram) noexcept {
         std::uint32_t instruction = 0;
         const auto fetch = ram.fetch_u32(state.pc, instruction);
+        if (fetch == memory::MemoryResult::AlignmentFault)
+            return RunResult::InstructionAlignmentFault;
         if (fetch != memory::MemoryResult::Ok) return RunResult::FetchFault;
         const auto result = cpu::execute(state, instruction, ram.raw_bytes());
         switch (result) {
         case cpu::StepResult::Executed: return RunResult::Executed;
         case cpu::StepResult::UnsupportedInstruction: return RunResult::UnsupportedInstruction;
         case cpu::StepResult::MemoryFault: return RunResult::DataMemoryFault;
+        case cpu::StepResult::AlignmentFault: return RunResult::DataAlignmentFault;
         }
         return RunResult::UnsupportedInstruction;
     }
