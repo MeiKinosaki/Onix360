@@ -7,6 +7,7 @@
 #include <limits>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace wx360::storage {
 
@@ -43,6 +44,23 @@ enum class StfsParseError {
     UnsupportedVolumeType,
     InvalidStfsBlockCounts,
     TruncatedHeader
+};
+
+struct StfsFileEntry {
+    std::string name;
+    bool directory{};
+    bool contiguous{};
+    std::uint32_t valid_blocks{};
+    std::uint32_t allocated_blocks{};
+    std::uint32_t starting_block{};
+    std::uint16_t parent_directory_index{};
+    std::uint32_t file_size{};
+};
+
+struct StfsFileTableResult {
+    StfsParseError error{StfsParseError::None};
+    std::vector<StfsFileEntry> entries;
+    [[nodiscard]] explicit operator bool() const noexcept { return error == StfsParseError::None; }
 };
 
 struct StfsParseResult {
@@ -159,7 +177,7 @@ public:
             constexpr std::uint64_t kBlockStep0 = 171;
             constexpr std::uint64_t kBlockStep1 = 28900 + 171;
             if (index < kLevel0) return 0;
-            std::uint64_t block = (index / kLevel0) * kBlockStep0;
+            std::uint64_t block = (index / kLevel0) * 171u;
             block += (index / kLevel1 + 1);
             if (index < kLevel1) return block;
             return block + 1;
