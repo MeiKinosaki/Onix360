@@ -28,20 +28,28 @@ int main() {
           static_cast<std::uint8_t>(memory::Access::Read)) == memory::MemoryResult::Ok,
           "remove execute permission from code page");
     core.state.pc = 0x100;
-    check(core.step(ram) == machine::RunResult::FetchFault,
-          "core refuses instruction fetch from non-executable page");
+    check(core.step(ram) == machine::RunResult::ExceptionTaken,
+          "core raises instruction-storage exception for non-executable page");
+    check(core.state.pc == 0x400 && core.state.srr0 == 0x100 &&
+          core.state.exception_pending && core.state.exception_vector == 0x400,
+          "instruction-storage exception saves PC and selects vector 0x400");
 
     // XEX launch authorization is covered by xex_synthetic_boot_tests,
     // which obtains the non-forgeable token from XexImageLoader. This unit
     // test intentionally exercises CPU/memory behavior only.
 
     core.state.pc = 0x5000;
-    check(core.step(ram) == machine::RunResult::FetchFault,
-          "core reports fetch outside physical RAM");
+    check(core.step(ram) == machine::RunResult::ExceptionTaken,
+          "core raises instruction-storage exception outside physical RAM");
+    check(core.state.pc == 0x400 && core.state.srr0 == 0x5000,
+          "out-of-range instruction fetch records faulting PC");
 
     core.state.pc = 0x102;
-    check(core.step(ram) == machine::RunResult::InstructionAlignmentFault,
-          "core distinguishes misaligned instruction fetch");
+    check(core.step(ram) == machine::RunResult::ExceptionTaken,
+          "core raises alignment exception for misaligned instruction fetch");
+    check(core.state.pc == 0x600 && core.state.srr0 == 0x102 &&
+          core.state.dar == 0x102 && core.state.exception_vector == 0x600,
+          "alignment exception saves PC, fault address and vector");
     if (failures == 0) std::cout << "WX360 Xenon core integration tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
