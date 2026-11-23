@@ -74,7 +74,7 @@ public:
         std::vector<std::uint8_t> compressed;
         const auto framing = unpack_normal_chunks(
             decrypted_payload, format.first_normal_block,
-            decrypted_payload.size(), compressed);
+            decrypted_payload.size(), compressed, false);
         if (framing != NormalBlockError::Ok)
             return NormalDecompressError::InvalidBlockStream;
 
