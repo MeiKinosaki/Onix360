@@ -400,13 +400,13 @@ int main() {
     // SRAWI record form: verify CR0 uses the sign of the 32-bit result.
     s.gpr[1] = 0x0000000080000001ULL;
     s.xer &= ~(std::uint64_t{1} << 31U);
-    const std::uint32_t srawi_record_zero = (31U << 26U) | (1U << 21U) | (9U << 16U) | (824U << 1U);
+    const std::uint32_t srawi_record_zero = (31U << 26U) | (1U << 21U) | (9U << 16U) | (824U << 1U) | 1U;
     check(execute(s, srawi_record_zero) == StepResult::Executed,
           "SRAWI. executes with record bit set");
     check(s.gpr[9] == UINT64_MAX && s.condition_field(0) == 0x8,
           "SRAWI. records a negative sign-extended word in CR0");
     s.gpr[1] = 0x0000000000000004ULL;
-    const std::uint32_t srawi_record_zero_positive = (31U << 26U) | (1U << 21U) | (10U << 16U) | (824U << 1U);
+    const std::uint32_t srawi_record_zero_positive = (31U << 26U) | (1U << 21U) | (10U << 16U) | (824U << 1U) | 1U;
     check(execute(s, srawi_record_zero_positive) == StepResult::Executed,
           "SRAWI. executes for a positive word");
     check(s.gpr[10] == 2 && s.condition_field(0) == 0x4,
@@ -430,6 +430,9 @@ int main() {
     // Update forms write the effective address back to RA only after success.
     s.gpr[28] = 4;
     check(execute(s, d_form(33, 29, 28, 8), ram) == StepResult::Executed, "LWZU executes");
+    if (s.gpr[29] != 0xAB000000U || s.gpr[28] != 12)
+        std::cerr << "LWZU actual RT=" << std::hex << s.gpr[29]
+                  << " RA=" << s.gpr[28] << std::dec << '\n';
     check(s.gpr[29] == 0xAB000000U && s.gpr[28] == 12, "LWZU loads and updates RA");
     s.gpr[28] = 16;
     s.gpr[30] = 0xA1B2C3D4U;
