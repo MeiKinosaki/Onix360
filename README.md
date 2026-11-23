@@ -47,6 +47,15 @@ O interpretador inicial contém suporte experimental para:
 - Reutilização de capas já armazenadas, enumeração da cache e validação de identificadores para impedir traversal de diretórios.
 - A camada HTTP está implementada para Windows, mas ainda falta um catálogo/provedor de metadados e a identificação automática de Title ID a partir de XEX/ISO. O download online só pode ocorrer quando a aplicação fornecer uma URL de capa válida; a interface gráfica também está pendente.
 
+## Pastas de dados do usuário (em desenvolvimento)
+
+- Raiz padrão: `%LOCALAPPDATA%\\WX360` no Windows; `~/.local/share/WX360` em outros sistemas.
+- `roms/`: biblioteca de jogos (ISO, XEX e futuramente GOD); arquivos originais não são modificados.
+- `covers/`: cache de capas JPEG.
+- `saves/`: slots e arquivos de Save State.
+- O componente cria as pastas de forma idempotente e permite configurar uma raiz alternativa para testes/instalações portáteis.
+- A interface ainda precisa ser conectada a esses diretórios para importar e indexar jogos.
+
 ## Build no Windows
 
 Requisitos: CMake 3.20+ e compilador C++20 (Visual Studio 2022 ou MinGW-w64 recente).
@@ -73,6 +82,7 @@ O projeto não ativa flags de AVX/AVX2. SSE2 é a base pretendida para x86-64.
 - [x] Parser experimental da árvore XDVDFS da raiz e busca de `default.xex` (testes enviados ao CI).
 - [ ] Navegação recursiva XDVDFS e integração ISO/XEX ao carregador.
 - [x] Biblioteca de capas com cache local, downloader HTTPS WinHTTP no Windows e validação JPEG.
+- [x] Estrutura padrão de pastas roms/covers/saves e criação idempotente (com teste dedicado).
 - [ ] Integrar catálogo/provedor de metadados, identificar jogos automaticamente e exibir capas reais na biblioteca gráfica.
 - [x] Dashboard Win32 inspirado no Aurora com telas distintas e seleção de menu por teclado/mouse.
 - [ ] Conectar a biblioteca a jogos indexados e capas reais; ligar importação ISO/XEX/GOD e gerenciamento dos save states; adicionar busca, filtros e controle Xbox 360.
