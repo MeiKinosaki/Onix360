@@ -4,12 +4,13 @@
 #include <cstdint>
 #include <span>
 #include <vector>
+#include <utility>
 
 namespace wx360::crypto {
 using Aes128Key = std::array<std::uint8_t,16>;
 enum class AesResult : std::uint8_t { Ok, InvalidLength };
 
-[[nodiscard]] inline void aes128_ecb_decrypt_block(
+inline void aes128_ecb_decrypt_block(
     const Aes128Key& key, std::span<std::uint8_t,16> block) {
     AES_ctx ctx{}; AES_init_ctx(&ctx,key.data());
     AES_ECB_decrypt(&ctx,block.data());
