@@ -1,6 +1,8 @@
 #pragma once
 
 #include "wx360/xex/xex_header.hpp"
+#include "wx360/xex/xex_security_info.hpp"
+#include "wx360/crypto/aes128.hpp"
 #include "wx360/xex/xex_pe_mapper.hpp"
 #include "wx360/kernel/xex_import_resolver.hpp"
 
@@ -78,6 +80,17 @@ public:
         plan.pe_mapped = true;
         plan.mapped_entry_point = mapped.mapped_entry;
         return LoadError::None;
+    }
+
+    [[nodiscard]] static crypto::AesResult decrypt_normal_payload(
+        const SecurityInfo& security, crypto::XexKeySet key_set,
+        const crypto::Aes128Key& cbc_iv,
+        std::span<const std::uint8_t> encrypted_payload,
+        std::vector<std::uint8_t>& decrypted_payload) {
+        const auto session_key = crypto::unwrap_xex_session_key(
+            key_set, security.encrypted_image_key);
+        return crypto::aes128_cbc_decrypt(
+            session_key, cbc_iv, encrypted_payload, decrypted_payload);
     }
 
     // Inspects XEX2 metadata and prepares a launch plan. It deliberately does
