@@ -67,16 +67,26 @@ enum class PageHashResult : std::uint8_t {
     Ok, ImageSizeMismatch, DescriptorOverflow, DigestMismatch
 };
 
-// Page descriptors cover the image in 4 KiB units. Hashes are checked
-// independently and the input must match the declared image size exactly.
+// XEX2 uses 4 KiB pages only when IMAGE_PAGE_SIZE_4KB is set;
+// otherwise page descriptors cover 64 KiB units.
+inline constexpr std::uint32_t kXexImagePageSize4Kb = 0x10000000u;
+
+[[nodiscard]] inline std::size_t xex_page_size(const SecurityInfo& security) noexcept {
+    return (security.image_flags & kXexImagePageSize4Kb) != 0 ? 0x1000u : 0x10000u;
+}
+
+// Page descriptors cover the image in the page size selected by image_flags.
+// An explicit override is available only for isolated format fixtures.
 [[nodiscard]] inline PageHashResult verify_page_hashes(
     std::span<const std::uint8_t> image, const SecurityInfo& security,
-    std::size_t page_size = 0x1000) {
-    if (page_size == 0 || image.size() != security.image_size)
+    std::size_t page_size = 0) {
+    if (page_size == 0) page_size = xex_page_size(security);
+    if (image.size() != security.image_size || image.empty() || page_size == 0)
         return PageHashResult::ImageSizeMismatch;
     std::size_t offset = 0;
     for (const auto& page : security.pages) {
-        if (page.page_count > (image.size() - offset) / page_size)
+        if (offset > image.size() ||
+            page.page_count > (image.size() - offset) / page_size)
             return PageHashResult::DescriptorOverflow;
         const auto bytes = static_cast<std::size_t>(page.page_count) * page_size;
         if (!verify_sha1(image.subspan(offset, bytes), page.digest))
