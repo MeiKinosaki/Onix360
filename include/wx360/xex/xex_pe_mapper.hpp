@@ -78,7 +78,11 @@ public:
         std::vector<std::uint8_t> page_access(
             (static_cast<std::size_t>(size_of_image) + memory::PhysicalMemory::page_size - 1) /
                 memory::PhysicalMemory::page_size,
-            static_cast<std::uint8_t>(memory::Access::Read));
+            0);
+        const auto header_last_page = (static_cast<std::size_t>(size_of_headers) - 1u) /
+                                      memory::PhysicalMemory::page_size;
+        for (std::size_t page = 0; page <= header_last_page; ++page)
+            page_access[page] |= static_cast<std::uint8_t>(memory::Access::Read);
 
         for (std::uint16_t i = 0; i < section_count; ++i) {
             const auto sh = section_table + static_cast<std::size_t>(i) * 40u;
@@ -87,7 +91,7 @@ public:
             const auto raw_size = le32(image, sh + 16);
             const auto raw_offset = le32(image, sh + 20);
             const auto characteristics = le32(image, sh + 36);
-            const auto copy_size = std::min(virtual_size == 0 ? raw_size : virtual_size, raw_size);
+            const auto copy_size = raw_size;
             if (virtual_address > size_of_image ||
                 std::max(virtual_size, raw_size) > size_of_image - virtual_address ||
                 !range(image.size(), raw_offset, copy_size))
