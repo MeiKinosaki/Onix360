@@ -449,7 +449,7 @@ int main() {
           "LWZU reports out-of-range access");
     check(s.gpr[28] == ra_before_fault, "LWZU fault leaves RA unchanged");
     const auto before_fault_pc = s.pc;
-    check(execute(s, d_form(32, 25, 0, 63), ram) == StepResult::MemoryFault,
+    check(execute(s, d_form(32, 25, 0, 64), ram) == StepResult::MemoryFault,
           "out-of-range LWZ reports memory fault");
     check(s.pc == before_fault_pc, "memory fault does not advance PC");
 
@@ -482,7 +482,7 @@ int main() {
     check(execute(s, d_form(45, 20, 28, 0), ram) == StepResult::Executed, "STHU executes");
     check(ram[30] == 0xBE && ram[31] == 0xEF && s.gpr[28] == 30,
           "STHU stores and updates RA");
-    s.gpr[28] = 63;
+    s.gpr[28] = 64;
     const auto halfword_ra_before_fault = s.gpr[28];
     check(execute(s, d_form(41, 19, 28, 0), ram) == StepResult::MemoryFault,
           "LHZU reports out-of-range access");
