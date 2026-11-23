@@ -82,9 +82,14 @@ private:
    } else {
     const int visible=std::min<int>(static_cast<int>(content_entries_.size()),7);
     for(int i=0;i<visible;++i) {
-     const auto label=std::wstring(content_entries_[static_cast<std::size_t>(i)].format.begin(),
-                                   content_entries_[static_cast<std::size_t>(i)].format.end())
-                      +L" | "+content_entries_[static_cast<std::size_t>(i)].path.filename().wstring();
+     const auto& entry=content_entries_[static_cast<std::size_t>(i)];
+     auto label=std::wstring(entry.format.begin(),entry.format.end())
+                      +L" | "+entry.path.filename().wstring();
+     if(entry.stfs_header_valid) {
+      label+=L" | Title ID: "+std::to_wstring(entry.title_id);
+      if(!entry.title_name.empty())
+       label+=L" | "+std::wstring(entry.title_name.begin(),entry.title_name.end());
+     }
      draw_text(dc,252,280+i*34,label.c_str(),RGB(220,232,245));
     }
    }
