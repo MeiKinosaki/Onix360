@@ -2,11 +2,37 @@
 #include <array>
 #include <climits>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
+#include <iterator>
+#include <string>
 #include <vector>
 
+#ifndef WX360_TEST_DATA_DIR
+#error WX360_TEST_DATA_DIR must point to generated LZX reference vectors
+#endif
+
 int main() {
-    // Malformed/truncated inputs must fail without modifying caller output.
+    const std::string data_dir = WX360_TEST_DATA_DIR;
+    std::ifstream compressed_file(data_dir + "/lzx_reference.bin", std::ios::binary);
+    std::ifstream expected_file(data_dir + "/lzx_reference.expected", std::ios::binary);
+    if (!compressed_file || !expected_file) {
+        std::cerr << "LZX independent reference vector is missing\n";
+        return EXIT_FAILURE;
+    }
+    const std::vector<std::uint8_t> compressed{
+        std::istreambuf_iterator<char>(compressed_file), std::istreambuf_iterator<char>()};
+    const std::string expected{
+        std::istreambuf_iterator<char>(expected_file), std::istreambuf_iterator<char>()};
+    std::vector<std::uint8_t> decoded;
+    const auto positive = wx360::compression::decode_lzx(
+        compressed, 15, 0, expected.size(), decoded);
+    if (positive != wx360::compression::LzxError::None ||
+        decoded != std::vector<std::uint8_t>(expected.begin(), expected.end())) {
+        std::cerr << "LZX positive reference-vector decode failed\n";
+        return EXIT_FAILURE;
+    }
+
     const std::array<unsigned, 7> windows{15, 16, 17, 18, 19, 20, 21};
     const std::array<std::uint8_t, 1> truncated{0};
     for (const auto bits : windows) {
@@ -42,6 +68,6 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    std::cout << "LZX malformed-input and parameter-guard tests passed\n";
+    std::cout << "LZX independent positive vector and negative guards passed\n";
     return EXIT_SUCCESS;
 }
