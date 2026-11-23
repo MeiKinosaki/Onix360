@@ -106,7 +106,7 @@ int main() {
     memory::PhysicalMemory ram(0x10000);
     constexpr std::uint64_t physical_base = 0x2000;
     constexpr std::uint32_t guest_base = 0x82000000;
-    const auto validated = xex::XexImageLoader::load_uncompressed_validated(
+    const auto validated = xex::XexImageLoader::load_validated(
         complete_image, ram, physical_base, guest_base);
     if (!validated) {
         std::cerr << "Synthetic XEX2 integrity validation or PE mapping failed\n";
