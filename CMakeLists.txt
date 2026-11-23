@@ -17,6 +17,7 @@ add_library(wx360_cpu INTERFACE)
 target_include_directories(wx360_cpu INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_executable(wx360 src/main.cpp)
+set_target_properties(wx360 PROPERTIES OUTPUT_NAME "WX360")
 target_link_libraries(wx360 PRIVATE wx360_cpu)
 
 include(CTest)
