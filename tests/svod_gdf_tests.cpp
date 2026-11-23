@@ -19,7 +19,7 @@ static void put_be32(std::vector<std::uint8_t>& b, std::size_t o, std::uint32_t 
 }
 
 int main() {
-    auto bytes = std::vector<std::uint8_t>(0x11000, 0);
+    auto bytes = std::vector<std::uint8_t>(0x12000, 0);
     bytes[0] = 'P'; bytes[1] = 'I'; bytes[2] = 'R'; bytes[3] = 'S';
     put_be32(bytes, 0x340, 0x971A);
     bytes[0x379] = 0x24;
@@ -37,16 +37,28 @@ int main() {
     put_le32(bytes, magic + 0x14, 4); // root directory block
     put_le32(bytes, magic + 0x18, 1);
 
-    // SVOD block 4 maps to 0xF000? (hash tables + single-file header).
-    const std::size_t entry = 0xF000;
-    put_le16(bytes, entry, 0); // left node
-    put_le16(bytes, entry + 2, 0); // right node
-    put_le32(bytes, entry + 4, 6); // file data block
-    put_le32(bytes, entry + 8, 5); // file length
-    bytes[entry + 12] = 0; // normal file
-    const std::string name = "boot.xex";
-    bytes[entry + 13] = static_cast<std::uint8_t>(name.size());
-    std::copy(name.begin(), name.end(), bytes.begin() + entry + 14);
+    // Root block 4 maps to 0xF000 and contains a "game" directory.
+    const std::size_t root_entry = 0xF000;
+    put_le16(bytes, root_entry, 0); // left node
+    put_le16(bytes, root_entry + 2, 0); // right node
+    put_le32(bytes, root_entry + 4, 8); // child directory block
+    put_le32(bytes, root_entry + 8, 1); // non-empty directory
+    bytes[root_entry + 12] = 0x10; // directory attribute
+    const std::string directory_name = "game";
+    bytes[root_entry + 13] = static_cast<std::uint8_t>(directory_name.size());
+    std::copy(directory_name.begin(), directory_name.end(), bytes.begin() + root_entry + 14);
+
+    // Child block 8 maps to 0x11000 and contains default.xex.
+    const std::size_t child_entry = 0x11000;
+    put_le16(bytes, child_entry, 0);
+    put_le16(bytes, child_entry + 2, 0);
+    put_le32(bytes, child_entry + 4, 6); // file data block
+    put_le32(bytes, child_entry + 8, 5); // file length
+    bytes[child_entry + 12] = 0; // normal file
+    const std::string name = "default.xex";
+    bytes[child_entry + 13] = static_cast<std::uint8_t>(name.size());
+    std::copy(name.begin(), name.end(), bytes.begin() + child_entry + 14);
+
     // SVOD block 6 maps to 0x10000 in a single-file image.
     const std::string payload = "XEX2!";
     std::copy(payload.begin(), payload.end(), bytes.begin() + 0x10000);
@@ -63,9 +75,9 @@ int main() {
     }
 
     const auto parsed = wx360::storage::SvodGdfReader::read(package);
-    if (!parsed || parsed.entries.size() != 1 ||
-        parsed.entries[0].relative_path.generic_string() != "boot.xex" ||
-        parsed.entries[0].size != payload.size()) {
+    if (!parsed || parsed.entries.size() != 2 ||
+        parsed.entries[1].relative_path.generic_string() != "game/default.xex" ||
+        parsed.entries[1].size != payload.size()) {
         std::cerr << "SVOD GDF directory parsing failed\n";
         std::filesystem::remove_all(root, ec);
         return EXIT_FAILURE;
@@ -78,7 +90,7 @@ int main() {
         std::filesystem::remove_all(root, ec);
         return EXIT_FAILURE;
     }
-    std::ifstream extracted(destination / "boot.xex", std::ios::binary);
+    std::ifstream extracted(destination / "game" / "default.xex", std::ios::binary);
     const std::string actual((std::istreambuf_iterator<char>(extracted)), {});
     std::filesystem::remove_all(root, ec);
     if (actual != payload) {
