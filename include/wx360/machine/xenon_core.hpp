@@ -42,17 +42,18 @@ struct XenonCore {
             state.raise_exception(0x400U, state.pc);
             return RunResult::ExceptionTaken;
         }
-        const auto result = cpu::execute(state, instruction, ram.raw_bytes());
+        std::uint64_t fault_address = 0;
+        const auto result = cpu::execute(state, instruction, ram.raw_bytes(), &fault_address);
         switch (result) {
         case cpu::StepResult::Executed: return RunResult::Executed;
         case cpu::StepResult::UnsupportedInstruction:
             state.raise_exception(0x700U);
             return RunResult::ExceptionTaken;
         case cpu::StepResult::MemoryFault:
-            state.raise_exception(0x300U);
+            state.raise_exception(0x300U, fault_address);
             return RunResult::ExceptionTaken;
         case cpu::StepResult::AlignmentFault:
-            state.raise_exception(0x600U);
+            state.raise_exception(0x600U, fault_address);
             return RunResult::ExceptionTaken;
         }
         return RunResult::UnsupportedInstruction;
