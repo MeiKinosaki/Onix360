@@ -26,6 +26,8 @@ enum class LoadError : std::uint8_t {
     ImageNotMapped,
     TransformIncomplete,
     PeMappingFailed,
+    SecurityInfoInvalid,
+    FileFormatInfoInvalid,
 };
 
 struct LaunchPlan {
@@ -40,7 +42,7 @@ struct LaunchPlan {
     bool kernel_imports_resolved{};
 };
 
-struct LoadResult {
+struct FullXexImage {\n    std::vector<std::uint8_t> bytes;\n    Header header{};\n    SecurityInfo security{};\n    FileFormatInfo format{};\n};\n\nstruct LoadResult {
     LoadError error{LoadError::None};
     LaunchPlan plan{};
     [[nodiscard]] explicit operator bool() const noexcept {
@@ -179,6 +181,38 @@ public:
             return NormalTransformError::DecompressionFailed;
         output = std::move(decoded);
         return NormalTransformError::Ok;
+    }
+
+    // Reads the complete bounded XEX2 file and parses both SecurityInfo
+    // and FileFormatInfo. This is metadata acquisition only: it does not
+    // claim RSA signature verification or payload decryption.
+    [[nodiscard]] static LoadError read_complete(
+        const std::filesystem::path& path, FullXexImage& output) {
+        std::ifstream file(path, std::ios::binary);
+        if (!file) return LoadError::CannotOpen;
+        file.seekg(0, std::ios::end);
+        const auto end = file.tellg();
+        if (end < 24 || static_cast<std::uint64_t>(end) > kMaximumImageSize)
+            return LoadError::InvalidFileSize;
+        FullXexImage parsed{};
+        parsed.bytes.resize(static_cast<std::size_t>(end));
+        file.seekg(0, std::ios::beg);
+        file.read(reinterpret_cast<char*>(parsed.bytes.data()),
+                  static_cast<std::streamsize>(parsed.bytes.size()));
+        if (static_cast<std::size_t>(file.gcount()) != parsed.bytes.size())
+            return LoadError::HeaderReadFailure;
+        if (parse_header(parsed.bytes, parsed.header, parsed.bytes.size()) != ParseResult::Ok)
+            return LoadError::InvalidHeader;
+        if (parse_security_info(parsed.bytes, parsed.header.security_info_offset,
+                                parsed.security) != SecurityParseError::Ok)
+            return LoadError::SecurityInfoInvalid;
+        if (parse_file_format_info(parsed.bytes, parsed.header, parsed.format) !=
+            FormatParseResult::Ok)
+            return LoadError::FileFormatInfoInvalid;
+        if (parsed.security.image_size != parsed.format.image_size)
+            return LoadError::SecurityInfoInvalid;
+        output = std::move(parsed);
+        return LoadError::None;
     }
 
     // Inspects XEX2 metadata and prepares a launch plan. It deliberately does
