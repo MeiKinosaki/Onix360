@@ -75,25 +75,60 @@ inline constexpr std::uint32_t kXexImagePageSize4Kb = 0x10000000u;
     return (security.image_flags & kXexImagePageSize4Kb) != 0 ? 0x1000u : 0x10000u;
 }
 
-// Page descriptors cover the image in the page size selected by image_flags.
-// An explicit override is available only for isolated format fixtures.
+// XEX page hashes form a SHA-1 chain rooted at SecurityInfo.section_digest.
+// Each digest covers the declared page range (zero padded at EOF) followed by
+// that descriptor's exact 24-byte big-endian representation. The descriptor's
+// digest links to the next descriptor; it is not a standalone page checksum.
+inline constexpr std::uint32_t kXexImagePageSize4Kb = 0x10000000u;
+
+[[nodiscard]] inline std::size_t xex_page_size(const SecurityInfo& security) noexcept {
+    return (security.image_flags & kXexImagePageSize4Kb) != 0 ? 0x1000u : 0x10000u;
+}
+
 [[nodiscard]] inline PageHashResult verify_page_hashes(
     std::span<const std::uint8_t> image, const SecurityInfo& security,
     std::size_t page_size = 0) {
     if (page_size == 0) page_size = xex_page_size(security);
-    if (image.size() != security.image_size || image.empty() || page_size == 0)
+    if (image.size() != security.image_size || image.empty() || page_size == 0 ||
+        security.pages.empty())
         return PageHashResult::ImageSizeMismatch;
+
+    const auto required_pages = (image.size() + page_size - 1u) / page_size;
+    std::size_t declared_pages = 0;
+    for (const auto& page : security.pages) {
+        if (page.page_count == 0 || page.type < 1 || page.type > 3 ||
+            declared_pages > required_pages ||
+            page.page_count > required_pages - declared_pages)
+            return PageHashResult::DescriptorOverflow;
+        declared_pages += page.page_count;
+    }
+    if (declared_pages != required_pages)
+        return PageHashResult::ImageSizeMismatch;
+
+    auto expected = security.section_digest;
     std::size_t offset = 0;
     for (const auto& page : security.pages) {
-        if (offset > image.size() ||
-            page.page_count > (image.size() - offset) / page_size)
-            return PageHashResult::DescriptorOverflow;
-        const auto bytes = static_cast<std::size_t>(page.page_count) * page_size;
-        if (!verify_sha1(image.subspan(offset, bytes), page.digest))
+        const auto declared_size = static_cast<std::size_t>(page.page_count) * page_size;
+        const auto actual_size = std::min(declared_size, image.size() - offset);
+        std::vector<std::uint8_t> authenticated;
+        authenticated.reserve(declared_size + 24u);
+        authenticated.insert(authenticated.end(),
+            image.begin() + static_cast<std::ptrdiff_t>(offset),
+            image.begin() + static_cast<std::ptrdiff_t>(offset + actual_size));
+        authenticated.resize(declared_size, 0);
+        const auto raw = (page.page_count << 4u) | (page.type & 0xFu);
+        authenticated.push_back(static_cast<std::uint8_t>(raw >> 24u));
+        authenticated.push_back(static_cast<std::uint8_t>(raw >> 16u));
+        authenticated.push_back(static_cast<std::uint8_t>(raw >> 8u));
+        authenticated.push_back(static_cast<std::uint8_t>(raw));
+        authenticated.insert(authenticated.end(), page.digest.begin(), page.digest.end());
+        if (!verify_sha1(authenticated, expected))
             return PageHashResult::DigestMismatch;
-        offset += bytes;
+        expected = page.digest;
+        offset += actual_size;
     }
     return offset == image.size() ? PageHashResult::Ok
                                   : PageHashResult::ImageSizeMismatch;
 }
+
 } // namespace wx360::xex
