@@ -239,6 +239,14 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         record_32bit = true;
         break;
     }
+    case 19: { // XL-form privileged return from interrupt (RFI), XO=50.
+        if (d.xo != 50U) return StepResult::UnsupportedInstruction;
+        branch_target = state.srr0;
+        state.msr = state.srr1;
+        state.clear_exception();
+        branch_taken = true;
+        break;
+    }
     case 31:
         switch (d.xo) {
         case 0: { // cmp / cmpd / cmpw
