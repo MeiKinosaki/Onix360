@@ -17,6 +17,10 @@ int main(){
     auto ecb=ecb_cipher;
     aes128_ecb_decrypt_block(key,std::span<std::uint8_t,16>(ecb));
     if(ecb!=plain){std::cerr<<"AES-128 ECB vector failed\\n";return EXIT_FAILURE;}
+    const auto unwrapped=unwrap_xex_session_key(key,ecb_cipher);
+    if(unwrapped!=plain){
+        std::cerr<<"AES session-key ECB unwrap vector failed\\n";return EXIT_FAILURE;
+    }
     std::vector<std::uint8_t> decoded;
     if(aes128_cbc_decrypt(key,iv,cipher,decoded)!=AesResult::Ok ||
        decoded.size()!=16 || !std::equal(decoded.begin(),decoded.end(),plain.begin())){
