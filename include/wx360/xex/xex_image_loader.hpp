@@ -127,6 +127,8 @@ public:
         const crypto::Aes128Key& cbc_iv,
         std::span<const std::uint8_t> encrypted_payload,
         std::vector<std::uint8_t>& decrypted_payload) {
+        if (!crypto::xex_master_key_available(key_set))
+            return crypto::AesResult::KeyUnavailable;
         const auto session_key = crypto::unwrap_xex_session_key(
             key_set, security.encrypted_image_key);
         return crypto::aes128_cbc_decrypt(
@@ -137,6 +139,8 @@ public:
         const SecurityInfo& security, crypto::XexKeySet key_set,
         std::span<const std::uint8_t> encrypted_payload,
         std::vector<std::uint8_t>& decrypted_payload) {
+        if (!crypto::xex_master_key_available(key_set))
+            return crypto::AesResult::KeyUnavailable;
         const auto session_key = crypto::unwrap_xex_session_key(
             key_set, security.encrypted_image_key);
         return crypto::aes128_xex_cbc_decrypt(
