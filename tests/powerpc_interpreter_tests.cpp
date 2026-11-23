@@ -102,6 +102,29 @@ int main() {
     check(execute(s, x_form(1, 7, 2, 792)) == StepResult::Executed, "SRAW handles positive operand");
     check(s.gpr[7] == 0x1FFFFFFCULL && (s.xer & xer_ca) == 0,
           "SRAW positive result does not set CA");
+
+    // SRAWI uses the SH field encoded in the RB position, not GPR[RB].
+    s.gpr[1] = 0x00000000FFFFFFF0ULL;
+    s.gpr[2] = 0x12345678ULL;
+    s.xer &= ~xer_ca;
+    check(execute(s, x_form(1, 8, 2, 824)) == StepResult::Executed,
+          "SRAWI executes using immediate shift amount");
+    check(s.gpr[8] == 0xFFFFFFFFFFFFFFF0ULL && (s.xer & xer_ca) == 0,
+          "SRAWI shift by zero sign-extends and preserves clear CA");
+    const std::uint32_t srawi_shift_two = (31U << 26U) | (1U << 21U) |
+        (9U << 16U) | (2U << 11U) | (824U << 1U);
+    s.gpr[1] = 0x00000000FFFFFFF3ULL;
+    check(execute(s, srawi_shift_two) == StepResult::Executed,
+          "SRAWI executes with shift amount two");
+    check(s.gpr[9] == 0xFFFFFFFFFFFFFFFCULL && (s.xer & xer_ca) != 0,
+          "SRAWI sets CA when discarded negative bits contain ones");
+    const std::uint32_t srawi_positive_two = (31U << 26U) | (1U << 21U) |
+        (10U << 16U) | (2U << 11U) | (824U << 1U);
+    s.gpr[1] = 0x000000007FFFFFF3ULL;
+    check(execute(s, srawi_positive_two) == StepResult::Executed,
+          "SRAWI executes with positive operand");
+    check(s.gpr[10] == 0x1FFFFFFCULL && (s.xer & xer_ca) == 0,
+          "SRAWI positive operand does not set CA");
     s.gpr[1] = 0x00000000FFFFFFF0ULL;
     check(execute(s, rlwinm_form(1, 8, 0, 0, 31)) == StepResult::Executed,
           "RLWINM helper remains usable after shift tests");
