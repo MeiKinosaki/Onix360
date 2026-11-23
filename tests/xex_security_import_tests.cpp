@@ -66,6 +66,41 @@ int main(){
         std::cerr << "Corrupted XEX page descriptor was not rejected\\n"; return EXIT_FAILURE;
     }
 
+    // Two-descriptor chain: the first descriptor digest authenticates the
+    // next descriptor's page plus its serialized descriptor bytes.
+    wx360::xex::SecurityInfo chained{};
+    chained.image_size = 0x2000;
+    chained.image_flags = 0x10000000;
+    std::vector<std::uint8_t> chained_image(0x2000, 0);
+    std::fill(chained_image.begin(), chained_image.begin() + 0x1000, 0x31);
+    std::fill(chained_image.begin() + 0x1000, chained_image.end(), 0x72);
+    wx360::xex::PageDescriptor second{};
+    second.raw = 0x11; second.type = 1; second.page_count = 1;
+    const std::vector<std::uint8_t> terminal{0x57,0x58,0x45,0x58};
+    second.digest = wx360::crypto::sha1(terminal);
+    std::vector<std::uint8_t> second_auth(0x1000, 0x72);
+    second_auth.insert(second_auth.end(), {0,0,0,0x11});
+    second_auth.insert(second_auth.end(), second.digest.begin(), second.digest.end());
+    wx360::xex::PageDescriptor first{};
+    first.raw = 0x11; first.type = 1; first.page_count = 1;
+    first.digest = wx360::crypto::sha1(second_auth);
+    std::vector<std::uint8_t> first_auth(0x1000, 0x31);
+    first_auth.insert(first_auth.end(), {0,0,0,0x11});
+    first_auth.insert(first_auth.end(), first.digest.begin(), first.digest.end());
+    chained.section_digest = wx360::crypto::sha1(first_auth);
+    chained.pages = {first, second};
+    if (wx360::xex::verify_page_hashes(chained_image, chained) !=
+        wx360::xex::PageHashResult::Ok) {
+        std::cerr << "Two-descriptor XEX SHA-1 chain positive vector failed\\n";
+        return EXIT_FAILURE;
+    }
+    chained_image[0x1000] ^= 1;
+    if (wx360::xex::verify_page_hashes(chained_image, chained) !=
+        wx360::xex::PageHashResult::DigestMismatch) {
+        std::cerr << "Tampered second XEX page was not rejected\\n";
+        return EXIT_FAILURE;
+    }
+
     // Without the 4 KiB flag, XEX2 page hashes use 64 KiB units.
     wx360::xex::SecurityInfo large_pages{};
     large_pages.image_size = 0x10000;
