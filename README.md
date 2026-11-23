@@ -60,6 +60,13 @@ O interpretador inicial contém suporte experimental para:
 - Reutilização de capas já armazenadas, enumeração da cache e validação de identificadores para impedir traversal de diretórios.
 - A camada HTTP está implementada para Windows, mas ainda falta um catálogo/provedor de metadados e a identificação automática de Title ID a partir de XEX/ISO. O download online só pode ocorrer quando a aplicação fornecer uma URL de capa válida; a interface gráfica também está pendente.
 
+## Biblioteca portátil ISO/XEX
+
+- O scanner percorre recursivamente `WX360-data/roms` e identifica extensões `.iso` e `.xex` sem diferenciar maiúsculas/minúsculas.
+- A tela Biblioteca do dashboard Aurora lista os arquivos encontrados (até oito itens visíveis nesta primeira integração).
+- A listagem mostra nomes de arquivos; ainda não carrega jogos, não valida o conteúdo dos arquivos e não resolve capas.
+- O teste dedicado cria arquivos ISO/XEX e um arquivo não suportado em uma árvore temporária para verificar a descoberta.
+
 ## Versão portátil (sem instalação)
 
 - O WX360 foi configurado para iniciar sem instalador: basta extrair o pacote ZIP e abrir `WX360.exe`.
