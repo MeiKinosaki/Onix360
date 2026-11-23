@@ -24,10 +24,11 @@ struct LaunchPlan {
     Header header{};
     std::filesystem::path source;
     std::uint64_t file_size{};
-    std::uint32_t entry_point{};
-    bool requires_decryption{};
-    bool requires_decompression{};
-    bool requires_pe_mapping{true};
+    std::uint32_t entry_point{}; // XEX virtual entry point
+    std::uint64_t mapped_entry_point{}; // guest physical address after PE/MMU mapping
+    bool decryption_complete{};
+    bool decompression_complete{};
+    bool pe_mapped{};
     bool kernel_imports_resolved{};
 };
 
