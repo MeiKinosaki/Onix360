@@ -1,9 +1,11 @@
 #include "wx360/cpu/powerpc_interpreter.hpp"
 #include "wx360/ui/aurora_window.hpp"
+#include "wx360/storage/data_directories.hpp"
 #if defined(_WIN32)
 #include <windows.h>
 #endif
 
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <string_view>
@@ -27,7 +29,31 @@ bool has_sse2() noexcept {
 }
 }
 
-int main() {
+int main(int argc, char** argv) {
+    std::filesystem::path executable;
+#if defined(_WIN32)
+    std::wstring module_path(32768, L' ');
+    const DWORD module_length = GetModuleFileNameW(
+        GetModuleHandleW(nullptr), module_path.data(),
+        static_cast<DWORD>(module_path.size()));
+    if (module_length != 0 && module_length < module_path.size()) {
+        module_path.resize(module_length);
+        executable = module_path;
+    }
+#endif
+    if (executable.empty() && argc > 0 && argv[0] != nullptr)
+        executable = std::filesystem::absolute(argv[0]);
+    if (executable.empty())
+        executable = std::filesystem::current_path() / "WX360.exe";
+
+    wx360::storage::DataDirectories directories(
+        wx360::storage::DataDirectories::portable_root(executable));
+    std::error_code directory_error;
+    if (!directories.create(&directory_error)) {
+        std::cerr << "Unable to create portable WX360-data folders: "
+                  << directory_error.message() << "\\n";
+        return 3;
+    }
     std::cout << "WX360 - Windows Xbox 360 Emulator\n"
               << "Version: " << kVersion << "\n"
               << "CPU baseline: x86-64 / SSE2; AVX2 is not required.\n";
