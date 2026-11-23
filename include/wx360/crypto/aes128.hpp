@@ -1,5 +1,7 @@
 #pragma once
+extern "C" {
 #include "aes.h"
+}
 #include <array>
 #include <cstdint>
 #include <span>
