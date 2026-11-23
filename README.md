@@ -66,12 +66,12 @@ O interpretador inicial contém suporte experimental para:
 - Na inicialização, a aplicação cria `WX360-data/roms`, `WX360-data/covers` e `WX360-data/saves` ao lado do executável.
 - Configurações e dados graváveis ficam nessa pasta portátil, facilitando copiar a pasta completa para outro computador.
 - O runtime MSVC é ligado estaticamente no build Windows para evitar exigir a instalação separada do Visual C++ Redistributable.
-- O CI Windows prepara o artefato `WX360-Windows-x64-Portable.zip` após build e testes bem-sucedidos.
+- O CI Windows está configurado para preparar e publicar o artefato `WX360-Windows-x64-Portable.zip` após build e testes bem-sucedidos.
 - **Atenção:** o pacote portátil ainda depende do resultado do CI para ser considerado gerado e validado; a aplicação continua experimental e não executa jogos comerciais completos.
 
 ## Pastas de dados do usuário (em desenvolvimento)
 
-- Raiz padrão: `%LOCALAPPDATA%\\WX360` no Windows; `~/.local/share/WX360` em outros sistemas.
+- Raiz do modo portátil: `WX360-data/` ao lado de `WX360.exe` no Windows. O diretório pode ser escolhido explicitamente nos testes e em futuras configurações.
 - `roms/`: biblioteca de jogos (ISO, XEX e futuramente GOD); arquivos originais não são modificados.
 - `covers/`: cache de capas JPEG.
 - `saves/`: slots e arquivos de Save State.
@@ -98,13 +98,13 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 - [x] Gerenciador inicial de 10 slots independentes para salvar, carregar, verificar e apagar snapshots CPU/RAM; testes adicionados ao CI.
 - [x] Interpretador PowerPC inicial e testes unitários.
 - [x] B/BC, ADDIC/ADDIC., ADDE/ADDME/SUBFE/SUBFME/ADDZE/SUBFZE (código e testes adicionados), acessos de byte/palavra/meia-palavra (LBZ/LWZ/LHZ/LHA e STB/STW/STH), formas update e testes de buffer big-endian adicionados.
-- [ ] Validação final do CI para o commit mais recente em Windows e Linux.
+- [ ] Validação final do CI para o commit mais recente em Windows e Linux; geração e inspeção do ZIP portátil.
 - [ ] Cobertura mais ampla da ISA Xenon, branches, exceções e semântica de overflow/carry.
 - [x] Leitor ISO inicial: validação do descritor XDVDFS e leitura sob demanda de setores (testes adicionados; aguardando CI).
 - [x] Parser experimental da árvore XDVDFS da raiz e busca de `default.xex` (testes enviados ao CI).
 - [ ] Navegação recursiva XDVDFS e integração ISO/XEX ao carregador.
 - [x] Biblioteca de capas com cache local, downloader HTTPS WinHTTP no Windows e validação JPEG.
-- [x] Estrutura padrão de pastas roms/covers/saves e criação idempotente (com teste dedicado).
+- [x] Estrutura de pastas roms/covers/saves, criação idempotente e raiz portátil ao lado do executável (teste dedicado adicionado).
 - [ ] Integrar catálogo/provedor de metadados, identificar jogos automaticamente e exibir capas reais na biblioteca gráfica.
 - [x] Dashboard Win32 inspirado no Aurora com telas distintas e seleção de menu por teclado/mouse.
 - [ ] Conectar a biblioteca a jogos indexados e capas reais; ligar importação ISO/XEX/GOD e gerenciamento dos save states; adicionar busca, filtros e controle Xbox 360.
