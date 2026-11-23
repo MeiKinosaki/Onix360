@@ -125,9 +125,119 @@ public:
         return {StfsParseError::None, std::move(header)};
     }
 
+    [[nodiscard]] static StfsFileTableResult read_file_table(
+        const std::filesystem::path& path, const StfsPackageHeader& header) {
+        if (header.volume_type != StfsVolumeType::Stfs || !header.read_only_format)
+            return {StfsParseError::UnsupportedWritableStfsLayout, {}};
+        if (header.file_table_block_count == 0 ||
+            header.file_table_block_count > header.allocated_block_count ||
+            header.file_table_start_block >= header.allocated_block_count)
+            return {StfsParseError::InvalidFileTableChain, {}};
+
+        std::ifstream file(path, std::ios::binary);
+        if (!file) return {StfsParseError::CannotOpen, {}};
+        file.seekg(0, std::ios::end);
+        const auto end = file.tellg();
+        if (end < 0) return {StfsParseError::TruncatedHeader, {}};
+        const auto file_size = static_cast<std::uint64_t>(end);
+        const std::uint64_t data_base =
+            (static_cast<std::uint64_t>(header.header_size) + 0xFFFu) & ~std::uint64_t(0xFFFu);
+
+        const auto block_offset = [&](std::uint32_t index) -> std::uint64_t {
+            std::uint64_t block = index;
+            std::uint64_t base = 170;
+            for (unsigned level = 0; level < 3; ++level) {
+                block += ((static_cast<std::uint64_t>(index) + base) / base);
+                if (index < base) break;
+                base *= 170;
+            }
+            return data_base + (block << 12);
+        };
+        const auto hash_block_number = [](std::uint32_t index) -> std::uint64_t {
+            constexpr std::uint64_t kLevel0 = 170;
+            constexpr std::uint64_t kLevel1 = 28900;
+            constexpr std::uint64_t kBlockStep0 = 171;
+            constexpr std::uint64_t kBlockStep1 = 28900 + 171;
+            if (index < kLevel0) return 0;
+            std::uint64_t block = (index / kLevel0) * kBlockStep0;
+            block += (index / kLevel1 + 1);
+            if (index < kLevel1) return block;
+            return block + 1;
+        };
+
+        std::uint32_t current_table_block = header.file_table_start_block;
+        std::vector<StfsFileEntry> entries;
+        const std::uint64_t max_entries =
+            static_cast<std::uint64_t>(header.file_table_block_count) * 64u;
+
+        for (std::uint32_t table = 0; table < header.file_table_block_count; ++table) {
+            if (current_table_block >= header.allocated_block_count)
+                return {StfsParseError::InvalidFileTableChain, {}};
+            const auto offset = block_offset(current_table_block);
+            if (offset > file_size || file_size - offset < 0x1000u)
+                return {StfsParseError::TruncatedHeader, {}};
+
+            std::array<std::uint8_t, 0x1000> directory_block{};
+            file.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
+            file.read(reinterpret_cast<char*>(directory_block.data()),
+                      static_cast<std::streamsize>(directory_block.size()));
+            if (!file) return {StfsParseError::TruncatedHeader, {}};
+
+            for (std::size_t slot = 0; slot < 64; ++slot) {
+                const auto* raw = directory_block.data() + slot * 0x40;
+                const auto name_length = static_cast<std::size_t>(raw[0x28] & 0x3Fu);
+                if (name_length == 0 || raw[0x28] == 0) break;
+                if (name_length > 40 || entries.size() >= max_entries)
+                    return {StfsParseError::InvalidDirectoryEntry, {}};
+
+                StfsFileEntry entry{};
+                entry.name.assign(reinterpret_cast<const char*>(raw), name_length);
+                entry.directory = (raw[0x28] & 0x80u) != 0;
+                entry.contiguous = (raw[0x28] & 0x40u) != 0;
+                entry.valid_blocks = le24(raw + 0x29);
+                entry.allocated_blocks = le24(raw + 0x2C);
+                entry.starting_block = le24(raw + 0x2F);
+                entry.parent_directory_index = be16(raw + 0x32);
+                entry.file_size = be32(raw + 0x34);
+                if (!entry.directory && entry.file_size != 0 &&
+                    (entry.allocated_blocks == 0 ||
+                     entry.starting_block >= header.allocated_block_count ||
+                     entry.allocated_blocks > header.allocated_block_count))
+                    return {StfsParseError::InvalidDirectoryEntry, {}};
+                entries.push_back(std::move(entry));
+            }
+
+            if (table + 1u == header.file_table_block_count) break;
+            const auto hash_offset = data_base +
+                (hash_block_number(current_table_block) << 12) +
+                (static_cast<std::uint64_t>(current_table_block % 170u) * 0x18u) + 0x14u;
+            if (hash_offset > file_size || file_size - hash_offset < 4u)
+                return {StfsParseError::TruncatedHeader, {}};
+            std::array<std::uint8_t, 4> info{};
+            file.seekg(static_cast<std::streamoff>(hash_offset), std::ios::beg);
+            file.read(reinterpret_cast<char*>(info.data()), 4);
+            if (!file) return {StfsParseError::TruncatedHeader, {}};
+            const auto next = be32(info.data()) & 0x00FFFFFFu;
+            if (next == 0x00FFFFFFu || next >= header.allocated_block_count ||
+                next == current_table_block)
+                return {StfsParseError::InvalidFileTableChain, {}};
+            current_table_block = next;
+        }
+
+        for (const auto& entry : entries) {
+            if (entry.parent_directory_index != 0xFFFFu &&
+                entry.parent_directory_index >= entries.size())
+                return {StfsParseError::InvalidDirectoryEntry, {}};
+        }
+        return {StfsParseError::None, std::move(entries)};
+    }
+
 private:
     static std::uint16_t le16(const std::uint8_t* p) {
         return static_cast<std::uint16_t>(p[0] | (static_cast<std::uint16_t>(p[1]) << 8));
+    }
+    static std::uint16_t be16(const std::uint8_t* p) {
+        return static_cast<std::uint16_t>((static_cast<std::uint16_t>(p[0]) << 8) | p[1]);
     }
     static std::uint32_t le24(const std::uint8_t* p) {
         return static_cast<std::uint32_t>(p[0]) |
