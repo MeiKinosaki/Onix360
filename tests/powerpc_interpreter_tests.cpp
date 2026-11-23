@@ -320,6 +320,52 @@ int main() {
     check(s.gpr[19] == 0 && (s.xer & xer_ca) == 0,
           "SRAW shift by 32 produces zero and clears CA for positive operands");
 
+    // SLW: word shifts at 31 and with RB[5] set (32/63) zero the result.
+    s.gpr[1] = 0x0000000080000001ULL;
+    s.gpr[2] = 31;
+    check(execute(s, x_form(1, 20, 2, 24)) == StepResult::Executed,
+          "SLW executes at shift amount 31");
+    check(s.gpr[20] == 0x80000000ULL,
+          "SLW shift by 31 keeps the low-word result and zero-extends");
+    s.gpr[2] = 32;
+    check(execute(s, x_form(1, 21, 2, 24)) == StepResult::Executed,
+          "SLW executes when RB bit 5 is set");
+    check(s.gpr[21] == 0, "SLW shift by 32 produces zero");
+    s.gpr[2] = 63;
+    check(execute(s, x_form(1, 22, 2, 24)) == StepResult::Executed,
+          "SLW executes at shift amount 63");
+    check(s.gpr[22] == 0, "SLW shift by 63 produces zero");
+
+    // Doubleword logical shifts: 63 is valid; 64 and 127 produce zero.
+    s.gpr[1] = 0x8000000000000001ULL;
+    s.gpr[2] = 63;
+    check(execute(s, x_form(1, 23, 2, 27)) == StepResult::Executed,
+          "SLD executes at shift amount 63");
+    check(s.gpr[23] == 0x8000000000000000ULL,
+          "SLD shift by 63 moves the low bit to the sign position");
+    s.gpr[2] = 64;
+    check(execute(s, x_form(1, 24, 2, 27)) == StepResult::Executed,
+          "SLD executes at shift amount 64");
+    check(s.gpr[24] == 0, "SLD shift by 64 produces zero");
+    s.gpr[2] = 127;
+    check(execute(s, x_form(1, 25, 2, 27)) == StepResult::Executed,
+          "SLD executes at shift amount 127");
+    check(s.gpr[25] == 0, "SLD shift by 127 produces zero");
+
+    s.gpr[1] = 0x8000000000000001ULL;
+    s.gpr[2] = 63;
+    check(execute(s, x_form(1, 26, 2, 539)) == StepResult::Executed,
+          "SRD executes at shift amount 63");
+    check(s.gpr[26] == 1, "SRD shift by 63 keeps the original top bit");
+    s.gpr[2] = 64;
+    check(execute(s, x_form(1, 27, 2, 539)) == StepResult::Executed,
+          "SRD executes at shift amount 64");
+    check(s.gpr[27] == 0, "SRD shift by 64 produces zero");
+    s.gpr[2] = 127;
+    check(execute(s, x_form(1, 28, 2, 539)) == StepResult::Executed,
+          "SRD executes at shift amount 127");
+    check(s.gpr[28] == 0, "SRD shift by 127 produces zero");
+
     std::array<std::uint8_t, 64> ram{};
     s.gpr[21] = 0x12345678U;
     check(execute(s, d_form(36, 21, 0, 8), ram) == StepResult::Executed, "STW executes");
