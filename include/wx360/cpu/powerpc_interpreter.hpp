@@ -341,6 +341,17 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             writes_result = true;
             break;
         }
+        case 26: { // cntlzw: count leading zero bits in the low 32-bit word
+            const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[d.rt]);
+            unsigned count = 0;
+            while (count < 32U && (value & (std::uint32_t{1} << (31U - count))) == 0)
+                ++count;
+            result = count;
+            destination = d.ra;
+            writes_result = true;
+            record_32bit = true;
+            break;
+        }
         case 28:  // and
             result = state.gpr[d.rt] & state.gpr[d.rb];
             destination = d.ra;
