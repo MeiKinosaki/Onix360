@@ -98,7 +98,7 @@ int main() {
     put_le24(bytes,second_table+0x2C,1);
     put_le24(bytes,second_table+0x2F,2);
     bytes[second_table+0x32]=0xFF; bytes[second_table+0x33]=0xFF;
-    put_be32(bytes,second_table+0x34,0x1000);
+    put_be32(bytes,second_table+0x34,10);
     const char* payload = "second.bin";
     for (std::size_t i = 0; payload[i]; ++i) bytes[0xD000 + i] = static_cast<std::uint8_t>(payload[i]);
     {
