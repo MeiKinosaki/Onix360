@@ -23,7 +23,7 @@ struct ContentEntry {
     std::string title_name;
     bool stfs_file_table_valid{};
     std::size_t stfs_file_count{};
-    std::filesystem::path default_xex_path;
+    bool contains_default_xex{};
 };
 
 class ContentLibrary {
@@ -88,7 +88,7 @@ public:
                                 std::string name = file.name;
                                 std::transform(name.begin(), name.end(), name.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
                                 if (!file.directory && name == "default.xex") {
-                                    entry.default_xex_path = path;
+                                    entry.contains_default_xex = true;
                                     break;
                                 }
                             }
