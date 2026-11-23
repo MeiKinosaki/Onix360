@@ -2,7 +2,9 @@
 
 **Windows Xbox 360 Emulator** — emulador experimental do Xbox 360 para Windows x64, com foco em computadores modestos.
 
-> **Versão em desenvolvimento:** v0.3b. O projeto ainda não executa jogos comerciais.
+> **Versão em desenvolvimento:** v0.4b. O projeto ainda não executa jogos comerciais.
+>
+> **CI validada em 23/11/2026:** build Release e 25/25 testes aprovados no Windows e Linux. O pipeline gera um vetor LZX positivo com encoder independente e testa a descompressão. O ZIP portátil Windows foi publicado como artefato do GitHub Actions; isso é um pacote de CI, não uma release estável.
 
 ## Objetivos
 
@@ -110,19 +112,19 @@ O interpretador inicial contém suporte experimental para:
 - `ContentLoader` oferece extração GOD/SVOD e procura `default.xex` após a extração.
 - `XexImageLoader` inspeciona o cabeçalho XEX2 usando tamanho real do arquivo e gera um plano de carregamento com entry point virtual.
 - `XenonCore::start_xex` só transfere o PC para um entry point físico depois que o plano indicar descriptografia, descompressão, mapeamento PE e importações do kernel concluídos, e a RAM permitir fetch executável.
-- Testes sintéticos adicionados para GDF single-file, extração, inspeção XEX e handoff protegido ao núcleo Xenon.
-- **Limitações críticas:** ainda não implementa descriptografia/descompressão XEX, interpretação de security info, mapeamento PE real, relocations, imports do kernel nem autenticação SHA-1/RSA. Portanto, o plano XEX ainda não é produzido como pronto para execução e jogos comerciais não estão executáveis. A leitura de fragmentos reais e layouts complexos requer validação adicional.
+- Teste de integração sintético XEX2: cria um arquivo XEX2 sem criptografia/compactação, valida cabeçalho e file-format info, inspeciona entry point, entrega o PE já transformado ao mapeador, inicia o XenonCore e executa a primeira instrução (`addi r3,r0,42`), verificando `r3 = 42` e avanço do PC.
+- Esse teste comprova o caminho sintético sem transformações nem imports reais; não comprova descriptografia retail/devkit, Normal/LZX integrado a um XEX real, relocations/imports de kernel, autenticação RSA ou execução de jogos comerciais. O plano XEX ainda não é produzido automaticamente como pronto para jogos reais. A leitura de fragmentos reais e layouts complexos requer validação adicional.
 
 ## XEX2 Normal — enquadramento e IV
 
 - Referência de implementação Xenia consultada: o payload XEX2 Normal é descriptografado com AES-CBC usando chaining value inicial de 16 bytes zerados. Foi adicionada a API `aes128_xex_cbc_decrypt` e o XEX loader agora oferece uma entrada que usa esse IV, sem exigir que o chamador o adivinhe.
 - O cabeçalho de formato agora lê `window_size` e o primeiro descritor de bloco Normal.
 - Foi adicionado parser limitado dos blocos Normal: verifica SHA-1 do bloco, lê o descritor seguinte embutido e remonta chunks com prefixos de tamanho big-endian e terminador zero. Há um teste sintético de reconstrução e rejeição de bloco adulterado.
-- **Isso ainda não é descompressão LZX.** Os chunks remontados precisam passar pelo decoder LZX compatível com a janela XEX; essa integração não foi incluída nesta etapa.
+- O decoder LZX foi integrado ao caminho de chunks Normal. Um vetor positivo gerado independentemente por `github.com/abemedia/go-cabinet/lzx` é descompactado e comparado byte a byte com o conteúdo original no CI Windows/Linux. A aprovação do vetor não substitui validação com XEX retail/devkit real.
 - Nenhum XEX comercial/retail/devkit real foi fornecido ou descriptografado. A chave de sessão e a cadeia AES ainda só têm vetores de teste AES genéricos, não um caso XEX ponta a ponta.
 - A validação SHA-1 das páginas continua disponível após reconstrução, mas ainda não foi integrada ao pipeline de transformação normal de ponta a ponta.
 - A resolução de ordinais/thunks ainda não interpreta o fluxo de registros import_table do executável, e não há catálogo real completo de exports xboxkrnl/xam. Não inventar endereços de kernel.
-- Primeiro boot XEX ainda pendente; o núcleo Xenon só inicia quando o LaunchPlan tem transformação, PE mapping e imports marcados como completos.
+- O primeiro boot sintético XEX2 até uma instrução Xenon foi validado em CI. Boot de XEX comercial continua pendente.
 
 ## AES-128 XEX — integração parcial
 
@@ -130,10 +132,10 @@ O interpretador inicial contém suporte experimental para:
 - CMake agora habilita C além de C++ e compila a biblioteca AES como dependência estática do núcleo.
 - API C++ `crypto/aes128.hpp`: decrypt de bloco ECB, decrypt CBC com IV fornecido pelo chamador e unwrap do campo de chave de sessão usando chave retail/devkit selecionável.
 - O XEX loader expõe `decrypt_normal_payload`, conectando a extração da chave cifrada da Security Info, unwrap ECB e decrypt CBC.
-- Testes NIST de AES-128 ECB/CBC e teste do primitive de unwrap foram adicionados ao CTest; **a execução dos testes ainda não foi observada**, portanto não há aprovação de build/CI declarada.
+- Testes NIST de AES-128 ECB/CBC e do primitive de unwrap estão registrados no CTest; a execução dos 25 testes foi aprovada no Windows e Linux em 23/11/2026.
 - Limitação importante: o IV é passado explicitamente; a extração/derivação correta do IV a partir do formato XEX2 e o fluxo completo de descriptografia ainda precisam ser validados com amostras legítimas retail/devkit. A chave de sessão só foi testada com vetor AES conhecido, não com XEX retail/devkit real.
 - O carregador ainda não marca automaticamente `decryption_complete` nem integra o resultado à descompressão/PE; isso evita liberar uma imagem como válida antes da validação SHA-1.
-- Descompressão Normal/LZX, verificação RSA e SHA-1 completa após reconstrução, parser de ordinais real, catálogo de exports xboxkrnl/xam e boot XEX pelo Xenon continuam pendentes.
+- A descompressão Normal/LZX possui decoder e vetor positivo independente aprovado; ainda faltam validação com XEX retail/devkit real, verificação RSA, SHA-1 ponta a ponta, parser completo de ordinais, catálogo real de exports xboxkrnl/xam e boot de XEX comercial pelo Xenon.
 
 ## XEX2: segurança, SHA-1 e tabela de import libraries (etapa inicial)
 
@@ -142,7 +144,7 @@ O interpretador inicial contém suporte experimental para:
 - A rotina SHA-1 agora valida os digests dos blocos descritos pelos page descriptors contra uma imagem reconstruída, exigindo cobertura/tamanho consistentes; há teste sintético positivo e teste de corrupção. Isso ainda não valida a assinatura RSA nem todos os digests de cabeçalho/import table, e depende de uma imagem já descriptografada/descomprimida.
 - O optional header `0x000103FF` agora é identificado. O parser de import libraries lê a string table, registros por biblioteca, versões, contagens e lista de valores de thunk/índices, com limites de tamanho e validação de strings.
 - O parser da tabela de bibliotecas ainda não interpreta completamente os descriptors individuais de importação/ordinais nem aplica todos os imports aos thunks PE; o catálogo real de exports do xboxkrnl/xam também não existe.
-- AES-128-ECB para desembrulhar a chave de sessão, AES-128-CBC para o payload, seleção retail/devkit, descompressão Normal/LZX e validação RSA permanecem pendentes. A referência Xenia documenta a chave XEX2 retail e a chave devkit padrão de 16 bytes zero; nenhuma rotina AES foi integrada ainda.
+- AES-128-ECB/CBC e decoder Normal/LZX já estão implementados e cobertos por testes automatizados; o vetor positivo LZX independente e a suíte completa passaram em Windows/Linux. A aplicação correta da cadeia criptográfica a amostras XEX retail/devkit e a validação RSA continuam pendentes.
 - O núcleo Xenon já possui handoff protegido e execução de uma instrução via `step()` em memória executável; isso é um teste de instrução sintética, não inicialização de um XEX comercial.
 
 ## Avanço incremental do leitor GOD/SVOD e XEX2
