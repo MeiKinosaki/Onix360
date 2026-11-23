@@ -193,6 +193,19 @@ O interpretador inicial contém suporte experimental para:
 - O componente cria as pastas de forma idempotente e permite configurar uma raiz alternativa para testes.
 - A interface ainda precisa ser conectada a esses diretórios para importar e indexar jogos.
 
+## Executável de diagnóstico
+
+O pacote portátil inclui `WX360-Test.exe`, separado da interface gráfica. Execute-o com duplo clique ou pelo terminal:
+
+```powershell
+.\\WX360-Test.exe
+if ($LASTEXITCODE -ne 0) { Write-Error "WX360 diagnostic failed" }
+```
+
+Ele executa verificações sintéticas do interpretador Xenon, fetch/execução pela memória física e resolução de imports tipados (função/variável), mostrando PASS/FAIL e retornando código de saída diferente de zero se alguma verificação falhar.
+
+**Importante:** esse executável testa componentes internos com dados sintéticos. Não executa jogos, não valida XEX retail/devkit e não substitui a suíte completa CTest. Para executar todos os testes de desenvolvimento, use os comandos CMake/CTest abaixo.
+
 ## Build no Windows
 
 Requisitos: CMake 3.20+ e compilador C++20 (Visual Studio 2022 ou MinGW-w64 recente).
