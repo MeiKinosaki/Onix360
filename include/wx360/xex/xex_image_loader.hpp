@@ -52,6 +52,10 @@ enum class NormalDecompressError : std::uint8_t {
     Ok, WrongCompression, InvalidWindow, InvalidBlockStream, LzxFailure
 };
 
+enum class NormalTransformError : std::uint8_t {
+    Ok, WrongCompression, InvalidImageSize, DecryptionFailed, DecompressionFailed
+};
+
 class XexImageLoader {
 public:
     static constexpr std::size_t kHeaderWindow = 0x10000;
@@ -137,6 +141,37 @@ public:
             key_set, security.encrypted_image_key);
         return crypto::aes128_xex_cbc_decrypt(
             session_key, encrypted_payload, decrypted_payload);
+    }
+
+    // End-to-end Normal path: unwrap the per-image key, decrypt the complete
+    // payload when encryption is NORMAL, authenticate/deblock, then LZX decode.
+    // Output is committed only after every stage succeeds.
+    [[nodiscard]] static NormalTransformError transform_normal_lzx_payload(
+        const SecurityInfo& security, crypto::XexKeySet key_set,
+        const FileFormatInfo& format,
+        std::span<const std::uint8_t> payload,
+        std::vector<std::uint8_t>& output) {
+        if (format.compression != XexCompression::Normal)
+            return NormalTransformError::WrongCompression;
+        if (security.image_size != 0 && security.image_size != format.image_size)
+            return NormalTransformError::InvalidImageSize;
+
+        std::vector<std::uint8_t> decrypted;
+        if (format.encryption == XexEncryption::Normal) {
+            if (decrypt_xex_normal_payload(
+                    security, key_set, payload, decrypted) != crypto::AesResult::Ok)
+                return NormalTransformError::DecryptionFailed;
+        } else if (format.encryption == XexEncryption::None) {
+            decrypted.assign(payload.begin(), payload.end());
+        } else {
+            return NormalTransformError::DecryptionFailed;
+        }
+
+        std::vector<std::uint8_t> decoded;
+        if (decompress_normal_lzx(decrypted, format, decoded) != NormalDecompressError::Ok)
+            return NormalTransformError::DecompressionFailed;
+        output = std::move(decoded);
+        return NormalTransformError::Ok;
     }
 
     // Inspects XEX2 metadata and prepares a launch plan. It deliberately does
