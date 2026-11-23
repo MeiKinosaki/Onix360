@@ -26,6 +26,8 @@ struct Header {
     bool has_entry_point{};
     std::uint32_t file_format_info_offset{};
     bool has_file_format_info{};
+    std::uint32_t import_libraries_offset{};
+    bool has_import_libraries{};
 };
 
 [[nodiscard]] constexpr std::uint32_t read_be32(
@@ -60,6 +62,10 @@ struct Header {
         const std::size_t offset = fixed_size + i * entry_size;
         const std::uint32_t key = read_be32(file, offset);
         const std::uint32_t value = read_be32(file, offset + 4U);
+        if (key == 0x000103FFU) {
+            parsed.import_libraries_offset = value;
+            parsed.has_import_libraries = true;
+        }
         if (key == 0x000003FFU) {
             parsed.file_format_info_offset = value;
             parsed.has_file_format_info = true;
