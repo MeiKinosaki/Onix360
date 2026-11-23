@@ -14,7 +14,7 @@ func main() {
 	if err != nil { panic(err) }
 	compressed, err := enc.Encode(nil, []byte(plain))
 	if err != nil { panic(err) }
-	if err := os.MkdirAll("tests/data", 0755); err != nil { panic(err) }
-	if err := os.WriteFile("tests/data/lzx_reference.bin", compressed, 0644); err != nil { panic(err) }
-	if err := os.WriteFile("tests/data/lzx_reference.expected", []byte(plain), 0644); err != nil { panic(err) }
+	if err := os.MkdirAll("../../tests/data", 0755); err != nil { panic(err) }
+	if err := os.WriteFile("../../tests/data/lzx_reference.bin", compressed, 0644); err != nil { panic(err) }
+	if err := os.WriteFile("../../tests/data/lzx_reference.expected", []byte(plain), 0644); err != nil { panic(err) }
 }
