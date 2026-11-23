@@ -21,6 +21,10 @@ struct MemoryFile {
     std::size_t output_limit{};
 };
 
+struct MemorySystem {
+    mspack_system api{};
+};
+
 mspack_file* open_file(mspack_system*, const char*, int) { return nullptr; }
 void close_file(mspack_file*) {}
 int read_file(mspack_file* file, void* buffer, int bytes) {
