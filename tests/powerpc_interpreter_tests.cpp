@@ -512,6 +512,20 @@ int main() {
     check(execute(s, x_form(1, 8, 0, 58)) == StepResult::Executed, "CNTLZD handles zero");
     check(s.gpr[8] == 64, "CNTLZD returns 64 for zero");
 
+    // RFI restores the saved execution context and resumes at SRR0.
+    s.pc = 0x700;
+    s.srr0 = 0x12345678;
+    s.srr1 = 0x0000000000009030ULL;
+    s.msr = 0;
+    s.exception_pending = true;
+    s.exception_vector = 0x700;
+    const std::uint32_t rfi = (19U << 26U) | (50U << 1U);
+    check(execute(s, rfi) == StepResult::Executed, "RFI executes");
+    check(s.pc == 0x12345678 && s.msr == 0x9030,
+          "RFI restores SRR0 and SRR1 without incrementing restored PC");
+    check(!s.exception_pending && s.exception_vector == 0,
+          "RFI clears pending exception state");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
