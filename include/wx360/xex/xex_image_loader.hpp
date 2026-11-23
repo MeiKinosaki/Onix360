@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wx360/xex/xex_header.hpp"
+#include "wx360/xex/xex_pe_mapper.hpp"
 
 #include <algorithm>
 #include <array>
@@ -18,6 +19,8 @@ enum class LoadError : std::uint8_t {
     HeaderReadFailure,
     InvalidHeader,
     ImageNotMapped,
+    TransformIncomplete,
+    PeMappingFailed,
 };
 
 struct LaunchPlan {
@@ -44,6 +47,27 @@ class XexImageLoader {
 public:
     static constexpr std::size_t kHeaderWindow = 0x10000;
     static constexpr std::uint64_t kMaximumImageSize = 2ull * 1024ull * 1024ull * 1024ull;
+
+    [[nodiscard]] static LoadError map_transformed_pe(
+        LaunchPlan& plan,
+        std::span<const std::uint8_t> decrypted_decompressed_pe,
+        memory::PhysicalMemory& guest_memory,
+        std::uint64_t physical_base,
+        std::uint32_t guest_image_base,
+        bool decryption_complete,
+        bool decompression_complete) {
+        if (!decryption_complete || !decompression_complete)
+            return LoadError::TransformIncomplete;
+        const auto mapped = XexPeMapper::map(
+            decrypted_decompressed_pe, guest_memory, physical_base,
+            guest_image_base, plan.entry_point);
+        if (!mapped) return LoadError::PeMappingFailed;
+        plan.decryption_complete = true;
+        plan.decompression_complete = true;
+        plan.pe_mapped = true;
+        plan.mapped_entry_point = mapped.mapped_entry;
+        return LoadError::None;
+    }
 
     // Inspects XEX2 metadata and prepares a launch plan. It deliberately does
     // not claim to decrypt, decompress, map PE sections or resolve imports.
