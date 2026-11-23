@@ -37,7 +37,9 @@ public:
   std::ifstream image(temporary,std::ios::binary);
   unsigned char signature[2]{},tail[2]{};image.read(reinterpret_cast<char*>(signature),2);
   image.seekg(-2,std::ios::end);image.read(reinterpret_cast<char*>(tail),2);
-  if(!image||signature[0]!=0xFF||signature[1]!=0xD8||tail[0]!=0xFF||tail[1]!=0xD9){image.close();std::filesystem::remove(temporary,ec);return false;}
+  const bool valid=image&&signature[0]==0xFF&&signature[1]==0xD8&&tail[0]==0xFF&&tail[1]==0xD9;
+  image.close();
+  if(!valid){std::filesystem::remove(temporary,ec);return false;}
   std::filesystem::rename(temporary,target,ec);
   if(ec){std::filesystem::remove(temporary,ec);return false;}
   return true;
