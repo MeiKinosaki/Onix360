@@ -154,8 +154,10 @@ int main() {
         std::ofstream out(path,std::ios::binary|std::ios::trunc);
         out.write(reinterpret_cast<const char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()));
     }
-    if(wx360::storage::StfsPackageParser::parse(path).error!=wx360::storage::StfsParseError::UnsupportedVolumeType) {
-        std::cerr<<"SVOD descriptor was not safely rejected\n";++failures;
+    const auto svod = wx360::storage::StfsPackageParser::parse(path);
+    if(!svod || svod.header.volume_type != wx360::storage::StfsVolumeType::Svod ||
+       svod.header.svod_data_block_count != 1) {
+        std::cerr<<"SVOD descriptor metadata was not parsed\n";++failures;
     }
     std::error_code ec;std::filesystem::remove(path,ec);
     return failures==0?EXIT_SUCCESS:EXIT_FAILURE;
