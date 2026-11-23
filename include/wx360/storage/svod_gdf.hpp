@@ -108,14 +108,19 @@ public:
             const std::uint64_t level0_count = file_block / kBlocksPerLevel0 + 1u;
             const std::uint64_t level1_count = level0_count / kLevel0PerLevel1 + 1u;
             std::uint64_t offset = file_block * kBlockSize +
-                (level0_count + level1_count) * 0x1000ull;
-            if (result.inspection.layout == SvodLayout::SingleFile) offset += 0xB000ull;
+                (level0_count + level1_count) * 0x1000ull +
+                result.inspection.base_offset;
             if (offset >= kFragmentPayloadSize) {
                 ++fragment_index;
                 offset = (offset % kFragmentPayloadSize) + 0x2000ull;
             }
             if (fragment_index >= fragments.size()) return false;
-            std::ifstream data(fragments[static_cast<std::size_t>(fragment_index)], std::ios::binary);
+            const auto& fragment = fragments[static_cast<std::size_t>(fragment_index)];
+            std::error_code size_error;
+            const auto physical_size = std::filesystem::file_size(fragment, size_error);
+            if (size_error || offset > physical_size || kBlockSize > physical_size - offset)
+                return false;
+            std::ifstream data(fragment, std::ios::binary);
             if (!data) return false;
             data.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
             data.read(reinterpret_cast<char*>(output.data()), output.size());
@@ -202,20 +207,28 @@ public:
                 if (fragment_index >= fragments.size()) return false;
                 const auto l0 = file_block / kBlocksPerLevel0 + 1u;
                 const auto l1 = l0 / kLevel0PerLevel1 + 1u;
-                std::uint64_t offset = file_block * kBlockSize + (l0 + l1) * 0x1000ull;
-                if (parsed.layout == SvodLayout::SingleFile) offset += 0xB000ull;
+                std::uint64_t offset = file_block * kBlockSize + (l0 + l1) * 0x1000ull +
+                    parsed.base_offset;
                 if (offset >= kFragmentPayloadSize) {
                     ++fragment_index;
                     offset = (offset % kFragmentPayloadSize) + 0x2000ull;
                 }
                 if (fragment_index >= fragments.size()) return false;
-                std::ifstream in(fragments[static_cast<std::size_t>(fragment_index)], std::ios::binary);
+                const auto& fragment = fragments[static_cast<std::size_t>(fragment_index)];
+                std::error_code size_error;
+                const auto physical_size = std::filesystem::file_size(fragment, size_error);
+                if (size_error || offset >= physical_size) return false;
+                const auto amount = static_cast<std::size_t>(std::min<std::uint64_t>(
+                    {kBlockSize, size - done, physical_size - offset}));
+                if (amount == 0) return false;
+                std::ifstream in(fragment, std::ios::binary);
                 if (!in) return false;
-                const auto amount = static_cast<std::size_t>(std::min<std::uint64_t>(kBlockSize, size - done));
                 in.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
                 in.read(reinterpret_cast<char*>(out.data() + done), static_cast<std::streamsize>(amount));
                 if (!in) return false;
-                done += amount; ++block;
+                done += amount;
+                if (amount < kBlockSize && done < size) return false;
+                ++block;
             }
             return true;
         };
