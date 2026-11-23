@@ -39,22 +39,29 @@ public:
         SvodInspection result;
         result.declared_fragment_count = parsed.header.data_file_count;
         result.start_data_block = parsed.header.svod_start_data_block;
-        if (!fragment_directory.empty()) {
+        std::filesystem::path data_dir = fragment_directory;
+        if (parsed.header.data_file_count > 1 && data_dir.empty()) {
+            data_dir = header_path;
+            data_dir += ".data";
+        }
+        if (parsed.header.data_file_count > 1) {
             std::error_code ec;
-            if (std::filesystem::is_directory(fragment_directory, ec) && !ec) {
-                for (std::filesystem::directory_iterator it(fragment_directory, ec), end;
-                     it != end && !ec; it.increment(ec)) {
-                    if (it->is_regular_file(ec) && !ec)
-                        result.fragments.push_back(it->path());
-                    ec.clear();
-                }
-                std::sort(result.fragments.begin(), result.fragments.end());
-                if (result.declared_fragment_count != 0 &&
-                    result.fragments.size() != result.declared_fragment_count) {
-                    result.error = StfsParseError::UnsupportedSvodLayout;
-                    return result;
-                }
+            if (!std::filesystem::is_directory(data_dir, ec) || ec) {
+                result.error = StfsParseError::UnsupportedSvodLayout;
+                return result;
             }
+            for (std::filesystem::directory_iterator it(data_dir, ec), end;
+                 it != end && !ec; it.increment(ec)) {
+                if (it->is_regular_file(ec) && !ec) result.fragments.push_back(it->path());
+                ec.clear();
+            }
+            std::sort(result.fragments.begin(), result.fragments.end());
+            if (result.fragments.size() != parsed.header.data_file_count) {
+                result.error = StfsParseError::UnsupportedSvodLayout;
+                return result;
+            }
+        } else {
+            result.fragments.push_back(header_path);
         }
         const auto has_magic = [](const std::filesystem::path& file_path,
                                   std::uint64_t offset, const char* magic,
@@ -67,14 +74,15 @@ public:
             file.read(bytes.data(), static_cast<std::streamsize>(length));
             return file && std::equal(bytes.begin(), bytes.begin() + length, magic);
         };
+        const auto& first_fragment = result.fragments.front();
         const auto features = parsed.header.svod_device_features;
-        if ((features & 0x01u) != 0 &&
-            has_magic(header_path, 0x2000, "MICROSOFT*XBOX*MEDIA", 20)) {
+        if ((features & 0x40u) != 0 &&
+            has_magic(first_fragment, 0x2000, "MICROSOFT*XBOX*MEDIA", 20)) {
             result.layout = SvodLayout::EnhancedGdf;
-        } else if (has_magic(header_path, 0x12000, "MICROSOFT*XBOX*MEDIA", 20)) {
-            result.layout = has_magic(header_path, 0x2000, "XSF", 3)
+        } else if (has_magic(first_fragment, 0x12000, "MICROSOFT*XBOX*MEDIA", 20)) {
+            result.layout = has_magic(first_fragment, 0x2000, "XSF", 3)
                 ? SvodLayout::Xsf : SvodLayout::Unknown;
-        } else if (has_magic(header_path, 0xD000, "MICROSOFT*XBOX*MEDIA", 20) &&
+        } else if (has_magic(first_fragment, 0xD000, "MICROSOFT*XBOX*MEDIA", 20) &&
                    parsed.header.data_file_count == 1) {
             result.layout = SvodLayout::SingleFile;
         }
