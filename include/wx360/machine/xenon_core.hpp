@@ -13,6 +13,7 @@ enum class RunResult : std::uint8_t {
     DataMemoryFault,
     InstructionAlignmentFault,
     DataAlignmentFault,
+    ExceptionTaken,
 };
 
 enum class LaunchResult : std::uint8_t { Started, EntryPointNotExecutable };
@@ -33,15 +34,26 @@ struct XenonCore {
     [[nodiscard]] RunResult step(memory::PhysicalMemory& ram) noexcept {
         std::uint32_t instruction = 0;
         const auto fetch = ram.fetch_u32(state.pc, instruction);
-        if (fetch == memory::MemoryResult::AlignmentFault)
-            return RunResult::InstructionAlignmentFault;
-        if (fetch != memory::MemoryResult::Ok) return RunResult::FetchFault;
+        if (fetch == memory::MemoryResult::AlignmentFault) {
+            state.raise_exception(0x600U, state.pc);
+            return RunResult::ExceptionTaken;
+        }
+        if (fetch != memory::MemoryResult::Ok) {
+            state.raise_exception(0x400U, state.pc);
+            return RunResult::ExceptionTaken;
+        }
         const auto result = cpu::execute(state, instruction, ram.raw_bytes());
         switch (result) {
         case cpu::StepResult::Executed: return RunResult::Executed;
-        case cpu::StepResult::UnsupportedInstruction: return RunResult::UnsupportedInstruction;
-        case cpu::StepResult::MemoryFault: return RunResult::DataMemoryFault;
-        case cpu::StepResult::AlignmentFault: return RunResult::DataAlignmentFault;
+        case cpu::StepResult::UnsupportedInstruction:
+            state.raise_exception(0x700U);
+            return RunResult::ExceptionTaken;
+        case cpu::StepResult::MemoryFault:
+            state.raise_exception(0x300U);
+            return RunResult::ExceptionTaken;
+        case cpu::StepResult::AlignmentFault:
+            state.raise_exception(0x600U);
+            return RunResult::ExceptionTaken;
         }
         return RunResult::UnsupportedInstruction;
     }
