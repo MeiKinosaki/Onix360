@@ -31,6 +31,19 @@ int main(){
         std::cerr<<"XEX security info parse failed\n";return EXIT_FAILURE;
     }
 
+    std::vector<std::uint8_t> page_image(0x2000, 0x5A);
+    parsed.pages[0].digest = wx360::crypto::sha1(
+        std::span<const std::uint8_t>(page_image.data(), 0x2000));
+    if (wx360::xex::verify_page_hashes(page_image, parsed) !=
+        wx360::xex::PageHashResult::Ok) {
+        std::cerr << "XEX page SHA-1 validation failed\\n"; return EXIT_FAILURE;
+    }
+    page_image[0] ^= 1;
+    if (wx360::xex::verify_page_hashes(page_image, parsed) !=
+        wx360::xex::PageHashResult::DigestMismatch) {
+        std::cerr << "Corrupted XEX page was not rejected\\n"; return EXIT_FAILURE;
+    }
+
     // XEX import library directory: one padded name and one library record.
     std::vector<std::uint8_t> imports(12+12+0x2C,0);
     be32(imports,0,imports.size());be32(imports,4,12);be32(imports,8,1);
