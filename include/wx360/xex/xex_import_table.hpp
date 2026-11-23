@@ -70,4 +70,11 @@ struct ImportTable {
     output=std::move(parsed);
     return ImportTableError::Ok;
 }
+
+[[nodiscard]] inline ImportTableError parse_import_table(
+    std::span<const std::uint8_t> file, const Header& header,
+    ImportTable& output) {
+    if (!header.has_import_libraries) return ImportTableError::MissingHeader;
+    return parse_import_table(file, header.import_libraries_offset, output);
+}
 } // namespace wx360::xex
