@@ -6,6 +6,8 @@
 #include <string>
 #include <system_error>
 #include <vector>
+#include <utility>
+#include "wx360/storage/stfs_package.hpp"
 
 namespace wx360::storage {
 
@@ -15,6 +17,10 @@ struct ContentEntry {
     std::filesystem::path path;
     ContentKind kind{};
     std::string format;
+    bool stfs_header_valid{};
+    std::uint32_t title_id{};
+    std::uint32_t content_type{};
+    std::string title_name;
 };
 
 class ContentLibrary {
@@ -62,7 +68,15 @@ public:
                 std::transform(extension.begin(), extension.end(), extension.begin(),
                     [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
                 if (extension == ".con" || extension == ".live" || extension == ".pirs") {
-                    entries.push_back({path, ContentKind::StfsPackage, "STFS Package"});
+                    ContentEntry entry{path, ContentKind::StfsPackage, "STFS Package"};
+                    const auto parsed = StfsPackageParser::parse(path);
+                    if (parsed) {
+                        entry.stfs_header_valid = true;
+                        entry.title_id = parsed.header.title_id;
+                        entry.content_type = parsed.header.content_type;
+                        entry.title_name = parsed.header.title_name;
+                    }
+                    entries.push_back(std::move(entry));
                 }
             }
             it.increment(ec);
