@@ -22,6 +22,7 @@ int main(){
 
     std::vector<std::uint8_t> security(0x184+24,0);
     be32(security,0,0x184+24);be32(security,4,0x2000);
+    be32(security,0x10C,0x10000000); // XEX_IMAGE_PAGE_SIZE_4KB
     be32(security,0x110,0x82000000);be32(security,0x128,0);
     be32(security,0x180,1);be32(security,0x184,0x21);
     wx360::xex::SecurityInfo parsed{};
@@ -42,6 +43,22 @@ int main(){
     if (wx360::xex::verify_page_hashes(page_image, parsed) !=
         wx360::xex::PageHashResult::DigestMismatch) {
         std::cerr << "Corrupted XEX page was not rejected\\n"; return EXIT_FAILURE;
+    }
+
+    // Without the 4 KiB flag, XEX2 page hashes use 64 KiB units.
+    wx360::xex::SecurityInfo large_pages{};
+    large_pages.image_size = 0x10000;
+    std::vector<std::uint8_t> large_image(0x10000, 0xA5);
+    wx360::xex::PageDescriptor large_descriptor{};
+    large_descriptor.type = 1;
+    large_descriptor.page_count = 1;
+    large_descriptor.digest = wx360::crypto::sha1(large_image);
+    large_pages.pages.push_back(large_descriptor);
+    if (wx360::xex::xex_page_size(large_pages) != 0x10000 ||
+        wx360::xex::verify_page_hashes(large_image, large_pages) !=
+            wx360::xex::PageHashResult::Ok) {
+        std::cerr << "XEX 64 KiB page SHA-1 validation failed\\n";
+        return EXIT_FAILURE;
     }
 
     // XEX import library directory: one padded name and one library record.
