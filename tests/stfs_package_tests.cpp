@@ -41,7 +41,7 @@ int main() {
     const auto path=std::filesystem::temp_directory_path()/"wx360_stfs_header_test.con";
     std::vector<std::uint8_t> bytes(0xC000,0);
     bytes[0]='C';bytes[1]='O';bytes[2]='N';bytes[3]=' ';
-    put_be32(bytes,0x340,static_cast<std::uint32_t>(bytes.size()));
+    put_be32(bytes,0x340,0x971A);
     put_be32(bytes,0x344,0x00007000);
     put_be32(bytes,0x348,2);
     put_be64(bytes,0x34C,0x12345678);
