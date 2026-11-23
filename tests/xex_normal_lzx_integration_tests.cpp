@@ -1,6 +1,7 @@
 #include "wx360/xex/xex_image_loader.hpp"
 #include "wx360/crypto/sha1.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
