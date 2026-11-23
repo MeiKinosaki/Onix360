@@ -5,21 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# A 64-bit Windows executable requires the x86-64 SSE2 baseline. To support
-# older 32-bit CPUs without SSE2, WX360 deliberately targets 32-bit x86.
-if(NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
-  message(FATAL_ERROR
-    "WX360 no-SSE2 build requires a 32-bit x86 toolchain (Win32/i686). "
-    "On Visual Studio, configure with -A Win32; do not use an x64 generator.")
-endif()
-
-if(MSVC)
-  add_compile_options(/arch:IA32)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  add_compile_options(-mno-sse -mno-sse2 -mno-sse3 -mno-ssse3
-                      -mno-sse4.1 -mno-sse4.2
-                      -mno-avx -mno-avx2)
-endif()
+# x86-64 guarantees SSE2. Do not enable AVX/AVX2 or -march=native.
 
 add_library(wx360_cpu INTERFACE)
 target_include_directories(wx360_cpu INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
