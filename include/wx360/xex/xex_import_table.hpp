@@ -14,7 +14,8 @@ struct ImportLibraryRecord {
     std::string name;
     std::uint32_t library_id{}, version{}, minimum_version{};
     std::uint16_t version_name_index{}, import_count{};
-    // Each value is a guest virtual address of an import record, not an ordinal.\n    std::vector<std::uint32_t> import_thunks;
+    // Each value is a guest virtual address of an import record, not an ordinal.
+    std::vector<std::uint32_t> import_thunks;
 };
 enum class ImportTableError : std::uint8_t {
     Ok, MissingHeader, Truncated, InvalidSize, InvalidStringTable,
