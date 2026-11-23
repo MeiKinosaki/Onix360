@@ -336,6 +336,21 @@ int main() {
           "SLW executes at shift amount 63");
     check(s.gpr[22] == 0, "SLW shift by 63 produces zero");
 
+    // SRW: word shifts at 31 and with RB[5] set (32/63) zero the result.
+    s.gpr[1] = 0x0000000080000001ULL;
+    s.gpr[2] = 31;
+    check(execute(s, x_form(1, 29, 2, 536)) == StepResult::Executed,
+          "SRW executes at shift amount 31");
+    check(s.gpr[29] == 1, "SRW shift by 31 is logical and zero-extends");
+    s.gpr[2] = 32;
+    check(execute(s, x_form(1, 30, 2, 536)) == StepResult::Executed,
+          "SRW executes when RB bit 5 is set");
+    check(s.gpr[30] == 0, "SRW shift by 32 produces zero");
+    s.gpr[2] = 63;
+    check(execute(s, x_form(1, 31, 2, 536)) == StepResult::Executed,
+          "SRW executes at shift amount 63");
+    check(s.gpr[31] == 0, "SRW shift by 63 produces zero");
+
     // Doubleword logical shifts: 63 is valid; 64 and 127 produce zero.
     s.gpr[1] = 0x8000000000000001ULL;
     s.gpr[2] = 63;
