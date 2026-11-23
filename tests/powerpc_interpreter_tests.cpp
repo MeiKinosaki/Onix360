@@ -106,6 +106,37 @@ int main() {
     check(execute(s, rlwinm_form(1, 8, 0, 0, 31)) == StepResult::Executed,
           "RLWINM helper remains usable after shift tests");
 
+    // Doubleword shifts: counts >= 64 produce zero or sign fill.
+    s.gpr[1] = 0x8000000000000001ULL;
+    s.gpr[2] = 1;
+    check(execute(s, x_form(1, 3, 2, 27)) == StepResult::Executed, "SLD executes");
+    check(s.gpr[3] == 2, "SLD shifts left 64-bit value");
+    s.gpr[1] = 0x8000000000000001ULL;
+    s.gpr[2] = 1;
+    check(execute(s, x_form(1, 4, 2, 539)) == StepResult::Executed, "SRD executes");
+    check(s.gpr[4] == 0x4000000000000000ULL, "SRD shifts right logically");
+    s.gpr[1] = 0x8000000000000001ULL;
+    s.gpr[2] = 64;
+    check(execute(s, x_form(1, 5, 2, 27)) == StepResult::Executed, "SLD handles shift >= 64");
+    check(s.gpr[5] == 0, "SLD returns zero for shift >= 64");
+    s.gpr[1] = 0xFFFFFFFFFFFFFFF0ULL;
+    s.gpr[2] = 2;
+    s.xer &= ~xer_ca;
+    check(execute(s, x_form(1, 6, 2, 794)) == StepResult::Executed, "SRAD executes");
+    check(s.gpr[6] == 0xFFFFFFFFFFFFFFFCULL, "SRAD sign-fills shifted result");
+    check((s.xer & xer_ca) != 0, "SRAD sets CA when discarded negative bits contain ones");
+    s.gpr[1] = 0x7FFFFFFFFFFFFFF0ULL;
+    s.gpr[2] = 2;
+    s.xer |= xer_ca;
+    check(execute(s, x_form(1, 7, 2, 794)) == StepResult::Executed, "SRAD handles positive value");
+    check(s.gpr[7] == 0x1FFFFFFFFFFFFFFCULL && (s.xer & xer_ca) == 0,
+          "SRAD positive result clears CA");
+    s.gpr[1] = 0x8000000000000000ULL;
+    s.gpr[2] = 64;
+    check(execute(s, x_form(1, 8, 2, 794)) == StepResult::Executed, "SRAD handles shift >= 64");
+    check(s.gpr[8] == UINT64_MAX && (s.xer & xer_ca) == 0,
+          "SRAD saturates sign and only sets CA for discarded one bits");
+
     s.gpr[13] = 20;
     s.gpr[14] = 22;
     check(execute(s, x_form(15, 13, 14, 266)) == StepResult::Executed, "ADD executes");
