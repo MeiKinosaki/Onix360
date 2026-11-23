@@ -6,6 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include "wx360/xex/xex_normal_blocks.hpp"
 
 namespace wx360::xex {
 
@@ -99,6 +100,8 @@ struct FileFormatInfo {
     XexCompression compression{XexCompression::None};
     std::uint32_t image_size{};
     std::vector<BasicBlock> basic_blocks;
+    std::uint32_t normal_window_size{};
+    NormalBlockDescriptor first_normal_block{};
 };
 
 enum class FormatParseResult : std::uint8_t {
@@ -148,6 +151,16 @@ enum class FormatParseResult : std::uint8_t {
             parsed.basic_blocks.push_back(block);
         }
         if (total != parsed.image_size) return FormatParseResult::InvalidSizes;
+    } else if (parsed.compression == XexCompression::Normal) {
+        if (parsed.info_size < 0x24u) return FormatParseResult::InvalidSizes;
+        parsed.normal_window_size = read_be32(file, offset + 8u);
+        if (parsed.normal_window_size < 0x8000u ||
+            parsed.normal_window_size > 0x200000u ||
+            (parsed.normal_window_size & (parsed.normal_window_size - 1u)) != 0)
+            return FormatParseResult::InvalidSizes;
+        if (read_normal_block_descriptor(file, offset + 12u,
+                                         parsed.first_normal_block) != NormalBlockError::Ok)
+            return FormatParseResult::Truncated;
     } else if (parsed.info_size != 8) {
         return FormatParseResult::InvalidSizes;
     }
