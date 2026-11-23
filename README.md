@@ -2,9 +2,9 @@
 
 **Windows Xbox 360 Emulator** — emulador experimental do Xbox 360 para Windows x64, com foco em computadores modestos.
 
-> **Versão em desenvolvimento:** v0.4b. O projeto ainda não executa jogos comerciais.
+> **Versão em desenvolvimento:** v0.5b. O projeto ainda não executa jogos comerciais.
 >
-> **CI validada em 23/11/2026:** build Release e 25/25 testes aprovados no Windows e Linux. O pipeline gera um vetor LZX positivo com encoder independente e testa a descompressão. O ZIP portátil Windows foi publicado como artefato do GitHub Actions; isso é um pacote de CI, não uma release estável.
+> **CI validada em 23/11/2026:** build Release e 25/25 testes aprovados no Windows e Linux, incluindo o fluxo integrado sintético XEX Normal (unwrap da chave Devkit, AES-CBC, verificação SHA-1 do bloco e LZX). O ZIP portátil Windows foi publicado como artefato do GitHub Actions; isso é um pacote de CI, não uma release estável.
 
 ## Objetivos
 
@@ -144,7 +144,7 @@ O interpretador inicial contém suporte experimental para:
 - A rotina SHA-1 agora valida os digests dos blocos descritos pelos page descriptors contra uma imagem reconstruída, exigindo cobertura/tamanho consistentes; há teste sintético positivo e teste de corrupção. Isso ainda não valida a assinatura RSA nem todos os digests de cabeçalho/import table, e depende de uma imagem já descriptografada/descomprimida.
 - O optional header `0x000103FF` agora é identificado. O parser de import libraries lê a string table, registros por biblioteca, versões, contagens e lista de valores de thunk/índices, com limites de tamanho e validação de strings.
 - O parser da tabela de bibliotecas ainda não interpreta completamente os descriptors individuais de importação/ordinais nem aplica todos os imports aos thunks PE; o catálogo real de exports do xboxkrnl/xam também não existe.
-- AES-128-ECB/CBC, unwrap de session key e decoder Normal/LZX estão implementados. O fluxo integrado foi adicionado; seus novos testes de known-answer e a execução nas duas plataformas estão em validação. A aplicação a amostras XEX retail/devkit reais e a validação RSA continuam pendentes.
+- AES-128-ECB/CBC, unwrap de session key e decoder Normal/LZX estão implementados. O fluxo integrado passou em teste sintético end-to-end nas duas plataformas. A aplicação a amostras XEX retail/devkit reais e a validação RSA continuam pendentes.
 - O núcleo Xenon já possui handoff protegido e execução de uma instrução via `step()` em memória executável; isso é um teste de instrução sintética, não inicialização de um XEX comercial.
 
 ## Avanço incremental do leitor GOD/SVOD e XEX2
@@ -250,7 +250,8 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 | v0.1b | Estrutura e baseline Win32 x86 sem SSE2 |
 | v0.2b | Estado arquitetural Xenon |
 | v0.3b | Interpretador PowerPC inicial e testes |
-| v0.4b | Memória do sistema, MMU e exceções |
+| v0.4b | Memória do sistema e carregador XEX experimental |
+| v0.5b | Fluxo sintético XEX Normal: unwrap AES, CBC, SHA-1 de bloco e LZX integrados e aprovados em CI |
 | v0.5b | Fundamentos da GPU Xenos |
 | v0.6b | Áudio e subsistemas |
 | v0.7b | Carregador XEX |
