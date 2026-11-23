@@ -430,7 +430,7 @@ int main() {
     // Update forms write the effective address back to RA only after success.
     s.gpr[28] = 4;
     check(execute(s, d_form(33, 29, 28, 8), ram) == StepResult::Executed, "LWZU executes");
-    check(s.gpr[29] == 0 && s.gpr[28] == 12, "LWZU loads and updates RA");
+    check(s.gpr[29] == 0xAB000000U && s.gpr[28] == 12, "LWZU loads and updates RA");
     s.gpr[28] = 16;
     s.gpr[30] = 0xA1B2C3D4U;
     check(execute(s, d_form(37, 30, 28, 4), ram) == StepResult::Executed, "STWU executes");
