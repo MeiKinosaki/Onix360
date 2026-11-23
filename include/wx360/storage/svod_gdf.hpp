@@ -183,8 +183,6 @@ public:
         }
         const auto tree = read(package_header, fragment_directory);
         if (!tree) { error = tree.error; return false; }
-        const auto magic_offset = parsed.layout == SvodLayout::EnhancedGdf ? 0x2000ull :
-            (parsed.layout == SvodLayout::Xsf ? 0x12000ull : 0xD000ull);
         const auto read_bytes = [&](std::uint32_t first_block, std::uint32_t size,
                                     std::vector<std::uint8_t>& out) -> bool {
             if (size > 256u * 1024u * 1024u || size > maximum_total_bytes) return false;
@@ -223,12 +221,12 @@ public:
         if (ec) { error = StfsParseError::CannotOpen; return false; }
         std::uint64_t total = 0;
         for (const auto& entry : tree.entries) {
-            const auto target = destination / entry.relative_path;
-            if (entry.directory) {
-                std::filesystem::create_directories(target, ec);
-                if (ec) { error = StfsParseError::CannotOpen; return false; }
-                continue;
+            std::filesystem::path target;
+            if (!prepare_output_path(destination, entry.relative_path, entry.directory, target)) {
+                error = StfsParseError::InvalidDirectoryEntry;
+                return false;
             }
+            if (entry.directory) continue;
             if (entry.size > maximum_total_bytes - total) {
                 error = StfsParseError::InvalidDirectoryEntry; return false;
             }
@@ -245,6 +243,38 @@ public:
             if (!out) { error = StfsParseError::TruncatedHeader; return false; }
         }
         error = StfsParseError::None;
+        return true;
+    }
+
+    static bool prepare_output_path(const std::filesystem::path& root,
+                                    const std::filesystem::path& relative,
+                                    bool directory,
+                                    std::filesystem::path& target) {
+        if (relative.empty() || relative.is_absolute() || relative.has_root_name())
+            return false;
+        std::error_code ec;
+        target = root;
+        std::vector<std::filesystem::path> components;
+        for (const auto& component : relative) {
+            if (component.empty() || component == "." || component == "..")
+                return false;
+            components.push_back(component);
+        }
+        if (components.empty()) return false;
+        for (std::size_t i = 0; i < components.size(); ++i) {
+            target /= components[i];
+            ec.clear();
+            const auto status = std::filesystem::symlink_status(target, ec);
+            if (!ec && std::filesystem::is_symlink(status)) return false;
+            const bool final_component = i + 1 == components.size();
+            if (!final_component || directory) {
+                ec.clear();
+                std::filesystem::create_directories(target, ec);
+                if (ec || !std::filesystem::is_directory(target, ec) || ec) return false;
+            } else if (!ec && std::filesystem::is_directory(status)) {
+                return false;
+            }
+        }
         return true;
     }
 
