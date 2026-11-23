@@ -32,7 +32,7 @@ int main() {
     std::error_code ec;
     std::filesystem::remove(path, ec);
     if (!result || result.plan.entry_point != 0x82000000 ||
-        !result.plan.requires_pe_mapping || result.plan.kernel_imports_resolved) {
+        result.plan.pe_mapped || result.plan.kernel_imports_resolved) {
         std::cerr << "XEX launch plan inspection failed\n";
         return EXIT_FAILURE;
     }
