@@ -71,8 +71,8 @@ int main() {
     };
     expect(truncated, xex::LoadError::InvalidFileSize, "truncated file is rejected");
     expect(bad_magic, xex::LoadError::InvalidHeader, "invalid XEX2 magic is rejected");
-    expect(inconsistent, xex::LoadError::SecurityInfoInvalid,
-           "SecurityInfo/FileFormatInfo image-size mismatch is rejected");
+    expect(inconsistent, xex::LoadError::FileFormatInfoInvalid,
+           "undersized FileFormatInfo metadata is rejected");
     storage::GameFile forged{valid, "ISO"};
     check(storage::GameLibrary::open_xex(forged, output) == xex::LoadError::InvalidHeader,
           "non-XEX library entry cannot be passed as XEX");
