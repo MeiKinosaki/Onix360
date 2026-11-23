@@ -23,6 +23,7 @@ struct ContentEntry {
     std::string title_name;
     bool stfs_file_table_valid{};
     std::size_t stfs_file_count{};
+    std::filesystem::path default_xex_path;
 };
 
 class ContentLibrary {
@@ -56,6 +57,8 @@ public:
                     const bool has_data = std::filesystem::exists(path / "Data0000", data_error) && !data_error;
                     if (has_data) {
                         add_directory(path, ContentKind::GamesOnDemand, "GOD");
+                        // GOD Data000x chunks are not ordinary filesystems; do not
+                        // mistake their contents for extracted XEX files.
                         it.disable_recursion_pending();
                     }
                 } else if (folder == "000D0000") {
@@ -81,6 +84,14 @@ public:
                         if (table) {
                             entry.stfs_file_table_valid = true;
                             entry.stfs_file_count = table.entries.size();
+                            for (const auto& file : table.entries) {
+                                std::string name = file.name;
+                                std::transform(name.begin(), name.end(), name.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+                                if (!file.directory && name == "default.xex") {
+                                    entry.default_xex_path = path;
+                                    break;
+                                }
+                            }
                         }
                     }
                     entries.push_back(std::move(entry));
