@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -48,6 +49,19 @@ struct FullXexImage {
     Header header{};
     SecurityInfo security{};
     FileFormatInfo format{};
+};
+
+class XexImageLoader;
+
+// Constructible only by the production loader after metadata, page hashes,
+// transforms and PE mapping have succeeded. There are no caller-set success flags.
+class ValidatedXexImage {
+public:
+    [[nodiscard]] std::uint64_t entry_point() const noexcept { return mapped_entry_point_; }
+private:
+    explicit ValidatedXexImage(std::uint64_t entry) : mapped_entry_point_(entry) {}
+    std::uint64_t mapped_entry_point_{};
+    friend class XexImageLoader;
 };
 
 struct LoadResult {
@@ -109,6 +123,33 @@ public:
         const auto status = resolver.resolve(imports, guest_memory);
         plan.kernel_imports_resolved = status == kernel::ImportResolveError::None;
         return status;
+    }
+
+    // Strict first production path: accept only unencrypted/uncompressed XEX2
+    // images with no import-library directory, verify the complete page-hash
+    // chain, map PE sections, then mint the unforgeable launch token.
+    [[nodiscard]] static std::optional<ValidatedXexImage> load_uncompressed_validated(
+        const FullXexImage& image,
+        memory::PhysicalMemory& guest_memory,
+        std::uint64_t physical_base,
+        std::uint32_t guest_image_base) {
+        if (image.format.encryption != XexEncryption::None ||
+            image.format.compression != XexCompression::None ||
+            image.header.has_import_libraries ||
+            image.security.image_size != image.format.image_size ||
+            image.header.entry_point == 0)
+            return std::nullopt;
+        const auto offset = static_cast<std::size_t>(image.header.pe_data_offset);
+        const auto length = static_cast<std::size_t>(image.format.image_size);
+        if (offset > image.bytes.size() || length > image.bytes.size() - offset)
+            return std::nullopt;
+        const auto pe = std::span<const std::uint8_t>(image.bytes).subspan(offset, length);
+        if (verify_page_hashes(pe, image.security) != PageHashResult::Ok)
+            return std::nullopt;
+        const auto mapped = XexPeMapper::map(
+            pe, guest_memory, physical_base, guest_image_base, image.header.entry_point);
+        if (!mapped) return std::nullopt;
+        return ValidatedXexImage(mapped.mapped_entry);
     }
 
     // Safe end-to-end path for XEX images explicitly marked unencrypted and
