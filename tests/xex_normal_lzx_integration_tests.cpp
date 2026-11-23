@@ -88,14 +88,45 @@ int main() {
 
     SecurityInfo security{};
     security.image_size = format.image_size;
+    security.image_flags = kXexImagePageSize4Kb;
     security.encrypted_image_key = encrypted_session_key;
     format.encryption = XexEncryption::Normal;
+
+    // Build a complete reference page-descriptor chain for the independently
+    // decoded image. The final link is a fixed terminal digest; preceding links
+    // authenticate the following page and its exact serialized descriptor.
+    constexpr std::size_t page_size = 0x1000;
+    const std::size_t page_count = (expected.size() + page_size - 1) / page_size;
+    security.pages.resize(page_count);
+    crypto::Sha1Digest next_digest{};
+    next_digest.fill(0xA7);
+    for (std::size_t i = page_count; i-- > 0;) {
+        auto& descriptor = security.pages[i];
+        descriptor.page_count = 1;
+        descriptor.type = 1;
+        descriptor.raw = 0x11;
+        descriptor.digest = next_digest;
+        const auto begin = i * page_size;
+        const auto count = std::min(page_size, expected.size() - begin);
+        std::vector<std::uint8_t> authenticated(page_size, 0);
+        std::copy_n(reinterpret_cast<const std::uint8_t*>(expected.data()) + begin,
+                    count, authenticated.begin());
+        authenticated.insert(authenticated.end(), {
+            static_cast<std::uint8_t>(descriptor.raw >> 24),
+            static_cast<std::uint8_t>(descriptor.raw >> 16),
+            static_cast<std::uint8_t>(descriptor.raw >> 8),
+            static_cast<std::uint8_t>(descriptor.raw)});
+        authenticated.insert(authenticated.end(), descriptor.digest.begin(),
+                             descriptor.digest.end());
+        next_digest = crypto::sha1(authenticated);
+    }
+    security.section_digest = next_digest;
     output = {0x5A};
-    if (XexImageLoader::transform_normal_lzx_payload(
+    if (XexImageLoader::transform_normal_lzx_verified(
             security, crypto::XexKeySet::Retail, format,
             encrypted_normal_block, output) != NormalTransformError::Ok ||
         output != std::vector<std::uint8_t>(expected.begin(), expected.end())) {
-        std::cerr << "XEX Normal AES unwrap/decrypt/LZX end-to-end test failed\\n";
+        std::cerr << "XEX Normal AES/LZX/page-hash verified pipeline failed\\n";
         return EXIT_FAILURE;
     }
 
