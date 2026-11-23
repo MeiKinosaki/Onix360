@@ -65,13 +65,13 @@ O interpretador inicial contém suporte experimental para:
 - Lê o cabeçalho fixo `0x971A` e reconhece os magics `CON `, `LIVE` e `PIRS`.
 - Extrai tipo de conteúdo, versão dos metadados, tamanho declarado, Title ID, nomes de título/publicador, contagem/tamanho de arquivos de dados e campos básicos do descritor STFS.
 - Interpreta contagem de blocos LE16, índice de bloco LE24 e metadados gerais BE.
-- Rejeita magic desconhecido, cabeçalho truncado, tamanho declarado fora dos limites, descritor inválido, contagens inconsistentes e volume SVOD ainda não suportado.
+- Rejeita magic desconhecido, cabeçalho truncado, tamanho declarado fora dos limites, descritor inválido e contagens inconsistentes; agora lê também campos iniciais do descritor SVOD.
 - Testes sintéticos verificam extração básica, magic inválido e recusa segura de SVOD.
 - A enumeração da tabela de diretórios lê entradas de 0x40 bytes: nomes, flags, blocos válidos/alocados, bloco inicial, índice do diretório pai e tamanho.
-- O mapeamento de blocos e a cadeia da tabela usam os níveis de hash STFS (170 blocos por tabela L0) para pacotes read-only; formatos graváveis e SVOD são recusados nesta etapa.
+- O mapeamento de blocos e a cadeia da tabela usam os níveis de hash STFS (170 blocos por tabela L0) para pacotes read-only; formatos STFS graváveis continuam recusados.
 - A interface mostra a quantidade de entradas quando a tabela pode ser lida.
 - Testes sintéticos cobrem uma entrada `default.xex` e uma tabela encadeada de dois blocos.
-- **Limite:** não verifica RSA/assinaturas nem SHA-1, não reconstrói hierarquias de diretórios, não percorre ainda as cadeias de blocos de dados dos arquivos e não extrai conteúdo. Cabeçalho/tabela estruturalmente válidos não comprovam autenticidade ou integridade.
+- **Limite:** não verifica RSA/assinaturas nem SHA-1. Cabeçalho/tabela estruturalmente válidos não comprovam autenticidade ou integridade.
 
 ## Biblioteca Xbox 360 Content/GOD (identificação inicial)
 
@@ -80,7 +80,7 @@ O interpretador inicial contém suporte experimental para:
 - Reconhece candidatos a pacotes STFS pelas extensões `.con`, `.live` e `.pirs` e tenta analisar o cabeçalho; quando válido, a interface mostra Title ID e nome do título.
 - O modo portátil cria `roms/GOD` e `roms/Content/0000000000000000`; a tela Arquivos apresenta os itens detectados.
 - Testes dedicados cobrem cada tipo de pasta, as três extensões STFS e diretório inexistente.
-- **Limite importante:** isso é descoberta por nomes/caminhos, não valida a integridade nem analisa cabeçalhos, hashes, tabelas de arquivos ou assinaturas STFS. Não extrai pacotes, não descriptografa conteúdo protegido, não monta GOD e não carrega/ executa jogos. Os arquivos de teste são placeholders, não pacotes Xbox 360 válidos.
+- **Limite importante:** o scanner reconhece candidatos por nomes/caminhos; a montagem GOD agora é feita por uma camada SVOD/GDF separada e ainda experimental. Não há validação RSA/SHA-1 nem execução comercial comprovada. Os arquivos sintéticos de teste não substituem pacotes reais.
 
 ## Hierarquia STFS, extração recursiva e inspeção SVOD
 
@@ -88,7 +88,10 @@ O interpretador inicial contém suporte experimental para:
 - Extração recursiva inicial de arquivos e diretórios STFS, com limite global configurável (2 GiB por padrão) e limite individual já aplicado pelo leitor de blocos.
 - Descoberta ordenada de fragmentos `Data000x` em pastas GOD.
 - Leitura preliminar do descritor SVOD e inspeção dos marcadores Enhanced GDF, XSF e single-file.
-- **Limitações:** a inspeção SVOD não percorre ainda a árvore GDF nem monta os extents dos fragmentos; não é extração GOD completa. A validação de hashes SHA-1/RSA e o carregamento XEX permanecem pendentes. Extração STFS não deve ser considerada validada até os testes e CI serem executados.
+- A leitura GDF percorre a árvore binária de diretórios (nós esquerdo/direito), subdiretórios e nomes, com limites de profundidade e quantidade de entradas.
+- O mapeamento SVOD considera blocos de 0x800 bytes, tabelas L0/L1, fragmentos de 0x14388 blocos e a transição para o próximo fragmento.
+- A extração GOD reconstrói arquivos e pastas, com limites de tamanho e rejeição de traversal e symlinks nos caminhos de saída.
+- **Limitações:** layouts incomuns ainda podem ser recusados; a leitura de nomes que atravessem limites físicos de bloco precisa de validação adicional. Não verifica hashes SHA-1/RSA e não substitui testes com pacotes GOD reais.
 
 ## Leitura de dados e extração STFS (etapa inicial)
 
@@ -96,7 +99,19 @@ O interpretador inicial contém suporte experimental para:
 - Extração individual para uma pasta de destino, com rejeição de nomes contendo separadores de caminho, dois-pontos, `.` e `..`; limite conservador de 256 MiB por arquivo.
 - Helper para localizar `default.xex` na tabela raiz de um pacote STFS e extraí-lo para uma pasta escolhida.
 - Helper de descoberta de `default.xex` em uma pasta GOD previamente extraída.
-- **Limitações:** não há reconstrução completa da hierarquia de diretórios, validação SHA-1/RSA, suporte SVOD/GOD Data000x, extração recursiva integral, nem carregamento XEX em memória. O helper GOD não interpreta os chunks Data000x; somente procura um XEX já extraído.
+- **Limitações:** não há validação SHA-1/RSA; a extração STFS continua sujeita à validação com pacotes reais. O leitor SVOD/GDF é experimental e não autentica fragmentos.
+
+## Leitor GDF/SVOD e integração inicial XEX → Xenon
+
+- O descritor SVOD é interpretado com o bit Enhanced GDF e o número/bloco inicial de dados; para pacotes fragmentados, o leitor mapeia os arquivos ordenados em `.data` conforme `data_file_count`.
+- Reconhece os layouts Enhanced GDF, XSF e single-file pelos marcadores `MICROSOFT*XBOX*MEDIA` e `XSF`.
+- Percorre a árvore GDF com nós esquerdo/direito, diretórios filhos e nomes de arquivo; limita profundidade e quantidade de entradas.
+- Mapeia blocos de 0x800 bytes com tabelas de hash L0/L1, fragmentos e rollover; reconstrói diretórios e extrai arquivos GOD.
+- `ContentLoader` oferece extração GOD/SVOD e procura `default.xex` após a extração.
+- `XexImageLoader` inspeciona o cabeçalho XEX2 usando tamanho real do arquivo e gera um plano de carregamento com entry point virtual.
+- `XenonCore::start_xex` só transfere o PC para um entry point físico depois que o plano indicar descriptografia, descompressão, mapeamento PE e importações do kernel concluídos, e a RAM permitir fetch executável.
+- Testes sintéticos adicionados para GDF single-file, extração, inspeção XEX e handoff protegido ao núcleo Xenon.
+- **Limitações críticas:** ainda não implementa descriptografia/descompressão XEX, interpretação de security info, mapeamento PE real, relocations, imports do kernel nem autenticação SHA-1/RSA. Portanto, o plano XEX ainda não é produzido como pronto para execução e jogos comerciais não estão executáveis. A leitura de fragmentos reais e layouts complexos requer validação adicional.
 
 ## Biblioteca portátil ISO/XEX
 
@@ -145,6 +160,8 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 - [x] Interpretador PowerPC inicial e testes unitários.
 - [x] B/BC, ADDIC/ADDIC., ADDE/ADDME/SUBFE/SUBFME/ADDZE/SUBFZE (código e testes adicionados), acessos de byte/palavra/meia-palavra (LBZ/LWZ/LHZ/LHA e STB/STW/STH), formas update e testes de buffer big-endian adicionados.
 - [ ] Validação final do CI para o commit mais recente em Windows e Linux; geração e inspeção do ZIP portátil.
+- [x] Leitura inicial de árvore GDF/SVOD, mapeamento de fragmentos e extração experimental GOD (testes sintéticos adicionados; execução do CI ainda pendente).
+- [x] Plano XEX2 e handoff protegido para o núcleo Xenon após mapeamento (não inclui ainda o mapeador PE/decrypt/decompress/imports).
 - [ ] Cobertura mais ampla da ISA Xenon, branches, exceções e semântica de overflow/carry.
 - [x] Leitor ISO inicial: validação do descritor XDVDFS e leitura sob demanda de setores (testes adicionados; aguardando CI).
 - [x] Parser experimental da árvore XDVDFS da raiz e busca de `default.xex` (testes enviados ao CI).
