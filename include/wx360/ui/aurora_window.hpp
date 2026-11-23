@@ -10,6 +10,8 @@
 #include "wx360/storage/data_directories.hpp"
 #include "wx360/storage/game_library.hpp"
 #include "wx360/storage/content_library.hpp"
+#include "wx360/state/state_slots.hpp"
+#include <array>
 namespace wx360::ui {
 struct Tile { std::wstring title; std::wstring detail; };
 class AuroraWindow {
@@ -19,6 +21,8 @@ public:
   if(rom_root_.empty()) rom_root_=storage::DataDirectories::default_root()/"roms";
   games_=storage::GameLibrary::scan(rom_root_);
   content_entries_=storage::ContentLibrary::scan(rom_root_);
+  state_slots_=state::StateSlots(rom_root_.parent_path()/"saves"/"states");
+  refresh_slots();
   WNDCLASSW wc{};wc.lpfnWndProc=window_proc;wc.hInstance=instance;wc.lpszClassName=L"WX360AuroraWindow";
   wc.hCursor=LoadCursorW(nullptr,MAKEINTRESOURCEW(32512));wc.hbrBackground=nullptr;
   RegisterClassW(&wc);instance_=instance;
@@ -32,7 +36,7 @@ private:
   AuroraWindow* self=reinterpret_cast<AuroraWindow*>(GetWindowLongPtrW(h,GWLP_USERDATA));
   if(m==WM_NCCREATE){auto* cs=reinterpret_cast<CREATESTRUCTW*>(l);self=static_cast<AuroraWindow*>(cs->lpCreateParams);SetWindowLongPtrW(h,GWLP_USERDATA,reinterpret_cast<LONG_PTR>(self));}
   if(!self)return DefWindowProcW(h,m,w,l);
-  switch(m){case WM_PAINT:self->paint(h);return 0;case WM_ERASEBKGND:return 1;case WM_DESTROY:PostQuitMessage(0);return 0;case WM_KEYDOWN:if(w==VK_ESCAPE)DestroyWindow(h);else if(w==VK_DOWN||w==VK_RIGHT){self->selected_nav_=(self->selected_nav_+1)%5;InvalidateRect(h,nullptr,FALSE);}else if(w==VK_UP||w==VK_LEFT){self->selected_nav_=(self->selected_nav_+4)%5;InvalidateRect(h,nullptr,FALSE);}return 0;case WM_LBUTTONDOWN:{int y=static_cast<short>(HIWORD(l));if(y>=105&&y<345){int index=(y-105)/48;if(index>=0&&index<5){self->selected_nav_=index;InvalidateRect(h,nullptr,FALSE);}}return 0;}}
+  switch(m){case WM_PAINT:self->paint(h);return 0;case WM_ERASEBKGND:return 1;case WM_DESTROY:PostQuitMessage(0);return 0;case WM_KEYDOWN:if(w==VK_ESCAPE)DestroyWindow(h);else if(w==VK_DOWN||w==VK_RIGHT){self->selected_nav_=(self->selected_nav_+1)%5;InvalidateRect(h,nullptr,FALSE);}else if(w==VK_UP||w==VK_LEFT){self->selected_nav_=(self->selected_nav_+4)%5;InvalidateRect(h,nullptr,FALSE);}else if(w==VK_DELETE&&self->selected_nav_==3&&self->selected_slot_>=0){std::string error;if(self->state_slots_.erase(static_cast<unsigned>(self->selected_slot_),&error)){self->slot_message_=L"Slot apagado.";self->refresh_slots();}else self->slot_message_=std::wstring(error.begin(),error.end());InvalidateRect(h,nullptr,FALSE);}return 0;case WM_LBUTTONDOWN:{int x=static_cast<short>(LOWORD(l)),y=static_cast<short>(HIWORD(l));if(y>=105&&y<345){int index=(y-105)/48;if(index>=0&&index<5){self->selected_nav_=index;InvalidateRect(h,nullptr,FALSE);}}else if(self->selected_nav_==3){for(int i=0;i<10;++i){int col=i%5,row=i/5,sx=250+col*170,sy=300+row*105;if(x>=sx&&x<sx+150&&y>=sy&&y<sy+78){self->selected_slot_=i;self->slot_message_=L"Slot selecionado. Use Delete para apagar.";InvalidateRect(h,nullptr,FALSE);break;}}}return 0;}}
   return DefWindowProcW(h,m,w,l);
  }
  void draw_text(HDC dc,int x,int y,const wchar_t* value,COLORREF color) {
