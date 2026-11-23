@@ -82,6 +82,14 @@ O interpretador inicial contém suporte experimental para:
 - Testes dedicados cobrem cada tipo de pasta, as três extensões STFS e diretório inexistente.
 - **Limite importante:** isso é descoberta por nomes/caminhos, não valida a integridade nem analisa cabeçalhos, hashes, tabelas de arquivos ou assinaturas STFS. Não extrai pacotes, não descriptografa conteúdo protegido, não monta GOD e não carrega/ executa jogos. Os arquivos de teste são placeholders, não pacotes Xbox 360 válidos.
 
+## Leitura de dados e extração STFS (etapa inicial)
+
+- Leitor de arquivos STFS que segue cadeias de blocos de dados para arquivos marcados como contíguos ou encadeados, respeitando os limites de tamanho declarados e o tamanho real do pacote.
+- Extração individual para uma pasta de destino, com rejeição de nomes contendo separadores de caminho, dois-pontos, `.` e `..`; limite conservador de 256 MiB por arquivo.
+- Helper para localizar `default.xex` na tabela raiz de um pacote STFS e extraí-lo para uma pasta escolhida.
+- Helper de descoberta de `default.xex` em uma pasta GOD previamente extraída.
+- **Limitações:** não há reconstrução completa da hierarquia de diretórios, validação SHA-1/RSA, suporte SVOD/GOD Data000x, extração recursiva integral, nem carregamento XEX em memória. O helper GOD não interpreta os chunks Data000x; somente procura um XEX já extraído.
+
 ## Biblioteca portátil ISO/XEX
 
 - O scanner percorre recursivamente `WX360-data/roms` e identifica extensões `.iso` e `.xex` sem diferenciar maiúsculas/minúsculas.
@@ -139,7 +147,7 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 - [x] Dashboard Win32 inspirado no Aurora com telas distintas e seleção de menu por teclado/mouse.
 - [x] Scanner inicial de diretórios GOD/XBLA/DLC/Title Update e candidatos a pacotes STFS por extensão (identificação de caminho, sem validação interna).
 - [x] Parser inicial do cabeçalho/descritor STFS, metadados básicos e rejeição de SVOD não suportado (testes sintéticos adicionados; CI ainda não validado).
-- [ ] Verificação RSA/assinaturas e SHA-1, parser da árvore STFS, leitura de cadeias de blocos e extração/montagem de pacotes; integração segura de GOD/XBLA/DLC/TU ao carregador.
+- [x] Leitura inicial das cadeias de blocos STFS e extração segura de arquivo individual (testes adicionados; execução ainda não confirmada).\n- [ ] Verificação RSA/assinaturas e SHA-1, reconstrução da hierarquia STFS, extração recursiva, suporte SVOD/Data000x e integração completa de GOD/XBLA/DLC/TU ao carregador.
 - [ ] Conectar a biblioteca a jogos indexados e capas reais; ligar importação ISO/XEX/GOD e gerenciamento dos save states; adicionar busca, filtros e controle Xbox 360.
 - [ ] Integração dos slots com pausa/retomada do loop de emulação e interface gráfica.
 - [ ] Snapshot completo do sistema: GPU, áudio, dispositivos, timers, kernel e estado de todos os threads.
