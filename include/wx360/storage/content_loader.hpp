@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wx360/storage/stfs_package.hpp"
+#include "wx360/storage/stfs_tree.hpp"
 #include "wx360/xex/xex_header.hpp"
 
 #include <algorithm>
@@ -36,6 +37,40 @@ public:
             it.increment(ec);
         }
         return std::nullopt;
+    }
+
+    [[nodiscard]] static bool extract_stfs_package(
+        const std::filesystem::path& package,
+        const std::filesystem::path& destination,
+        StfsParseError& error,
+        std::uint64_t maximum_total_bytes = 2ull * 1024ull * 1024ull * 1024ull) {
+        const auto parsed = StfsPackageParser::parse(package);
+        if (!parsed) { error = parsed.error; return false; }
+        if (parsed.header.volume_type != StfsVolumeType::Stfs) {
+            error = StfsParseError::UnsupportedSvodLayout;
+            return false;
+        }
+        const auto table = StfsPackageParser::read_file_table(package, parsed.header);
+        if (!table) { error = table.error; return false; }
+        return StfsExtractor::extract_all(package, parsed.header, table.entries,
+                                          destination, error, maximum_total_bytes);
+    }
+
+    [[nodiscard]] static std::vector<std::filesystem::path>
+    find_god_data_chunks(const std::filesystem::path& god_root) {
+        std::vector<std::filesystem::path> chunks;
+        std::error_code ec;
+        if (!std::filesystem::is_directory(god_root, ec) || ec) return chunks;
+        for (std::filesystem::directory_iterator it(god_root, ec), end;
+             it != end && !ec; it.increment(ec)) {
+            if (!it->is_regular_file(ec) || ec) { ec.clear(); continue; }
+            const auto name = it->path().filename().string();
+            if (name.size() >= 8 && name.compare(0, 4, "Data") == 0 &&
+                name.substr(4).find_first_not_of("0123456789") == std::string::npos)
+                chunks.push_back(it->path());
+        }
+        std::sort(chunks.begin(), chunks.end());
+        return chunks;
     }
 
     [[nodiscard]] static bool extract_default_xex_from_stfs(
