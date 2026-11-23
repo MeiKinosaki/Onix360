@@ -1,4 +1,5 @@
 #include "wx360/storage/stfs_package.hpp"
+#include "wx360/storage/content_loader.hpp"
 
 #include <array>
 #include <cstdlib>
@@ -108,6 +109,35 @@ int main() {
        chained_table.entries[1].name!="second.bin") {
         std::cerr<<"STFS file table block chain was not followed\\n";++failures;
     }
+
+    // Read an individual file through its contiguous data-block mapping.
+    wx360::storage::StfsParseError read_error{};
+    const auto extracted_bytes = wx360::storage::StfsPackageParser::read_file(
+        path, chained_header.header, chained_table.entries[1], read_error);
+    if (read_error != wx360::storage::StfsParseError::None ||
+        std::string(extracted_bytes.begin(), extracted_bytes.end()) != "second.bin") {
+        std::cerr << "STFS file data block was not read correctly\\n"; ++failures;
+    }
+    const auto extract_dir = std::filesystem::temp_directory_path() / "wx360_stfs_extract_test";
+    std::error_code extract_ec;
+    std::filesystem::remove_all(extract_dir, extract_ec);
+    if (!wx360::storage::StfsPackageParser::extract_file(
+            path, chained_header.header, chained_table.entries[1], extract_dir, read_error)) {
+        std::cerr << "Safe STFS single-file extraction failed\\n"; ++failures;
+    } else {
+        std::ifstream extracted(extract_dir / "second.bin", std::ios::binary);
+        std::string extracted_text((std::istreambuf_iterator<char>(extracted)), {});
+        if (extracted_text != "second.bin") {
+            std::cerr << "Extracted STFS file contents mismatch\\n"; ++failures;
+        }
+    }
+    auto unsafe_entry = chained_table.entries[1];
+    unsafe_entry.name = "../escape.bin";
+    if (wx360::storage::StfsPackageParser::extract_file(
+            path, chained_header.header, unsafe_entry, extract_dir, read_error)) {
+        std::cerr << "STFS path traversal was not rejected\\n"; ++failures;
+    }
+    std::filesystem::remove_all(extract_dir, extract_ec);
 
     bytes[0]='X';
     {
