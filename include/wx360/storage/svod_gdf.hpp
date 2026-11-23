@@ -253,6 +253,9 @@ public:
         if (relative.empty() || relative.is_absolute() || relative.has_root_name())
             return false;
         std::error_code ec;
+        const auto root_status = std::filesystem::symlink_status(root, ec);
+        if (!ec && std::filesystem::is_symlink(root_status)) return false;
+        ec.clear();
         target = root;
         std::vector<std::filesystem::path> components;
         for (const auto& component : relative) {
