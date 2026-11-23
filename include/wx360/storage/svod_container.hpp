@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <map>
+#include <cctype>
 #include <string>
 #include <vector>
 
@@ -51,15 +53,28 @@ public:
                 result.error = StfsParseError::UnsupportedSvodLayout;
                 return result;
             }
+            std::map<std::uint32_t, std::filesystem::path> ordered;
             for (std::filesystem::directory_iterator it(data_dir, ec), end;
                  it != end && !ec; it.increment(ec)) {
-                if (it->is_regular_file(ec) && !ec) result.fragments.push_back(it->path());
-                ec.clear();
+                if (!it->is_regular_file(ec) || ec) { ec.clear(); continue; }
+                std::uint32_t index = 0;
+                if (!parse_fragment_name(it->path().filename().string(), index) ||
+                    !ordered.emplace(index, it->path()).second) {
+                    result.error = StfsParseError::UnsupportedSvodLayout;
+                    return result;
+                }
             }
-            std::sort(result.fragments.begin(), result.fragments.end());
-            if (result.fragments.size() != parsed.header.data_file_count) {
+            if (ec || ordered.size() != parsed.header.data_file_count) {
                 result.error = StfsParseError::UnsupportedSvodLayout;
                 return result;
+            }
+            for (std::uint32_t index = 0; index < parsed.header.data_file_count; ++index) {
+                const auto found = ordered.find(index);
+                if (found == ordered.end()) {
+                    result.error = StfsParseError::UnsupportedSvodLayout;
+                    return result;
+                }
+                result.fragments.push_back(found->second);
             }
         } else {
             result.fragments.push_back(header_path);
