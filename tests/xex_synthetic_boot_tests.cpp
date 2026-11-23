@@ -67,7 +67,16 @@ int main() {
         if (!out) return EXIT_FAILURE;
     }
     const auto inspected = xex::XexImageLoader::inspect(path);
+    xex::FullXexImage complete_image{};
+    const auto complete_read = xex::XexImageLoader::read_complete(path, complete_image);
     std::error_code ec; std::filesystem::remove(path, ec);
+    if (complete_read != xex::LoadError::None ||
+        complete_image.bytes.size() != xex_bytes.size() ||
+        complete_image.security.image_size != pe.size() ||
+        complete_image.format.compression != xex::XexCompression::None) {
+        std::cerr << "Complete synthetic XEX2 read/SecurityInfo parse failed\\n";
+        return EXIT_FAILURE;
+    }
     if (!inspected || inspected.plan.entry_point != 0x82001000) {
         std::cerr << "Synthetic XEX2 header inspection failed\n"; return EXIT_FAILURE;
     }
