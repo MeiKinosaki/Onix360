@@ -34,7 +34,8 @@ public:
         const std::filesystem::path& fragment_directory = {}) {
         const auto parsed = StfsPackageParser::parse(header_path);
         if (!parsed) return {parsed.error};
-        if (parsed.header.volume_type != StfsVolumeType::Svod)
+        if (parsed.header.volume_type != StfsVolumeType::Svod ||
+            parsed.header.data_file_count == 0)
             return {StfsParseError::InvalidSvodDescriptor};
         SvodInspection result;
         result.declared_fragment_count = parsed.header.data_file_count;
