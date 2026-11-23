@@ -152,6 +152,34 @@ public:
         return ValidatedXexImage(mapped.mapped_entry);
     }
 
+    // Full Normal/LZX production path. It refuses missing keys, invalid
+    // block SHA-1, invalid page-descriptor chain, malformed LZX and PE mapping.
+    [[nodiscard]] static std::optional<ValidatedXexImage> load_normal_lzx_validated(
+        const FullXexImage& image,
+        crypto::XexKeySet key_set,
+        memory::PhysicalMemory& guest_memory,
+        std::uint64_t physical_base,
+        std::uint32_t guest_image_base) {
+        if (image.format.compression != XexCompression::Normal ||
+            image.header.has_import_libraries ||
+            image.security.image_size != image.format.image_size ||
+            image.header.entry_point == 0)
+            return std::nullopt;
+        const auto offset = static_cast<std::size_t>(image.header.pe_data_offset);
+        if (offset > image.bytes.size()) return std::nullopt;
+        std::vector<std::uint8_t> transformed;
+        const auto payload = std::span<const std::uint8_t>(image.bytes).subspan(offset);
+        if (transform_normal_lzx_verified(
+                image.security, key_set, image.format, payload, transformed) !=
+            NormalTransformError::Ok)
+            return std::nullopt;
+        const auto mapped = XexPeMapper::map(
+            transformed, guest_memory, physical_base, guest_image_base,
+            image.header.entry_point);
+        if (!mapped) return std::nullopt;
+        return ValidatedXexImage(mapped.mapped_entry);
+    }
+
     // Safe end-to-end path for XEX images explicitly marked unencrypted and
     // uncompressed. The loader derives completion from parsed metadata rather
     // than accepting caller-supplied success flags. This does not authenticate
