@@ -73,8 +73,8 @@ int main(){
     parsed.section_digest[0] ^= 1;
     parsed.pages[0].raw = 0x31;
     if (wx360::xex::verify_page_hashes(page_image, parsed) !=
-        wx360::xex::PageHashResult::DigestMismatch) {
-        std::cerr << "Corrupted XEX page descriptor was not rejected\\n"; return EXIT_FAILURE;
+        wx360::xex::PageHashResult::DescriptorOverflow) {
+        std::cerr << "Inconsistent XEX page descriptor was not rejected\\n"; return EXIT_FAILURE;
     }
 
     // Two-descriptor chain: the first descriptor digest authenticates the
