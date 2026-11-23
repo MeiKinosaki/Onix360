@@ -25,6 +25,12 @@ enum class AesResult : std::uint8_t { Ok, InvalidLength };
     output=std::move(decoded); return AesResult::Ok;
 }
 
+enum class XexKeySet : std::uint8_t { Retail, Devkit };
+[[nodiscard]] inline Aes128Key xex_master_key(XexKeySet set) noexcept {
+    if (set == XexKeySet::Retail) return {0x20,0xB1,0x85,0xA5,0x9D,0x28,0xFD,0xC3,0x40,0x58,0x3F,0xBB,0x08,0x96,0xBF,0x91};
+    return {};
+}
+
 // XEX stores the session key encrypted under a console-family master key.
 // This routine only unwraps the 16-byte field; callers must select the
 // correct retail/devkit key and validate the resulting image separately.
@@ -33,5 +39,9 @@ enum class AesResult : std::uint8_t { Ok, InvalidLength };
     auto result=encrypted_session_key;
     aes128_ecb_decrypt_block(master_key,std::span<std::uint8_t,16>(result));
     return result;
+}
+[[nodiscard]] inline Aes128Key unwrap_xex_session_key(
+    XexKeySet set, const Aes128Key& encrypted_session_key) {
+    return unwrap_xex_session_key(xex_master_key(set), encrypted_session_key);
 }
 } // namespace wx360::crypto
