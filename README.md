@@ -113,6 +113,17 @@ O interpretador inicial contém suporte experimental para:
 - Testes sintéticos adicionados para GDF single-file, extração, inspeção XEX e handoff protegido ao núcleo Xenon.
 - **Limitações críticas:** ainda não implementa descriptografia/descompressão XEX, interpretação de security info, mapeamento PE real, relocations, imports do kernel nem autenticação SHA-1/RSA. Portanto, o plano XEX ainda não é produzido como pronto para execução e jogos comerciais não estão executáveis. A leitura de fragmentos reais e layouts complexos requer validação adicional.
 
+## XEX2 Normal — enquadramento e IV
+
+- Referência de implementação Xenia consultada: o payload XEX2 Normal é descriptografado com AES-CBC usando chaining value inicial de 16 bytes zerados. Foi adicionada a API `aes128_xex_cbc_decrypt` e o XEX loader agora oferece uma entrada que usa esse IV, sem exigir que o chamador o adivinhe.
+- O cabeçalho de formato agora lê `window_size` e o primeiro descritor de bloco Normal.
+- Foi adicionado parser limitado dos blocos Normal: verifica SHA-1 do bloco, lê o descritor seguinte embutido e remonta chunks com prefixos de tamanho big-endian e terminador zero. Há um teste sintético de reconstrução e rejeição de bloco adulterado.
+- **Isso ainda não é descompressão LZX.** Os chunks remontados precisam passar pelo decoder LZX compatível com a janela XEX; essa integração não foi incluída nesta etapa.
+- Nenhum XEX comercial/retail/devkit real foi fornecido ou descriptografado. A chave de sessão e a cadeia AES ainda só têm vetores de teste AES genéricos, não um caso XEX ponta a ponta.
+- A validação SHA-1 das páginas continua disponível após reconstrução, mas ainda não foi integrada ao pipeline de transformação normal de ponta a ponta.
+- A resolução de ordinais/thunks ainda não interpreta o fluxo de registros import_table do executável, e não há catálogo real completo de exports xboxkrnl/xam. Não inventar endereços de kernel.
+- Primeiro boot XEX ainda pendente; o núcleo Xenon só inicia quando o LaunchPlan tem transformação, PE mapping e imports marcados como completos.
+
 ## AES-128 XEX — integração parcial
 
 - Adicionada implementação AES-128 portátil tiny-AES-C (material em domínio público, com cópia de UNLICENSE em `third_party/tiny_aes`).
