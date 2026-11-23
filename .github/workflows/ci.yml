@@ -25,7 +25,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist/WX360/WX360-data/roms, dist/WX360/WX360-data/covers, dist/WX360/WX360-data/saves | Out-Null
+          New-Item -ItemType Directory -Force -Path dist/WX360/WX360-data/roms, dist/WX360/WX360-data/covers, dist/WX360/WX360-data/saves, dist/WX360/WX360-data/configs | Out-Null
           Copy-Item build/Release/WX360.exe dist/WX360/WX360.exe
           Copy-Item README.md dist/WX360/README.txt
           Compress-Archive -Path dist/WX360 -DestinationPath dist/WX360-Windows-x64-Portable.zip -Force
