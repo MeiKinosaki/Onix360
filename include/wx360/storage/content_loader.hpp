@@ -58,19 +58,6 @@ public:
         return false;
     }
 
-    [[nodiscard]] static bool validate_xex2_file(
-        const std::filesystem::path& path, xex::Header& header) {
-        std::ifstream file(path, std::ios::binary);
-        if (!file) return false;
-        std::array<std::uint8_t, 0x10000> bytes{};
-        file.read(reinterpret_cast<char*>(bytes.data()),
-                  static_cast<std::streamsize>(bytes.size()));
-        const auto count = file.gcount();
-        if (count < 24) return false;
-        return xex::parse_header(
-            std::span<const std::uint8_t>(bytes.data(), static_cast<std::size_t>(count)),
-            header) == xex::ParseResult::Ok;
-    }
 };
 
 } // namespace wx360::storage
