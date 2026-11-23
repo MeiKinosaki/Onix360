@@ -89,6 +89,8 @@ private:
       label+=L" | Title ID: "+std::to_wstring(entry.title_id);
       if(!entry.title_name.empty())
        label+=L" | "+std::wstring(entry.title_name.begin(),entry.title_name.end());
+      if(entry.stfs_file_table_valid)
+       label+=L" | "+std::to_wstring(entry.stfs_file_count)+L" arquivos";
      }
      draw_text(dc,252,280+i*34,label.c_str(),RGB(220,232,245));
     }
