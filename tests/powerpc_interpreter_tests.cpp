@@ -79,6 +79,20 @@ int main() {
     check(execute(s, x_form(8, 12, 9, 28)) == StepResult::Executed, "AND executes");
     check(s.gpr[12] == 0xC0, "AND computes bitwise result");
 
+    // CNTLZW counts leading zeroes in the low 32 bits and supports Rc.
+    s.gpr[8] = 0x0000000000000001ULL;
+    check(execute(s, x_form(8, 9, 0, 26)) == StepResult::Executed, "CNTLZW executes");
+    check(s.gpr[9] == 31, "CNTLZW counts 31 leading zeroes");
+    s.gpr[8] = 0x0000000080000000ULL;
+    check(execute(s, x_form(8, 10, 0, 26)) == StepResult::Executed, "CNTLZW handles top bit set");
+    check(s.gpr[10] == 0, "CNTLZW returns zero when bit 31 is set");
+    s.gpr[8] = 0;
+    s.xer = (std::uint64_t{1} << 31U);
+    check(execute(s, x_form(8, 11, 0, 26, true)) == StepResult::Executed,
+          "CNTLZW. executes with record bit set");
+    check(s.gpr[11] == 32 && s.condition_field(0) == 0x5,
+          "CNTLZW. records positive result and preserves XER[SO]");
+
     // Word shifts operate on the low 32 bits and zero/sign extend appropriately.
     s.gpr[1] = 0x0000000080000001ULL;
     s.gpr[2] = 1;
