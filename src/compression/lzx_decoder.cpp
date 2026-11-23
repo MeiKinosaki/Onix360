@@ -81,7 +81,8 @@ LzxError decode_lzx(std::span<const std::uint8_t> input,
                     std::size_t output_size,
                     std::vector<std::uint8_t>& output) {
     if (window_bits < 15 || window_bits > 21) return LzxError::InvalidWindow;
-    if (output_size == 0 || output_size > static_cast<std::size_t>(
+    if (reset_interval > static_cast<unsigned>(std::numeric_limits<int>::max()) ||
+        output_size == 0 || output_size > static_cast<std::size_t>(
             std::numeric_limits<off_t>::max())) return LzxError::InvalidOutputSize;
 
     MemorySystem system{};
@@ -101,7 +102,13 @@ LzxError decode_lzx(std::span<const std::uint8_t> input,
     source.input = input;
     MemoryFile destination{};
     std::vector<std::uint8_t> decoded;
-    decoded.reserve(output_size);
+    try {
+        decoded.reserve(output_size);
+    } catch (const std::bad_alloc&) {
+        return LzxError::DecoderInitFailed;
+    } catch (const std::length_error&) {
+        return LzxError::InvalidOutputSize;
+    }
     destination.output = &decoded;
     destination.output_limit = output_size;
 
