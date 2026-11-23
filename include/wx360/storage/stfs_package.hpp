@@ -28,6 +28,9 @@ struct StfsPackageHeader {
     std::uint32_t allocated_block_count{};
     std::uint32_t unallocated_block_count{};
     std::uint32_t data_file_count{};
+    std::uint32_t svod_data_block_count{};
+    std::uint32_t svod_start_data_block{};
+    std::uint8_t svod_device_features{};
     std::uint64_t data_file_size{};
     std::uint8_t volume_flags{};
     bool read_only_format{};
@@ -47,7 +50,10 @@ enum class StfsParseError {
     TruncatedHeader,
     InvalidFileTableChain,
     UnsupportedWritableStfsLayout,
-    InvalidDirectoryEntry
+    InvalidDirectoryEntry,
+    InvalidDirectoryHierarchy,
+    UnsupportedSvodLayout,
+    InvalidSvodDescriptor
 };
 
 struct StfsFileEntry {
@@ -126,8 +132,14 @@ public:
         // The 0x24-byte STFS descriptor has LE16/LE24 block fields.
         // SVOD has a different descriptor layout and is deliberately not
         // interpreted by this STFS-only parser.
-        if (header.volume_type == StfsVolumeType::Svod)
-            return {StfsParseError::UnsupportedVolumeType, {}};
+        if (header.volume_type == StfsVolumeType::Svod) {
+            header.svod_device_features = volume[0x18];
+            header.svod_data_block_count = le24(volume + 0x19);
+            header.svod_start_data_block = le24(volume + 0x1C);
+            if (header.svod_data_block_count == 0)
+                return {StfsParseError::InvalidSvodDescriptor, {}};
+            return {StfsParseError::None, std::move(header)};
+        }
 
         if (volume[0] != 0x24)
             return {StfsParseError::InvalidVolumeDescriptor, {}};
@@ -327,7 +339,7 @@ public:
                     file.seekg(static_cast<std::streamoff>(hash_offset), std::ios::beg);
                     file.read(reinterpret_cast<char*>(link.data()), 4);
                     if (!file) { error = StfsParseError::TruncatedHeader; return {}; }
-                    current = be32(link.data()) & 0x00FFFFFFu;
+                    current = le32(link.data()) & 0x00FFFFFFu;
                     if (current == 0x00FFFFFFu) {
                         error = StfsParseError::InvalidFileTableChain; return {};
                     }
@@ -372,6 +384,9 @@ private:
         return static_cast<std::uint32_t>(p[0]) |
                (static_cast<std::uint32_t>(p[1]) << 8) |
                (static_cast<std::uint32_t>(p[2]) << 16);
+    }
+    static std::uint32_t le32(const std::uint8_t* p) {
+        return static_cast<std::uint32_t>(p[0]) | (static_cast<std::uint32_t>(p[1]) << 8) | (static_cast<std::uint32_t>(p[2]) << 16) | (static_cast<std::uint32_t>(p[3]) << 24);
     }
     static std::uint32_t be32(const std::uint8_t* p) {
         return (static_cast<std::uint32_t>(p[0]) << 24) |
