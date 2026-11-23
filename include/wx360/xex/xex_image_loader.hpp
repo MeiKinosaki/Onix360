@@ -93,6 +93,16 @@ public:
             session_key, cbc_iv, encrypted_payload, decrypted_payload);
     }
 
+    [[nodiscard]] static crypto::AesResult decrypt_xex_normal_payload(
+        const SecurityInfo& security, crypto::XexKeySet key_set,
+        std::span<const std::uint8_t> encrypted_payload,
+        std::vector<std::uint8_t>& decrypted_payload) {
+        const auto session_key = crypto::unwrap_xex_session_key(
+            key_set, security.encrypted_image_key);
+        return crypto::aes128_xex_cbc_decrypt(
+            session_key, encrypted_payload, decrypted_payload);
+    }
+
     // Inspects XEX2 metadata and prepares a launch plan. It deliberately does
     // not claim to decrypt, decompress, map PE sections or resolve imports.
     [[nodiscard]] static LoadResult inspect(const std::filesystem::path& path) {
