@@ -5,6 +5,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Statically link the MSVC runtime so the Windows portable build does not
+# require a separately installed Visual C++ runtime redistributable.
+if(MSVC)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 # x86-64 guarantees SSE2. Do not enable AVX/AVX2 or -march=native.
 
 add_library(wx360_cpu INTERFACE)
