@@ -13,13 +13,30 @@ endif()
 
 # x86-64 guarantees SSE2. Do not enable AVX/AVX2 or -march=native.
 
+# libmspack regular LZX decoder (LGPL-2.1-or-later).
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+add_library(wx360_lzx STATIC
+  third_party/libmspack/lzxd.c
+  src/compression/lzx_decoder.cpp
+)
+target_include_directories(wx360_lzx PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libmspack
+)
+target_include_directories(wx360_lzx PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_compile_definitions(wx360_lzx PRIVATE
+  HAVE_INTTYPES_H=1 HAVE_LIMITS_H=1 SIZEOF_OFF_T=8
+)
+
 add_library(wx360_aes STATIC third_party/tiny_aes/aes.c)
 target_include_directories(wx360_aes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tiny_aes)
 target_compile_definitions(wx360_aes PRIVATE AES128=1 CBC=1 ECB=1 CTR=0)
 
 add_library(wx360_cpu INTERFACE)
 target_include_directories(wx360_cpu INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(wx360_cpu INTERFACE wx360_aes)
+target_link_libraries(wx360_cpu INTERFACE wx360_aes wx360_lzx)
 
 add_executable(wx360 src/main.cpp)
 set_target_properties(wx360 PROPERTIES OUTPUT_NAME "WX360")
@@ -81,6 +98,9 @@ if(BUILD_TESTING)
   add_executable(wx360_xex_basic_decompression_tests tests/xex_basic_decompression_tests.cpp)
   target_link_libraries(wx360_xex_basic_decompression_tests PRIVATE wx360_cpu)
   add_test(NAME wx360_xex_basic_decompression_tests COMMAND wx360_xex_basic_decompression_tests)
+  add_executable(wx360_lzx_decoder_tests tests/lzx_decoder_tests.cpp)
+  target_link_libraries(wx360_lzx_decoder_tests PRIVATE wx360_cpu)
+  add_test(NAME wx360_lzx_decoder_tests COMMAND wx360_lzx_decoder_tests)
   add_executable(wx360_xex_normal_blocks_tests tests/xex_normal_blocks_tests.cpp)
   target_link_libraries(wx360_xex_normal_blocks_tests PRIVATE wx360_cpu)
   add_test(NAME wx360_xex_normal_blocks_tests COMMAND wx360_xex_normal_blocks_tests)
@@ -122,6 +142,7 @@ if(MSVC)
     target_compile_options(wx360_xex_basic_decompression_tests PRIVATE /W4 /permissive-)
     target_compile_options(wx360_xex_security_import_tests PRIVATE /W4 /permissive-)
     target_compile_options(wx360_xex_normal_blocks_tests PRIVATE /W4 /permissive-)
+    target_compile_options(wx360_lzx_decoder_tests PRIVATE /W4 /permissive-)
   endif()
 else()
   target_compile_options(wx360 PRIVATE -Wall -Wextra -Wpedantic)
@@ -147,6 +168,7 @@ else()
     target_compile_options(wx360_xex_basic_decompression_tests PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(wx360_xex_security_import_tests PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(wx360_xex_normal_blocks_tests PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(wx360_lzx_decoder_tests PRIVATE -Wall -Wextra -Wpedantic)
   endif()
 endif()
 
