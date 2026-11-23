@@ -10,9 +10,33 @@
 #include <map>
 #include <cctype>
 #include <string>
+#include <string_view>
+#include <limits>
 #include <vector>
 
 namespace wx360::storage {
+
+[[nodiscard]] inline bool parse_fragment_name(
+    const std::string& filename, std::uint32_t& index) noexcept {
+    // Accept canonical DataNNNN fragments and numeric NN[N...] files.
+    std::string_view name(filename);
+    const auto dot = name.find('.');
+    if (dot != std::string_view::npos) name = name.substr(0, dot);
+    if (name.size() >= 4 &&
+        (name.substr(0, 4) == "Data" || name.substr(0, 4) == "data"))
+        name.remove_prefix(4);
+    if (name.empty()) return false;
+    std::uint32_t value = 0;
+    for (const char ch : name) {
+        if (ch < '0' || ch > '9') return false;
+        const auto digit = static_cast<std::uint32_t>(ch - '0');
+        if (value > (std::numeric_limits<std::uint32_t>::max() - digit) / 10u) return false;
+        value = value * 10u + digit;
+    }
+    index = value;
+    return true;
+}
+
 
 enum class SvodLayout { Unknown, EnhancedGdf, Xsf, SingleFile };
 
