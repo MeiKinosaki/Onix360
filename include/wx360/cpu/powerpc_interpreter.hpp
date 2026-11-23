@@ -305,6 +305,42 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             record_32bit = true;
             break;
         }
+        case 27: { // sld: shift left doubleword; RB[5:6] force zero
+            const unsigned shift = static_cast<unsigned>(state.gpr[d.rb] & 0x7FU);
+            result = shift >= 64U ? 0U : (state.gpr[d.rt] << shift);
+            destination = d.ra;
+            writes_result = true;
+            break;
+        }
+        case 539: { // srd: logical shift right doubleword
+            const unsigned shift = static_cast<unsigned>(state.gpr[d.rb] & 0x7FU);
+            result = shift >= 64U ? 0U : (state.gpr[d.rt] >> shift);
+            destination = d.ra;
+            writes_result = true;
+            break;
+        }
+        case 794: { // srad: arithmetic shift right doubleword
+            const std::uint64_t value = state.gpr[d.rt];
+            const unsigned shift = static_cast<unsigned>(state.gpr[d.rb] & 0x7FU);
+            const bool negative = (value >> 63U) != 0;
+            bool shifted_out_one = false;
+            if (shift == 0U) {
+                result = value;
+            } else if (shift >= 64U) {
+                result = negative ? UINT64_MAX : 0U;
+                shifted_out_one = negative && (value & 0x7FFFFFFFFFFFFFFFULL) != 0;
+            } else {
+                const std::uint64_t discarded_mask = (std::uint64_t{1} << shift) - 1U;
+                shifted_out_one = negative && (value & discarded_mask) != 0;
+                result = value >> shift;
+                if (negative) result |= (UINT64_MAX << (64U - shift));
+            }
+            constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
+            state.xer = shifted_out_one ? (state.xer | xer_ca) : (state.xer & ~xer_ca);
+            destination = d.ra;
+            writes_result = true;
+            break;
+        }
         case 28:  // and
             result = state.gpr[d.rt] & state.gpr[d.rb];
             destination = d.ra;
