@@ -111,27 +111,6 @@ public:
         return status;
     }
 
-    [[nodiscard]] static LoadError map_transformed_pe(
-        LaunchPlan& plan,
-        std::span<const std::uint8_t> decrypted_decompressed_pe,
-        memory::PhysicalMemory& guest_memory,
-        std::uint64_t physical_base,
-        std::uint32_t guest_image_base,
-        bool decryption_complete,
-        bool decompression_complete) {
-        if (!decryption_complete || !decompression_complete)
-            return LoadError::TransformIncomplete;
-        const auto mapped = XexPeMapper::map(
-            decrypted_decompressed_pe, guest_memory, physical_base,
-            guest_image_base, plan.entry_point);
-        if (!mapped) return LoadError::PeMappingFailed;
-        plan.decryption_complete = true;
-        plan.decompression_complete = true;
-        plan.pe_mapped = true;
-        plan.mapped_entry_point = mapped.mapped_entry;
-        return LoadError::None;
-    }
-
     // Safe end-to-end path for XEX images explicitly marked unencrypted and
     // uncompressed. The loader derives completion from parsed metadata rather
     // than accepting caller-supplied success flags. This does not authenticate
@@ -250,6 +229,23 @@ public:
             return LoadError::SecurityInfoInvalid;
         output = std::move(parsed);
         return LoadError::None;
+    }
+
+    // Normal/LZX transformation followed by mandatory page-hash verification.
+    // No output is exposed unless both the block chain and image page digests pass.
+    [[nodiscard]] static NormalTransformError transform_normal_lzx_verified(
+        const SecurityInfo& security, crypto::XexKeySet key_set,
+        const FileFormatInfo& format,
+        std::span<const std::uint8_t> payload,
+        std::vector<std::uint8_t>& output) {
+        std::vector<std::uint8_t> transformed;
+        const auto status = transform_normal_lzx_payload(
+            security, key_set, format, payload, transformed);
+        if (status != NormalTransformError::Ok) return status;
+        if (verify_page_hashes(transformed, security) != PageHashResult::Ok)
+            return NormalTransformError::DecompressionFailed;
+        output = std::move(transformed);
+        return NormalTransformError::Ok;
     }
 
     // Inspects XEX2 metadata and prepares a launch plan. It deliberately does
