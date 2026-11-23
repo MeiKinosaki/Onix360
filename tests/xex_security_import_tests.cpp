@@ -33,16 +33,37 @@ int main(){
     }
 
     std::vector<std::uint8_t> page_image(0x2000, 0x5A);
-    parsed.pages[0].digest = wx360::crypto::sha1(
-        std::span<const std::uint8_t>(page_image.data(), 0x2000));
+    parsed.pages[0].raw = 0x21;
+    parsed.pages[0].digest = wx360::crypto::sha1(page_image);
+    std::vector<std::uint8_t> authenticated(0x2000 + 24, 0);
+    std::copy(page_image.begin(), page_image.end(), authenticated.begin());
+    authenticated[0x2000] = 0x00;
+    authenticated[0x2001] = 0x00;
+    authenticated[0x2002] = 0x00;
+    authenticated[0x2003] = 0x21;
+    std::copy(parsed.pages[0].digest.begin(), parsed.pages[0].digest.end(),
+              authenticated.begin() + 0x2004);
+    parsed.section_digest = wx360::crypto::sha1(authenticated);
     if (wx360::xex::verify_page_hashes(page_image, parsed) !=
         wx360::xex::PageHashResult::Ok) {
-        std::cerr << "XEX page SHA-1 validation failed\\n"; return EXIT_FAILURE;
+        std::cerr << "XEX chained page SHA-1 positive vector failed\\n"; return EXIT_FAILURE;
     }
     page_image[0] ^= 1;
     if (wx360::xex::verify_page_hashes(page_image, parsed) !=
         wx360::xex::PageHashResult::DigestMismatch) {
         std::cerr << "Corrupted XEX page was not rejected\\n"; return EXIT_FAILURE;
+    }
+    page_image[0] ^= 1;
+    parsed.section_digest[0] ^= 1;
+    if (wx360::xex::verify_page_hashes(page_image, parsed) !=
+        wx360::xex::PageHashResult::DigestMismatch) {
+        std::cerr << "Corrupted XEX root digest was not rejected\\n"; return EXIT_FAILURE;
+    }
+    parsed.section_digest[0] ^= 1;
+    parsed.pages[0].raw = 0x31;
+    if (wx360::xex::verify_page_hashes(page_image, parsed) !=
+        wx360::xex::PageHashResult::DigestMismatch) {
+        std::cerr << "Corrupted XEX page descriptor was not rejected\\n"; return EXIT_FAILURE;
     }
 
     // Without the 4 KiB flag, XEX2 page hashes use 64 KiB units.
