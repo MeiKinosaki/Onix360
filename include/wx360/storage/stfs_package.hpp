@@ -43,7 +43,10 @@ enum class StfsParseError {
     InvalidVolumeDescriptor,
     UnsupportedVolumeType,
     InvalidStfsBlockCounts,
-    TruncatedHeader
+    TruncatedHeader,
+    InvalidFileTableChain,
+    UnsupportedWritableStfsLayout,
+    InvalidDirectoryEntry
 };
 
 struct StfsFileEntry {
@@ -247,6 +250,114 @@ public:
                 return {StfsParseError::InvalidDirectoryEntry, {}};
         }
         return {StfsParseError::None, std::move(entries)};
+    }
+
+    // Reads one file by following its STFS data-block chain. The caller should
+    // impose an application-specific extraction limit; this API also enforces
+    // a conservative 256 MiB per-file ceiling.
+    [[nodiscard]] static std::vector<std::uint8_t> read_file(
+        const std::filesystem::path& path, const StfsPackageHeader& header,
+        const StfsFileEntry& entry, StfsParseError& error) {
+        error = StfsParseError::None;
+        if (entry.directory || entry.file_size == 0) return {};
+        constexpr std::uint32_t kMaxFileSize = 256u * 1024u * 1024u;
+        if (entry.file_size > kMaxFileSize || entry.allocated_blocks == 0 ||
+            entry.allocated_blocks > header.allocated_block_count ||
+            entry.starting_block >= header.allocated_block_count) {
+            error = StfsParseError::InvalidDirectoryEntry;
+            return {};
+        }
+        std::ifstream file(path, std::ios::binary);
+        if (!file) { error = StfsParseError::CannotOpen; return {}; }
+        file.seekg(0, std::ios::end);
+        const auto end = file.tellg();
+        if (end < 0) { error = StfsParseError::TruncatedHeader; return {}; }
+        const auto file_size = static_cast<std::uint64_t>(end);
+        const std::uint64_t data_base =
+            (static_cast<std::uint64_t>(header.header_size) + 0xFFFu) & ~std::uint64_t(0xFFFu);
+        const auto physical_block = [](std::uint32_t index) -> std::uint64_t {
+            std::uint64_t block = index;
+            std::uint64_t base = 170;
+            for (unsigned level = 0; level < 3; ++level) {
+                block += (static_cast<std::uint64_t>(index) + base) / base;
+                if (index < base) break;
+                base *= 170;
+            }
+            return block;
+        };
+        const auto hash_block = [](std::uint32_t index) -> std::uint64_t {
+            constexpr std::uint64_t l0 = 170, l1 = 28900;
+            if (index < l0) return 0;
+            const std::uint64_t value = (index / l0) * 171u + (index / l1 + 1u);
+            return index < l1 ? value : value + 1u;
+        };
+        std::vector<std::uint8_t> output(entry.file_size);
+        std::uint64_t remaining = entry.file_size;
+        std::uint32_t current = entry.starting_block;
+        const std::uint64_t required = (remaining + 0xFFFu) / 0x1000u;
+        if (required > entry.allocated_blocks) {
+            error = StfsParseError::InvalidDirectoryEntry; return {};
+        }
+        std::uint64_t written = 0;
+        for (std::uint64_t i = 0; i < required; ++i) {
+            if (current >= header.allocated_block_count) {
+                error = StfsParseError::InvalidFileTableChain; return {};
+            }
+            const auto offset = data_base + (physical_block(current) << 12);
+            if (offset > file_size || file_size - offset < 0x1000u) {
+                error = StfsParseError::TruncatedHeader; return {};
+            }
+            const auto amount = static_cast<std::size_t>(std::min<std::uint64_t>(remaining, 0x1000u));
+            file.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
+            file.read(reinterpret_cast<char*>(output.data() + written),
+                      static_cast<std::streamsize>(amount));
+            if (!file) { error = StfsParseError::TruncatedHeader; return {}; }
+            written += amount; remaining -= amount;
+            if (i + 1u < required) {
+                if (entry.contiguous) {
+                    ++current;
+                } else {
+                    const auto hash_offset = data_base + (hash_block(current) << 12) +
+                        (static_cast<std::uint64_t>(current % 170u) * 0x18u) + 0x14u;
+                    if (hash_offset > file_size || file_size - hash_offset < 4u) {
+                        error = StfsParseError::TruncatedHeader; return {};
+                    }
+                    std::array<std::uint8_t,4> link{};
+                    file.seekg(static_cast<std::streamoff>(hash_offset), std::ios::beg);
+                    file.read(reinterpret_cast<char*>(link.data()), 4);
+                    if (!file) { error = StfsParseError::TruncatedHeader; return {}; }
+                    current = be32(link.data()) & 0x00FFFFFFu;
+                    if (current == 0x00FFFFFFu) {
+                        error = StfsParseError::InvalidFileTableChain; return {};
+                    }
+                }
+            }
+        }
+        return output;
+    }
+
+    [[nodiscard]] static bool extract_file(
+        const std::filesystem::path& package, const StfsPackageHeader& header,
+        const StfsFileEntry& entry, const std::filesystem::path& destination,
+        StfsParseError& error) {
+        if (entry.directory || entry.name.empty() ||
+            entry.name == "." || entry.name == ".." ||
+            entry.name.find_first_of("/\\:") != std::string::npos) {
+            error = StfsParseError::InvalidDirectoryEntry;
+            return false;
+        }
+        auto bytes = read_file(package, header, entry, error);
+        if (error != StfsParseError::None) return false;
+        std::error_code ec;
+        std::filesystem::create_directories(destination, ec);
+        if (ec) { error = StfsParseError::CannotOpen; return false; }
+        const auto target = destination / std::filesystem::path(entry.name);
+        std::ofstream out(target, std::ios::binary | std::ios::trunc);
+        if (!out) { error = StfsParseError::CannotOpen; return false; }
+        out.write(reinterpret_cast<const char*>(bytes.data()),
+                  static_cast<std::streamsize>(bytes.size()));
+        if (!out) { error = StfsParseError::TruncatedHeader; return false; }
+        return true;
     }
 
 private:
