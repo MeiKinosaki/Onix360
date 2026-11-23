@@ -72,9 +72,9 @@ int main() {
         0x2b,0x7e,0x15,0x16,0x28,0xae,0xd2,0xa6,
         0xab,0xf7,0x15,0x88,0x09,0xcf,0x4f,0x3c};
     auto encrypted_session_key = session_key;
-    const crypto::Aes128Key devkit_master{};
+    const crypto::Aes128Key retail_master = crypto::xex_master_key(crypto::XexKeySet::Retail);
     AES_ctx wrap_context{};
-    AES_init_ctx(&wrap_context, devkit_master.data());
+    AES_init_ctx(&wrap_context, retail_master.data());
     AES_ECB_encrypt(&wrap_context, encrypted_session_key.data());
 
     auto encrypted_normal_block = block;
@@ -92,7 +92,7 @@ int main() {
     format.encryption = XexEncryption::Normal;
     output = {0x5A};
     if (XexImageLoader::transform_normal_lzx_payload(
-            security, crypto::XexKeySet::Devkit, format,
+            security, crypto::XexKeySet::Retail, format,
             encrypted_normal_block, output) != NormalTransformError::Ok ||
         output != std::vector<std::uint8_t>(expected.begin(), expected.end())) {
         std::cerr << "XEX Normal AES unwrap/decrypt/LZX end-to-end test failed\\n";
