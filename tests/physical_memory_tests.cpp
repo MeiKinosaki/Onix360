@@ -21,6 +21,8 @@ int main() {
     check(ram.fetch_u32(0x100, fetched) == MemoryResult::Ok,
           "fetch instruction from executable page");
     check(fetched == 0x38600001U, "instruction fetch uses PowerPC big-endian order");
+    check(ram.fetch_u32(0x101, fetched) == MemoryResult::AlignmentFault,
+          "reject instruction fetch not aligned to four bytes");
 
     check(ram.set_page_permissions(0, PhysicalMemory::page_size,
           static_cast<std::uint8_t>(Access::Read) |
