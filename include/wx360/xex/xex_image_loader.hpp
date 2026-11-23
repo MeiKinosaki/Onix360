@@ -13,7 +13,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
-#include <utility>
+#include <utility>\n#include <vector>
 
 namespace wx360::xex {
 
