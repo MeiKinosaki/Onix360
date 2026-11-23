@@ -53,7 +53,7 @@ enum class NormalDecompressError : std::uint8_t {
 };
 
 enum class NormalTransformError : std::uint8_t {
-    Ok, WrongCompression, InvalidImageSize, DecryptionFailed, DecompressionFailed
+    Ok, WrongCompression, InvalidImageSize, KeyUnavailable, DecryptionFailed, DecompressionFailed
 };
 
 class XexImageLoader {
@@ -162,8 +162,11 @@ public:
 
         std::vector<std::uint8_t> decrypted;
         if (format.encryption == XexEncryption::Normal) {
-            if (decrypt_xex_normal_payload(
-                    security, key_set, payload, decrypted) != crypto::AesResult::Ok)
+            const auto decrypt_result = decrypt_xex_normal_payload(
+                security, key_set, payload, decrypted);
+            if (decrypt_result == crypto::AesResult::KeyUnavailable)
+                return NormalTransformError::KeyUnavailable;
+            if (decrypt_result != crypto::AesResult::Ok)
                 return NormalTransformError::DecryptionFailed;
         } else if (format.encryption == XexEncryption::None) {
             decrypted.assign(payload.begin(), payload.end());
