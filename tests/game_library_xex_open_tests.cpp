@@ -47,7 +47,7 @@ int main() {
     write(valid, valid_xex());
     write(truncated, std::vector<std::uint8_t>{'X','E','X','2',0,0,0,0});
     auto bad = valid_xex(); bad[0]='N'; write(bad_magic, bad);
-    auto mismatch = valid_xex(); be32(mismatch, 0x104, 0x80); write(inconsistent, mismatch);
+    auto mismatch = valid_xex(); be32(mismatch, 0x300, 4); write(inconsistent, mismatch);
 
     const auto library = storage::GameLibrary::scan(root);
     check(library.size() == 4, "library discovers all XEX test fixtures");
