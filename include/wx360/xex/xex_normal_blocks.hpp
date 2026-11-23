@@ -36,7 +36,8 @@ enum class NormalBlockError : std::uint8_t {
     std::span<const std::uint8_t> stream,
     const NormalBlockDescriptor& first,
     std::size_t expected_output_size,
-    std::vector<std::uint8_t>& output) {
+    std::vector<std::uint8_t>& output,
+    bool require_exact_output = true) {
     std::vector<std::uint8_t> decoded;
     decoded.reserve(expected_output_size);
     std::size_t cursor=0;
@@ -68,7 +69,8 @@ enum class NormalBlockError : std::uint8_t {
         cursor+=descriptor.block_size;
         descriptor=next;
     }
-    if(decoded.size()!=expected_output_size) return NormalBlockError::InvalidOutputSize;
+    if(require_exact_output && decoded.size()!=expected_output_size)
+        return NormalBlockError::InvalidOutputSize;
     output=std::move(decoded);
     return NormalBlockError::Ok;
 }
