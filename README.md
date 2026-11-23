@@ -73,7 +73,7 @@ O interpretador inicial contém suporte experimental para:
 
 - O scanner reconhece diretórios de Games on Demand pelo caminho de conteúdo `00007000` quando existe um arquivo/entrada `Data0000`.
 - Identifica diretórios de conteúdo pelos tipos `000D0000` (XBLA), `00000002` (DLC) e `000B0000` (Title Update).
-- Reconhece candidatos a pacotes STFS pelas extensões `.con`, `.live` e `.pirs`.
+- Reconhece candidatos a pacotes STFS pelas extensões `.con`, `.live` e `.pirs` e tenta analisar o cabeçalho; quando válido, a interface mostra Title ID e nome do título.
 - O modo portátil cria `roms/GOD` e `roms/Content/0000000000000000`; a tela Arquivos apresenta os itens detectados.
 - Testes dedicados cobrem cada tipo de pasta, as três extensões STFS e diretório inexistente.
 - **Limite importante:** isso é descoberta por nomes/caminhos, não valida a integridade nem analisa cabeçalhos, hashes, tabelas de arquivos ou assinaturas STFS. Não extrai pacotes, não descriptografa conteúdo protegido, não monta GOD e não carrega/ executa jogos. Os arquivos de teste são placeholders, não pacotes Xbox 360 válidos.
