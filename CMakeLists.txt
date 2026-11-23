@@ -17,7 +17,7 @@ if(MSVC)
   add_compile_options(/arch:IA32)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-mno-sse -mno-sse2 -mno-sse3 -mno-ssse3
-                      -mno-sse4 -mno-sse4.1 -mno-sse4.2
+                      -mno-sse4.1 -mno-sse4.2
                       -mno-avx -mno-avx2)
 endif()
 
