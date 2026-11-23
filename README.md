@@ -113,6 +113,16 @@ O interpretador inicial contém suporte experimental para:
 - Testes sintéticos adicionados para GDF single-file, extração, inspeção XEX e handoff protegido ao núcleo Xenon.
 - **Limitações críticas:** ainda não implementa descriptografia/descompressão XEX, interpretação de security info, mapeamento PE real, relocations, imports do kernel nem autenticação SHA-1/RSA. Portanto, o plano XEX ainda não é produzido como pronto para execução e jogos comerciais não estão executáveis. A leitura de fragmentos reais e layouts complexos requer validação adicional.
 
+## XEX2: segurança, SHA-1 e tabela de import libraries (etapa inicial)
+
+- Adicionado SHA-1 portátil com teste conhecido para a mensagem `abc`.
+- Adicionado parser estrutural de Security Info XEX2: tamanhos, image size, flags, load address, assinatura RSA em bytes, digests SHA-1, chave AES cifrada, export-table pointer e page descriptors.
+- A rotina de comparação SHA-1 é fornecida, mas ainda não foi ligada à validação criptográfica real das regiões/páginas do XEX. A assinatura RSA não é verificada e os digests não são aceitos como prova de autenticidade.
+- O optional header `0x000103FF` agora é identificado. O parser de import libraries lê a string table, registros por biblioteca, versões, contagens e lista de valores de thunk/índices, com limites de tamanho e validação de strings.
+- O parser da tabela de bibliotecas ainda não interpreta completamente os descriptors individuais de importação/ordinais nem aplica todos os imports aos thunks PE; o catálogo real de exports do xboxkrnl/xam também não existe.
+- AES-128-CBC com chave de sessão, escolha retail/devkit, descompressão Normal/LZX e validação RSA permanecem pendentes. A chave retail pública e a chave devkit padrão conhecida foram confirmadas na referência de implementação Xenia; não foram embutidas nesta etapa porque ainda falta o AES portátil e a validação ponta a ponta.
+- O núcleo Xenon já possui handoff protegido e execução de uma instrução via `step()` em memória executável; isso é um teste de instrução sintética, não inicialização de um XEX comercial.
+
 ## Avanço incremental do leitor GOD/SVOD e XEX2
 
 - Fragmentos de diretórios SVOD com mais de um arquivo são agora aceitos somente quando seus nomes seguem `Data0000` ... `DataNNNN`, ordenados pelo índice numérico e sem lacunas/duplicatas. Nomes lexicográficos ou arquivos extras são rejeitados.
@@ -202,10 +212,10 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 - [ ] MMU, memória virtual, BAT/TLB e proteção dos acessos de dados.
 - [x] Parser inicial do cabeçalho XEX2 e diretório opcional (testes adicionados; CI pendente).
 - [x] Parser dos metadados de compressão XEX2 e descompressão Basic sem criptografia (fixture sintético; CI pendente).
-- [ ] Descriptografia AES-CBC retail/devkit e descompressão Normal/LZX.
+- [ ] AES-128-CBC com derivação de session key retail/devkit, descompressão Normal/LZX e verificação SHA-1/RSA ponta a ponta.
 - [x] Mapeador PE32 PowerPC inicial, seções, permissões e relocations HIGHLOW (testes sintéticos adicionados; CI pendente).
 - [x] Infraestrutura de resolução de imports por biblioteca/ordinal (sem catálogo real de exports xboxkrnl/xam; CI pendente).
-- [ ] Parser da tabela XEX de imports e integração com exports reais do kernel Xbox 360.
+- [x] Identificação do optional header 0x000103FF e parser inicial de import libraries (sem resolução completa dos ordinais/thunks; CI pendente).\n- [ ] Integração dos imports/ordinais com catálogo real de exports xboxkrnl/xam.
 - [ ] GPU Xenos, áudio, kernel/HAL, exceções/interrupções e execução multicore.
 - [ ] Execução de jogos.
 
