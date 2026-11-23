@@ -60,6 +60,15 @@ O interpretador inicial contém suporte experimental para:
 - Reutilização de capas já armazenadas, enumeração da cache e validação de identificadores para impedir traversal de diretórios.
 - A camada HTTP está implementada para Windows, mas ainda falta um catálogo/provedor de metadados e a identificação automática de Title ID a partir de XEX/ISO. O download online só pode ocorrer quando a aplicação fornecer uma URL de capa válida; a interface gráfica também está pendente.
 
+## Parser inicial de cabeçalho STFS
+
+- Lê o cabeçalho fixo `0x971A` e reconhece os magics `CON `, `LIVE` e `PIRS`.
+- Extrai tipo de conteúdo, versão dos metadados, tamanho declarado, Title ID, nomes de título/publicador, contagem/tamanho de arquivos de dados e campos básicos do descritor STFS.
+- Interpreta contagem de blocos LE16, índice de bloco LE24 e metadados gerais BE.
+- Rejeita magic desconhecido, cabeçalho truncado, tamanho declarado fora dos limites, descritor inválido, contagens inconsistentes e volume SVOD ainda não suportado.
+- Testes sintéticos verificam extração básica, magic inválido e recusa segura de SVOD.
+- **Limite:** não verifica RSA/assinaturas nem SHA-1, não percorre cadeias de blocos, não lê a tabela de arquivos e não extrai arquivos. Cabeçalho estruturalmente válido não comprova autenticidade ou integridade.
+
 ## Biblioteca Xbox 360 Content/GOD (identificação inicial)
 
 - O scanner reconhece diretórios de Games on Demand pelo caminho de conteúdo `00007000` quando existe um arquivo/entrada `Data0000`.
@@ -125,7 +134,8 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 - [ ] Integrar catálogo/provedor de metadados, identificar jogos automaticamente e exibir capas reais na biblioteca gráfica.
 - [x] Dashboard Win32 inspirado no Aurora com telas distintas e seleção de menu por teclado/mouse.
 - [x] Scanner inicial de diretórios GOD/XBLA/DLC/Title Update e candidatos a pacotes STFS por extensão (identificação de caminho, sem validação interna).
-- [ ] Parser STFS completo, validação de metadados/assinaturas, extração e montagem de pacotes; integração segura de GOD/XBLA/DLC/TU ao carregador.
+- [x] Parser inicial do cabeçalho/descritor STFS, metadados básicos e rejeição de SVOD não suportado (testes sintéticos adicionados; CI ainda não validado).
+- [ ] Verificação RSA/assinaturas e SHA-1, parser da árvore STFS, leitura de cadeias de blocos e extração/montagem de pacotes; integração segura de GOD/XBLA/DLC/TU ao carregador.
 - [ ] Conectar a biblioteca a jogos indexados e capas reais; ligar importação ISO/XEX/GOD e gerenciamento dos save states; adicionar busca, filtros e controle Xbox 360.
 - [ ] Integração dos slots com pausa/retomada do loop de emulação e interface gráfica.
 - [ ] Snapshot completo do sistema: GPU, áudio, dispositivos, timers, kernel e estado de todos os threads.
