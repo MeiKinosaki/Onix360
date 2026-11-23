@@ -7,7 +7,7 @@
 ## Objetivos
 
 - Windows 10/11 de 64 bits.
-- x86-64 com SSE2 como baseline; AVX e AVX2 não são requisitos.
+- x86 de 32 bits (Win32/i686), sem exigir SSE, SSE2, SSE3, SSSE3, SSE4, AVX ou AVX2.
 - Meta de otimização para computadores com até 4 GB de RAM; isso não garante que jogos completos rodem nessa capacidade.
 - Arquitetura modular para CPU Xenon, memória, GPU Xenos, áudio e kernel.
 
@@ -61,12 +61,12 @@ O interpretador inicial contém suporte experimental para:
 Requisitos: CMake 3.20+ e compilador C++20 (Visual Studio 2022 ou MinGW-w64 recente).
 
 ```powershell
-cmake -S . -B build -A x64
+cmake -S . -B build -A Win32
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-O projeto não ativa flags de AVX/AVX2. SSE2 é a base pretendida para x86-64.
+O alvo é Win32 de 32 bits. A configuração rejeita toolchains de 64 bits e desativa instruções SIMD SSE/SSE2 e posteriores. Em CPUs antigas, o suporte depende também do Windows e das bibliotecas do sistema.
 
 ## Estado do projeto
 
@@ -96,7 +96,7 @@ O projeto não ativa flags de AVX/AVX2. SSE2 é a base pretendida para x86-64.
 
 | Versão | Marco |
 |---|---|
-| v0.1b | Estrutura e baseline SSE2 |
+| v0.1b | Estrutura e baseline Win32 x86 sem SSE2 |
 | v0.2b | Estado arquitetural Xenon |
 | v0.3b | Interpretador PowerPC inicial e testes |
 | v0.4b | Memória do sistema, MMU e exceções |
