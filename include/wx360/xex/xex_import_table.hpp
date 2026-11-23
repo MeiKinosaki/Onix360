@@ -1,6 +1,9 @@
 #pragma once
 #include "wx360/xex/xex_header.hpp"
 #include "wx360/kernel/xex_import_resolver.hpp"
+#include "wx360/memory/physical_memory.hpp"
+#include <array>
+#include <limits>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -11,7 +14,7 @@ struct ImportLibraryRecord {
     std::string name;
     std::uint32_t library_id{}, version{}, minimum_version{};
     std::uint16_t version_name_index{}, import_count{};
-    std::vector<std::uint32_t> import_thunks;
+    // Each value is a guest virtual address of an import record, not an ordinal.\n    std::vector<std::uint32_t> import_thunks;
 };
 enum class ImportTableError : std::uint8_t {
     Ok, MissingHeader, Truncated, InvalidSize, InvalidStringTable,
