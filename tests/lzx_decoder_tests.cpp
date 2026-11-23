@@ -20,7 +20,8 @@ int main() {
             return EXIT_FAILURE;
         }
     }
-    if (wx360::compression::decode_lzx(invalid, 14, 0, 32768, *new std::vector<std::uint8_t>) !=
+    std::vector<std::uint8_t> invalid_window_output;
+    if (wx360::compression::decode_lzx(invalid, 14, 0, 32768, invalid_window_output) !=
         wx360::compression::LzxError::InvalidWindow) {
         std::cerr << "LZX invalid-window validation failed\n";
         return EXIT_FAILURE;
