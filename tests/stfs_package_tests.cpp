@@ -40,7 +40,7 @@ void put_utf16be(std::vector<std::uint8_t>& b, std::size_t o, const char* s) {
 int main() {
     int failures=0;
     const auto path=std::filesystem::temp_directory_path()/"wx360_stfs_header_test.con";
-    std::vector<std::uint8_t> bytes(0xD000,0);
+    std::vector<std::uint8_t> bytes(0xE000,0);
     bytes[0]='C';bytes[1]='O';bytes[2]='N';bytes[3]=' ';
     put_be32(bytes,0x340,0x971A);
     put_be32(bytes,0x344,0x00007000);
@@ -99,6 +99,8 @@ int main() {
     put_le24(bytes,second_table+0x2F,2);
     bytes[second_table+0x32]=0xFF; bytes[second_table+0x33]=0xFF;
     put_be32(bytes,second_table+0x34,0x1000);
+    const char* payload = "second.bin";
+    for (std::size_t i = 0; payload[i]; ++i) bytes[0xD000 + i] = static_cast<std::uint8_t>(payload[i]);
     {
         std::ofstream out(path,std::ios::binary|std::ios::trunc);
         out.write(reinterpret_cast<const char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()));
@@ -150,6 +152,7 @@ int main() {
 
     bytes[0]='C';bytes[1]='O';bytes[2]='N';bytes[3]=' ';
     put_be32(bytes,0x3A9,1);
+    put_le24(bytes,0x379+0x19,1);
     {
         std::ofstream out(path,std::ios::binary|std::ios::trunc);
         out.write(reinterpret_cast<const char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()));
