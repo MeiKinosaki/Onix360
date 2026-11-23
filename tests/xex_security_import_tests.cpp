@@ -122,6 +122,14 @@ int main(){
     large_descriptor.page_count = 1;
     large_descriptor.digest = wx360::crypto::sha1(large_image);
     large_pages.pages.push_back(large_descriptor);
+    // The root digest authenticates the 64 KiB page plus the serialized
+    // descriptor and its page digest, just like the 4 KiB chain above.
+    std::vector<std::uint8_t> large_authenticated(
+        large_image.begin(), large_image.end());
+    large_authenticated.insert(large_authenticated.end(), {0,0,0,0x11});
+    large_authenticated.insert(large_authenticated.end(),
+        large_descriptor.digest.begin(), large_descriptor.digest.end());
+    large_pages.section_digest = wx360::crypto::sha1(large_authenticated);
     if (wx360::xex::xex_page_size(large_pages) != 0x10000 ||
         wx360::xex::verify_page_hashes(large_image, large_pages) !=
             wx360::xex::PageHashResult::Ok) {
