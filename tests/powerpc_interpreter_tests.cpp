@@ -290,6 +290,13 @@ int main() {
           "SRAD handles negative shift by 64 with no discarded one bits");
     check(s.gpr[15] == UINT64_MAX && (s.xer & xer_ca) == 0,
           "SRAD shift by 64 clears CA when lower bits are all zero");
+    s.gpr[1] = 0x8000000000000003ULL;
+    s.gpr[2] = 1;
+    s.xer &= ~(std::uint64_t{1} << 31U);
+    check(execute(s, x_form(1, 16, 2, 794, true)) == StepResult::Executed,
+          "SRAD. executes with record bit set");
+    check(s.gpr[16] == 0xC000000000000001ULL && s.condition_field(0) == 0x8,
+          "SRAD. records the 64-bit negative result in CR0");
 
     std::array<std::uint8_t, 64> ram{};
     s.gpr[21] = 0x12345678U;
