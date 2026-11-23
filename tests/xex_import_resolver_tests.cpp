@@ -1,4 +1,5 @@
 #include "wx360/kernel/xex_import_resolver.hpp"
+#include "wx360/xex/xex_import_table.hpp"
 
 #include <array>
 #include <cstdlib>
