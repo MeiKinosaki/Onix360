@@ -65,6 +65,40 @@ int main() {
         return EXIT_FAILURE;
     }
 
+    // Exercise the complete Normal transform path: wrap a session key with
+    // the devkit master key, AES-CBC encrypt the framed block, then invoke the
+    // production unwrap/decrypt/SHA-1/deblock/LZX pipeline.
+    const crypto::Aes128Key session_key{
+        0x2b,0x7e,0x15,0x16,0x28,0xae,0xd2,0xa6,
+        0xab,0xf7,0x15,0x88,0x09,0xcf,0x4f,0x3c};
+    auto encrypted_session_key = session_key;
+    const crypto::Aes128Key devkit_master{};
+    AES_ctx wrap_context{};
+    AES_init_ctx(&wrap_context, devkit_master.data());
+    AES_ECB_encrypt(&wrap_context, encrypted_session_key.data());
+
+    auto encrypted_normal_block = block;
+    encrypted_normal_block.resize(
+        (encrypted_normal_block.size() + 15u) & ~std::size_t(15u), 0);
+    const crypto::Aes128Key zero_iv{};
+    AES_ctx payload_context{};
+    AES_init_ctx_iv(&payload_context, session_key.data(), zero_iv.data());
+    AES_CBC_encrypt_buffer(&payload_context, encrypted_normal_block.data(),
+                           static_cast<std::uint32_t>(encrypted_normal_block.size()));
+
+    SecurityInfo security{};
+    security.image_size = format.image_size;
+    security.encrypted_image_key = encrypted_session_key;
+    format.encryption = XexEncryption::Normal;
+    output = {0x5A};
+    if (XexImageLoader::transform_normal_lzx_payload(
+            security, crypto::XexKeySet::Devkit, format,
+            encrypted_normal_block, output) != NormalTransformError::Ok ||
+        output != std::vector<std::uint8_t>(expected.begin(), expected.end())) {
+        std::cerr << "XEX Normal AES unwrap/decrypt/LZX end-to-end test failed\\n";
+        return EXIT_FAILURE;
+    }
+
     // Keep the negative path: a correctly framed/hash-authenticated block
     // whose LZX payload is malformed must be rejected without changing output.
     std::vector<std::uint8_t> invalid_block(24 + 2 + 1 + 2, 0);
