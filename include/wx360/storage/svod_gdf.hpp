@@ -294,12 +294,12 @@ private:
     }
     static bool safe_name(const std::string& name) {
         if (name.empty() || name == "." || name == ".." ||
-            name.find('\\0') != std::string::npos || name.back() == '.' ||
+            name.find('\0') != std::string::npos || name.back() == '.' ||
             name.back() == ' ')
             return false;
         for (const unsigned char ch : name) {
             if (ch < 0x20u || ch == '<' || ch == '>' || ch == ':' ||
-                ch == '"' || ch == '/' || ch == '\\\\' ||
+                ch == '"' || ch == '/' || ch == '\\' ||
                 ch == '|' || ch == '?' || ch == '*')
                 return false;
         }
