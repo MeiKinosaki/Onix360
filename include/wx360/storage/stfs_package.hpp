@@ -175,7 +175,6 @@ public:
             constexpr std::uint64_t kLevel0 = 170;
             constexpr std::uint64_t kLevel1 = 28900;
             constexpr std::uint64_t kBlockStep0 = 171;
-            constexpr std::uint64_t kBlockStep1 = 28900 + 171;
             if (index < kLevel0) return 0;
             std::uint64_t block = (index / kLevel0) * 171u;
             block += (index / kLevel1 + 1);
