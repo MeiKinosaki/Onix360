@@ -6,11 +6,16 @@
 #include <windows.h>
 #include <string>
 #include <vector>
+#include "wx360/storage/data_directories.hpp"
+#include "wx360/storage/game_library.hpp"
 namespace wx360::ui {
 struct Tile { std::wstring title; std::wstring detail; };
 class AuroraWindow {
 public:
- int run(HINSTANCE instance,int show) {
+ int run(HINSTANCE instance,int show, std::filesystem::path rom_root = {}) {
+  rom_root_=std::move(rom_root);
+  if(rom_root_.empty()) rom_root_=DataDirectories::default_root()/"roms";
+  games_=GameLibrary::scan(rom_root_);
   WNDCLASSW wc{};wc.lpfnWndProc=window_proc;wc.hInstance=instance;wc.lpszClassName=L"WX360AuroraWindow";
   wc.hCursor=LoadCursorW(nullptr,MAKEINTRESOURCEW(32512));wc.hbrBackground=nullptr;
   RegisterClassW(&wc);instance_=instance;
@@ -55,9 +60,18 @@ private:
    for(int i=0;i<3;++i){int x=250+i*250;panel(dc,x,300,225,170,RGB(27,39,56));panel(dc,x,300,225,7,RGB(0,166,204));draw_text(dc,x+18,340,cards[i],RGB(240,247,255));draw_text(dc,x+18,385,details[i],RGB(140,165,188));}
   } else if(selected_nav_==1){
    draw_text(dc,278,155,L"SUA BIBLIOTECA",RGB(255,255,255));
-   draw_text(dc,280,205,L"Nenhum jogo foi indexado nesta versao.",RGB(174,197,215));
-   draw_text(dc,252,300,L"Os formatos ISO/XEX ainda precisam ser ligados ao catalogo da interface.",RGB(190,205,220));
-   draw_text(dc,252,340,L"As capas serao exibidas aqui quando a identificacao e o catalogo estiverem integrados.",RGB(140,165,188));
+   draw_text(dc,280,205,L"Arquivos ISO/XEX encontrados:",RGB(174,197,215));
+   if(games_.empty()) {
+    draw_text(dc,252,300,L"Nenhum ISO ou XEX encontrado na pasta WX360-data/roms.",RGB(190,205,220));
+   } else {
+    const int visible=std::min<int>(static_cast<int>(games_.size()),8);
+    for(int i=0;i<visible;++i) {
+     const auto label=games_[static_cast<std::size_t>(i)].path.filename().wstring();
+     draw_text(dc,252,280+i*34,label.c_str(),RGB(220,232,245));
+    }
+    if(games_.size()>8) draw_text(dc,252,570,L"Mais jogos encontrados. Lista limitada a 8 itens nesta tela.",RGB(140,165,188));
+   }
+   draw_text(dc,252,r.bottom-68,rom_root_.wstring().c_str(),RGB(110,135,158));
   } else if(selected_nav_==2){
    draw_text(dc,278,155,L"FONTES DE JOGOS",RGB(255,255,255));
    draw_text(dc,280,205,L"Formatos planejados: ISO, XEX e GOD.",RGB(174,197,215));
@@ -77,6 +91,8 @@ private:
   SelectObject(dc,old);DeleteObject(title);DeleteObject(normal);EndPaint(h,&ps);
  }
  int selected_nav_=1;
+ std::filesystem::path rom_root_;
+ std::vector<storage::GameFile> games_;
  HINSTANCE instance_{};
 };
 }
