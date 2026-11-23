@@ -488,6 +488,26 @@ int main() {
     check(execute(s, 0xFFFFFFFFU) == StepResult::UnsupportedInstruction, "unknown instruction is rejected");
     check(s.pc == old_pc, "unsupported instruction does not advance PC");
 
+    // Additional integer ISA coverage used by Xenon game code.
+    s.gpr[1] = 0xF0F0F0F0F0F0F0F0ULL;
+    s.gpr[2] = 0x0FF00FF00FF00FF0ULL;
+    check(execute(s, x_form(1, 3, 2, 60)) == StepResult::Executed, "ANDC executes");
+    check(s.gpr[3] == 0xF000F000F000F000ULL, "ANDC clears bits selected by RB");
+    check(execute(s, x_form(1, 4, 2, 124)) == StepResult::Executed, "NOR executes");
+    check(s.gpr[4] == 0x000F000F000F000FULL, "NOR complements bitwise OR");
+    s.gpr[1] = 0x80;
+    check(execute(s, x_form(1, 5, 0, 954)) == StepResult::Executed, "EXTSB executes");
+    check(s.gpr[5] == 0xFFFFFFFFFFFFFF80ULL, "EXTSB sign extends low byte");
+    s.gpr[1] = 0x8001;
+    check(execute(s, x_form(1, 6, 0, 922)) == StepResult::Executed, "EXTSH executes");
+    check(s.gpr[6] == 0xFFFFFFFFFFFF8001ULL, "EXTSH sign extends low halfword");
+    s.gpr[1] = 0x0000000100000000ULL;
+    check(execute(s, x_form(1, 7, 0, 58)) == StepResult::Executed, "CNTLZD executes");
+    check(s.gpr[7] == 31, "CNTLZD counts leading zeroes across 64 bits");
+    s.gpr[1] = 0;
+    check(execute(s, x_form(1, 8, 0, 58)) == StepResult::Executed, "CNTLZD handles zero");
+    check(s.gpr[8] == 64, "CNTLZD returns 64 for zero");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
