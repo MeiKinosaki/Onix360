@@ -74,7 +74,7 @@ O interpretador inicial contém suporte experimental para:
 - Raiz do modo portátil: `WX360-data/` ao lado de `WX360.exe` no Windows. O diretório pode ser escolhido explicitamente nos testes e em futuras configurações.
 - `roms/`: biblioteca de jogos (ISO, XEX e futuramente GOD); arquivos originais não são modificados.
 - `covers/`: cache de capas JPEG.
-- `saves/`: slots e arquivos de Save State.
+- `saves/`: slots e arquivos de Save State.\n- `configs/`: configurações persistentes (ainda aguardando integração com a interface).
 - O componente cria as pastas de forma idempotente e permite configurar uma raiz alternativa para testes.
 - A interface ainda precisa ser conectada a esses diretórios para importar e indexar jogos.
 
