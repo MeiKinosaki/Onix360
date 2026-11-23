@@ -417,6 +417,10 @@ int main() {
     check(execute(s, d_form(36, 21, 0, 8), ram) == StepResult::Executed, "STW executes");
     check(ram[8] == 0x12 && ram[9] == 0x34 && ram[10] == 0x56 && ram[11] == 0x78,
           "STW stores big-endian word");
+    check(execute(s, d_form(32, 22, 0, 9), ram) == StepResult::AlignmentFault,
+          "LWZ rejects a misaligned effective address");
+    check(execute(s, d_form(40, 16, 0, 25), ram) == StepResult::AlignmentFault,
+          "LHZ rejects a misaligned effective address");
     s.gpr[22] = 0;
     check(execute(s, d_form(32, 22, 0, 8), ram) == StepResult::Executed, "LWZ executes");
     check(s.gpr[22] == 0x12345678U, "LWZ loads big-endian word");
