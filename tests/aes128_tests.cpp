@@ -26,6 +26,13 @@ int main(){
        decoded.size()!=16 || !std::equal(decoded.begin(),decoded.end(),plain.begin())){
         std::cerr<<"AES-128 CBC vector failed\\n";return EXIT_FAILURE;
     }
+    const Aes128Key zero_iv_cipher{
+        0x3a,0xd7,0x7b,0xb4,0x0d,0x7a,0x36,0x60,
+        0xa8,0x9e,0xca,0xf3,0x24,0x66,0xef,0x97};
+    if(aes128_xex_cbc_decrypt(key,zero_iv_cipher,decoded)!=AesResult::Ok ||
+       decoded.size()!=16 || !std::equal(decoded.begin(),decoded.end(),plain.begin())){
+        std::cerr<<"XEX zero-IV CBC known-answer vector failed\\n";return EXIT_FAILURE;
+    }
     std::array<std::uint8_t,15> invalid{};
     if(aes128_cbc_decrypt(key,iv,invalid,decoded)!=AesResult::InvalidLength){
         std::cerr<<"AES CBC accepted non-block-aligned input\\n";return EXIT_FAILURE;
