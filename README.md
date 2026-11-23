@@ -113,6 +113,16 @@ O interpretador inicial contém suporte experimental para:
 - Testes sintéticos adicionados para GDF single-file, extração, inspeção XEX e handoff protegido ao núcleo Xenon.
 - **Limitações críticas:** ainda não implementa descriptografia/descompressão XEX, interpretação de security info, mapeamento PE real, relocations, imports do kernel nem autenticação SHA-1/RSA. Portanto, o plano XEX ainda não é produzido como pronto para execução e jogos comerciais não estão executáveis. A leitura de fragmentos reais e layouts complexos requer validação adicional.
 
+## Avanço incremental do leitor GOD/SVOD e XEX2
+
+- Fragmentos de diretórios SVOD com mais de um arquivo são agora aceitos somente quando seus nomes seguem `Data0000` ... `DataNNNN`, ordenados pelo índice numérico e sem lacunas/duplicatas. Nomes lexicográficos ou arquivos extras são rejeitados.
+- O teste SVOD verifica o parser de nomes de fragmentos e mantém o fixture sintético single-file. Isso **não** substitui a validação com um conjunto GOD real de vários fragmentos.
+- O parser XEX2 identifica o optional header `0x000003FF` (file format info), lê encryption/compression type e image size da security info, valida a tabela de blocos Basic e exige que a soma de data/zero bytes corresponda ao tamanho da imagem.
+- Foi implementada descompressão XEX Basic **somente quando encryption type = NONE**: copia os trechos de dados e preenche os trechos zero. Entrada criptografada é recusada explicitamente.
+- XEX AES-CBC retail/devkit, verificação RSA/SHA-1, compressão Normal/LZX, parsing da tabela real de import libraries e catálogo real de exports Xbox kernel continuam pendentes.
+- O resolver de imports agora valida permissões de escrita dos thunks antes de patchar a memória, sem escrever diretamente no buffer bruto.
+- Um teste sintético cobre metadados XEX Basic, expansão dos blocos e recusa de payload criptografado.
+
 ## Mapeador PE XEX e infraestrutura de importações Xenon
 
 - Foi adicionado um mapeador PE32 limitado ao formato PowerPC big-endian/Xbox (machine 0x01F2, subsystem Xbox), com validação de cabeçalhos, limites de seções, cópia dos dados raw e permissões de página.
@@ -183,6 +193,7 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 - [x] Scanner inicial de diretórios GOD/XBLA/DLC/Title Update e candidatos a pacotes STFS por extensão (identificação de caminho, sem validação interna).
 - [x] Parser inicial do cabeçalho/descritor STFS, metadados básicos e rejeição de SVOD não suportado (testes sintéticos adicionados; CI ainda não validado).
 - [x] Leitura inicial das cadeias de blocos STFS e extração segura de arquivo individual (testes adicionados; execução ainda não confirmada).\n- [x] Reconstrução inicial da hierarquia STFS e extração recursiva limitada (testes adicionados; execução ainda não confirmada).\n- [x] Inspeção inicial do descritor/layout SVOD e descoberta dos fragmentos GOD Data000x.\n- [x] Percurso inicial da árvore GDF/SVOD, montagem de blocos e extração recursiva experimental (sem validação com fragmentos GOD reais; CI pendente).
+- [x] Ordenação estrita dos nomes Data0000...DataNNNN e rejeição de lacunas/duplicatas (teste sintético).
 - [ ] Validar mapeamento SVOD com pacote GOD real e arquivos Data000x.
 - [ ] Conectar a biblioteca a jogos indexados e capas reais; ligar importação ISO/XEX/GOD e gerenciamento dos save states; adicionar busca, filtros e controle Xbox 360.
 - [ ] Integração dos slots com pausa/retomada do loop de emulação e interface gráfica.
@@ -190,7 +201,8 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 - [x] Memória física experimental com permissões de página e fetch de instrução integrado ao núcleo Xenon (testes adicionados; CI pendente).
 - [ ] MMU, memória virtual, BAT/TLB e proteção dos acessos de dados.
 - [x] Parser inicial do cabeçalho XEX2 e diretório opcional (testes adicionados; CI pendente).
-- [ ] Descriptografia AES-CBC e descompressão BASIC/LZX do XEX2.
+- [x] Parser dos metadados de compressão XEX2 e descompressão Basic sem criptografia (fixture sintético; CI pendente).
+- [ ] Descriptografia AES-CBC retail/devkit e descompressão Normal/LZX.
 - [x] Mapeador PE32 PowerPC inicial, seções, permissões e relocations HIGHLOW (testes sintéticos adicionados; CI pendente).
 - [x] Infraestrutura de resolução de imports por biblioteca/ordinal (sem catálogo real de exports xboxkrnl/xam; CI pendente).
 - [ ] Parser da tabela XEX de imports e integração com exports reais do kernel Xbox 360.
