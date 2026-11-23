@@ -34,7 +34,8 @@ struct Header {
 // Parses the fixed XEX2 header and optional-header directory only.
 // This deliberately does not claim to decrypt/decompress or map PE sections.
 [[nodiscard]] inline ParseResult parse_header(
-    std::span<const std::uint8_t> file, Header& output) noexcept {
+    std::span<const std::uint8_t> file, Header& output,
+    std::uint64_t full_file_size = 0) noexcept {
     constexpr std::size_t fixed_size = 24U;
     if (file.size() < fixed_size) return ParseResult::TooSmall;
     if (file[0] != 'X' || file[1] != 'E' || file[2] != 'X' || file[3] != '2')
@@ -60,8 +61,9 @@ struct Header {
         }
     }
     if (!parsed.has_entry_point) return ParseResult::MissingEntryPoint;
-    if (parsed.pe_data_offset >= file.size() ||
-        parsed.security_info_offset >= file.size())
+    const std::uint64_t image_size = full_file_size == 0 ? file.size() : full_file_size;
+    if (parsed.pe_data_offset >= image_size ||
+        parsed.security_info_offset >= image_size)
         return ParseResult::TruncatedHeader;
     output = parsed;
     return ParseResult::Ok;
