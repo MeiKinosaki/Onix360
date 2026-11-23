@@ -15,6 +15,7 @@ enum class MemoryResult : std::uint8_t {
     Unmapped,
     PermissionDenied,
     OutOfRange,
+    AlignmentFault,
 };
 
 struct Fault {
@@ -76,6 +77,7 @@ public:
 
     [[nodiscard]] MemoryResult fetch_u32(
         std::uint64_t address, std::uint32_t& value) const noexcept {
+        if ((address & 0x3U) != 0) return MemoryResult::AlignmentFault;
         std::uint8_t bytes[4]{};
         const auto status = read(address, bytes, Access::Execute);
         if (status != MemoryResult::Ok) return status;
