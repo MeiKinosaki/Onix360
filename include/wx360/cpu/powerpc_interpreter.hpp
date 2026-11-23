@@ -129,7 +129,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         if (address > memory.size() || width > memory.size() - static_cast<std::size_t>(address))
             return StepResult::MemoryFault;
         const auto offset = static_cast<std::size_t>(address);
-        if (d.primary_opcode == 32) {
+        if (d.primary_opcode == 32 || d.primary_opcode == 33) {
             result = (static_cast<std::uint32_t>(memory[offset]) << 24U) |
                      (static_cast<std::uint32_t>(memory[offset + 1]) << 16U) |
                      (static_cast<std::uint32_t>(memory[offset + 2]) << 8U) |
