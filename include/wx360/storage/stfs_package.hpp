@@ -6,7 +6,7 @@
 #include <fstream>
 #include <limits>
 #include <string>
-#include <vector>
+#include <utility>
 
 namespace wx360::storage {
 
@@ -25,6 +25,8 @@ struct StfsPackageHeader {
     std::uint32_t file_table_start_block{};
     std::uint32_t allocated_block_count{};
     std::uint32_t unallocated_block_count{};
+    std::uint32_t data_file_count{};
+    std::uint64_t data_file_size{};
     std::string title_name;
     std::string publisher_name;
 };
@@ -37,6 +39,7 @@ enum class StfsParseError {
     InvalidHeaderSize,
     InvalidVolumeDescriptor,
     UnsupportedVolumeType,
+    InvalidStfsBlockCounts,
     TruncatedHeader
 };
 
@@ -91,13 +94,28 @@ public:
         const auto volume_type = be32(bytes.data() + 0x3A9);
         if (volume_type > 1) return {StfsParseError::UnsupportedVolumeType, {}};
         header.volume_type = volume_type == 0 ? StfsVolumeType::Stfs : StfsVolumeType::Svod;
+        header.data_file_count = be32(bytes.data() + 0x39D);
+        header.data_file_size = be64(bytes.data() + 0x3A1);
 
-        // STFS descriptor fields use mixed endianness: the table count is LE16
-        // and the starting block is LE24; aggregate counts are BE32.
+        // The 0x24-byte STFS descriptor has LE16/LE24 block fields.
+        // SVOD has a different descriptor layout and is deliberately not
+        // interpreted by this STFS-only parser.
+        if (header.volume_type == StfsVolumeType::Svod)
+            return {StfsParseError::UnsupportedVolumeType, {}};
+
+        if (volume[0] != 0x24)
+            return {StfsParseError::InvalidVolumeDescriptor, {}};
         header.file_table_block_count = le16(volume + 3);
         header.file_table_start_block = le24(volume + 5);
         header.allocated_block_count = be32(volume + 0x1C);
         header.unallocated_block_count = be32(volume + 0x20);
+        if (header.file_table_block_count > header.allocated_block_count ||
+            header.allocated_block_count > 0x00FFFFFFu ||
+            header.unallocated_block_count > 0x00FFFFFFu ||
+            (header.file_table_block_count != 0 &&
+             header.file_table_start_block >= header.allocated_block_count))
+            return {StfsParseError::InvalidStfsBlockCounts, {}};
+
         header.title_name = read_utf16be_ascii(bytes.data() + 0x1691, 0x80);
         header.publisher_name = read_utf16be_ascii(bytes.data() + 0x1611, 0x80);
         return {StfsParseError::None, std::move(header)};
