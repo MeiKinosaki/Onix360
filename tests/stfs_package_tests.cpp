@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <vector>
 
 namespace {
 void put_be32(std::vector<std::uint8_t>& b, std::size_t o, std::uint32_t v) {
