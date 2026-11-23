@@ -38,6 +38,10 @@ int main() {
     core.state.pc = 0x5000;
     check(core.step(ram) == machine::RunResult::FetchFault,
           "core reports fetch outside physical RAM");
+
+    core.state.pc = 0x102;
+    check(core.step(ram) == machine::RunResult::InstructionAlignmentFault,
+          "core distinguishes misaligned instruction fetch");
     if (failures == 0) std::cout << "WX360 Xenon core integration tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
