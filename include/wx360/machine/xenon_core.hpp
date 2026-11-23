@@ -22,13 +22,14 @@ struct XenonCore {
     // completed before transferring control to the Xenon interpreter.
     [[nodiscard]] LaunchResult start_xex(
         const xex::LaunchPlan& plan, memory::PhysicalMemory& ram) noexcept {
-        if (plan.requires_decryption || plan.requires_decompression ||
-            plan.requires_pe_mapping || !plan.kernel_imports_resolved)
+        if (!plan.decryption_complete || !plan.decompression_complete ||
+            !plan.pe_mapped || !plan.kernel_imports_resolved)
             return LaunchResult::ImageNotMapped;
         std::uint32_t first_instruction = 0;
-        if (ram.fetch_u32(plan.entry_point, first_instruction) != memory::MemoryResult::Ok)
+        if (ram.fetch_u32(plan.mapped_entry_point, first_instruction) != memory::MemoryResult::Ok)
             return LaunchResult::EntryPointNotExecutable;
-        state.reset(plan.entry_point);
+        (void)first_instruction;
+        state.reset(plan.mapped_entry_point);
         return LaunchResult::Started;
     }
 
