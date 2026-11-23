@@ -15,8 +15,11 @@ endif()
 
 add_library(wx360_aes STATIC third_party/tiny_aes/aes.c)
 target_include_directories(wx360_aes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tiny_aes)
-target_compile_definitions(wx360_aes PRIVATE AES128=1 CBC=1 ECB=1 CTR=0)\n\nadd_library(wx360_cpu INTERFACE)
-target_include_directories(wx360_cpu INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)\ntarget_link_libraries(wx360_cpu INTERFACE wx360_aes)
+target_compile_definitions(wx360_aes PRIVATE AES128=1 CBC=1 ECB=1 CTR=0)
+
+add_library(wx360_cpu INTERFACE)
+target_include_directories(wx360_cpu INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(wx360_cpu INTERFACE wx360_aes)
 
 add_executable(wx360 src/main.cpp)
 set_target_properties(wx360 PROPERTIES OUTPUT_NAME "WX360")
