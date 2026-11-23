@@ -82,6 +82,14 @@ O interpretador inicial contém suporte experimental para:
 - Testes dedicados cobrem cada tipo de pasta, as três extensões STFS e diretório inexistente.
 - **Limite importante:** isso é descoberta por nomes/caminhos, não valida a integridade nem analisa cabeçalhos, hashes, tabelas de arquivos ou assinaturas STFS. Não extrai pacotes, não descriptografa conteúdo protegido, não monta GOD e não carrega/ executa jogos. Os arquivos de teste são placeholders, não pacotes Xbox 360 válidos.
 
+## Hierarquia STFS, extração recursiva e inspeção SVOD
+
+- Reconstrução de caminhos relativos de entradas STFS a partir dos índices de diretório pai, com detecção de ciclos, pais inválidos e nomes com separadores.
+- Extração recursiva inicial de arquivos e diretórios STFS, com limite global configurável (2 GiB por padrão) e limite individual já aplicado pelo leitor de blocos.
+- Descoberta ordenada de fragmentos `Data000x` em pastas GOD.
+- Leitura preliminar do descritor SVOD e inspeção dos marcadores Enhanced GDF, XSF e single-file.
+- **Limitações:** a inspeção SVOD não percorre ainda a árvore GDF nem monta os extents dos fragmentos; não é extração GOD completa. A validação de hashes SHA-1/RSA e o carregamento XEX permanecem pendentes. Extração STFS não deve ser considerada validada até os testes e CI serem executados.
+
 ## Leitura de dados e extração STFS (etapa inicial)
 
 - Leitor de arquivos STFS que segue cadeias de blocos de dados para arquivos marcados como contíguos ou encadeados, respeitando os limites de tamanho declarados e o tamanho real do pacote.
@@ -147,7 +155,7 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 - [x] Dashboard Win32 inspirado no Aurora com telas distintas e seleção de menu por teclado/mouse.
 - [x] Scanner inicial de diretórios GOD/XBLA/DLC/Title Update e candidatos a pacotes STFS por extensão (identificação de caminho, sem validação interna).
 - [x] Parser inicial do cabeçalho/descritor STFS, metadados básicos e rejeição de SVOD não suportado (testes sintéticos adicionados; CI ainda não validado).
-- [x] Leitura inicial das cadeias de blocos STFS e extração segura de arquivo individual (testes adicionados; execução ainda não confirmada).\n- [ ] Verificação RSA/assinaturas e SHA-1, reconstrução da hierarquia STFS, extração recursiva, suporte SVOD/Data000x e integração completa de GOD/XBLA/DLC/TU ao carregador.
+- [x] Leitura inicial das cadeias de blocos STFS e extração segura de arquivo individual (testes adicionados; execução ainda não confirmada).\n- [x] Reconstrução inicial da hierarquia STFS e extração recursiva limitada (testes adicionados; execução ainda não confirmada).\n- [x] Inspeção inicial do descritor/layout SVOD e descoberta dos fragmentos GOD Data000x.\n- [ ] Percurso completo da árvore GDF/SVOD, montagem dos extents, validação RSA/SHA-1 e carregamento XEX.
 - [ ] Conectar a biblioteca a jogos indexados e capas reais; ligar importação ISO/XEX/GOD e gerenciamento dos save states; adicionar busca, filtros e controle Xbox 360.
 - [ ] Integração dos slots com pausa/retomada do loop de emulação e interface gráfica.
 - [ ] Snapshot completo do sistema: GPU, áudio, dispositivos, timers, kernel e estado de todos os threads.
