@@ -20,6 +20,7 @@ struct SvodInspection {
     std::vector<std::filesystem::path> fragments;
     std::uint32_t declared_fragment_count{};
     std::uint32_t start_data_block{};
+    std::uint32_t base_offset{};
     [[nodiscard]] explicit operator bool() const noexcept {
         return error == StfsParseError::None && layout != SvodLayout::Unknown;
     }
@@ -27,8 +28,7 @@ struct SvodInspection {
 
 class SvodContainer {
 public:
-    // Inspects the SVOD descriptor and physical layout markers. It does not
-    // yet traverse the SVOD/GDF directory tree or mount its file extents.
+    // Inspects the SVOD descriptor and resolves the ordered physical data fragments.
     [[nodiscard]] static SvodInspection inspect(
         const std::filesystem::path& header_path,
         const std::filesystem::path& fragment_directory = {}) {
@@ -80,6 +80,7 @@ public:
         if ((features & 0x40u) != 0) {
             if (has_magic(first_fragment, 0x2000, "MICROSOFT*XBOX*MEDIA", 20))
                 result.layout = SvodLayout::EnhancedGdf;
+                result.base_offset = 0;
             else {
                 result.error = StfsParseError::UnsupportedSvodLayout;
                 return result;
@@ -87,9 +88,11 @@ public:
         } else if (has_magic(first_fragment, 0x12000, "MICROSOFT*XBOX*MEDIA", 20)) {
             result.layout = has_magic(first_fragment, 0x2000, "XSF", 3)
                 ? SvodLayout::Xsf : SvodLayout::Unknown;
+            result.base_offset = result.layout == SvodLayout::Xsf ? 0x10000u : 0u;
         } else if (has_magic(first_fragment, 0xD000, "MICROSOFT*XBOX*MEDIA", 20) &&
                    parsed.header.data_file_count == 1) {
             result.layout = SvodLayout::SingleFile;
+            result.base_offset = 0xB000u;
         }
         if (result.layout == SvodLayout::Unknown)
             result.error = StfsParseError::UnsupportedSvodLayout;
