@@ -3,6 +3,7 @@
 #include "wx360/storage/stfs_package.hpp"
 #include "wx360/storage/stfs_tree.hpp"
 #include "wx360/storage/svod_gdf.hpp"
+#include "wx360/xex/xex_image_loader.hpp"
 #include "wx360/xex/xex_header.hpp"
 
 #include <algorithm>
@@ -93,6 +94,11 @@ public:
         if (!extract_god_svod(package_header, destination, error, fragment_directory))
             return std::nullopt;
         return find_extracted_god_default_xex(destination);
+    }
+
+    [[nodiscard]] static xex::LoadResult inspect_xex(
+        const std::filesystem::path& extracted_xex) {
+        return xex::XexImageLoader::inspect(extracted_xex);
     }
 
     [[nodiscard]] static bool extract_default_xex_from_stfs(
