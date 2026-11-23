@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <string>
 #include <vector>
 
 static void be32(std::vector<std::uint8_t>& b,std::size_t p,std::uint32_t v){
