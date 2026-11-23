@@ -403,7 +403,7 @@ int main() {
     const std::uint32_t srawi_record_zero = (31U << 26U) | (1U << 21U) | (9U << 16U) | (824U << 1U) | 1U;
     check(execute(s, srawi_record_zero) == StepResult::Executed,
           "SRAWI. executes with record bit set");
-    check(s.gpr[9] == UINT64_MAX && s.condition_field(0) == 0x8,
+    check(s.gpr[9] == 0xFFFFFFFF80000001ULL && s.condition_field(0) == 0x8,
           "SRAWI. records a negative sign-extended word in CR0");
     s.gpr[1] = 0x0000000000000004ULL;
     const std::uint32_t srawi_record_zero_positive = (31U << 26U) | (1U << 21U) | (10U << 16U) | (824U << 1U) | 1U;
