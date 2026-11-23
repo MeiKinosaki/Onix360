@@ -277,8 +277,8 @@ public:
                 ec.clear();
                 std::filesystem::create_directories(target, ec);
                 if (ec || !std::filesystem::is_directory(target, ec) || ec) return false;
-            } else if (!ec && std::filesystem::is_directory(status)) {
-                return false;
+            } else if (!ec && std::filesystem::exists(status)) {
+                return false; // never overwrite an existing file or directory
             }
         }
         return true;
