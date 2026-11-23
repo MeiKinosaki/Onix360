@@ -67,14 +67,6 @@ enum class PageHashResult : std::uint8_t {
     Ok, ImageSizeMismatch, DescriptorOverflow, DigestMismatch
 };
 
-// XEX2 uses 4 KiB pages only when IMAGE_PAGE_SIZE_4KB is set;
-// otherwise page descriptors cover 64 KiB units.
-inline constexpr std::uint32_t kXexImagePageSize4Kb = 0x10000000u;
-
-[[nodiscard]] inline std::size_t xex_page_size(const SecurityInfo& security) noexcept {
-    return (security.image_flags & kXexImagePageSize4Kb) != 0 ? 0x1000u : 0x10000u;
-}
-
 // XEX page hashes form a SHA-1 chain rooted at SecurityInfo.section_digest.
 // Each digest covers the declared page range (zero padded at EOF) followed by
 // that descriptor's exact 24-byte big-endian representation. The descriptor's
