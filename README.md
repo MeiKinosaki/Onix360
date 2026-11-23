@@ -117,10 +117,10 @@ O interpretador inicial contém suporte experimental para:
 
 - Adicionado SHA-1 portátil com teste conhecido para a mensagem `abc`.
 - Adicionado parser estrutural de Security Info XEX2: tamanhos, image size, flags, load address, assinatura RSA em bytes, digests SHA-1, chave AES cifrada, export-table pointer e page descriptors.
-- A rotina de comparação SHA-1 é fornecida, mas ainda não foi ligada à validação criptográfica real das regiões/páginas do XEX. A assinatura RSA não é verificada e os digests não são aceitos como prova de autenticidade.
+- A rotina SHA-1 agora valida os digests dos blocos descritos pelos page descriptors contra uma imagem reconstruída, exigindo cobertura/tamanho consistentes; há teste sintético positivo e teste de corrupção. Isso ainda não valida a assinatura RSA nem todos os digests de cabeçalho/import table, e depende de uma imagem já descriptografada/descomprimida.
 - O optional header `0x000103FF` agora é identificado. O parser de import libraries lê a string table, registros por biblioteca, versões, contagens e lista de valores de thunk/índices, com limites de tamanho e validação de strings.
 - O parser da tabela de bibliotecas ainda não interpreta completamente os descriptors individuais de importação/ordinais nem aplica todos os imports aos thunks PE; o catálogo real de exports do xboxkrnl/xam também não existe.
-- AES-128-CBC com chave de sessão, escolha retail/devkit, descompressão Normal/LZX e validação RSA permanecem pendentes. A chave retail pública e a chave devkit padrão conhecida foram confirmadas na referência de implementação Xenia; não foram embutidas nesta etapa porque ainda falta o AES portátil e a validação ponta a ponta.
+- AES-128-ECB para desembrulhar a chave de sessão, AES-128-CBC para o payload, seleção retail/devkit, descompressão Normal/LZX e validação RSA permanecem pendentes. A referência Xenia documenta a chave XEX2 retail e a chave devkit padrão de 16 bytes zero; nenhuma rotina AES foi integrada ainda.
 - O núcleo Xenon já possui handoff protegido e execução de uma instrução via `step()` em memória executável; isso é um teste de instrução sintética, não inicialização de um XEX comercial.
 
 ## Avanço incremental do leitor GOD/SVOD e XEX2
