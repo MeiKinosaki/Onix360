@@ -7,7 +7,7 @@
 ## Objetivos
 
 - Windows 10/11 de 64 bits.
-- x86 de 32 bits (Win32/i686), sem exigir SSE, SSE2, SSE3, SSSE3, SSE4, AVX ou AVX2.
+- x86-64 com SSE2 (baseline da arquitetura); AVX e AVX2 não são requisitos.
 - Meta de otimização para computadores com até 4 GB de RAM; isso não garante que jogos completos rodem nessa capacidade.
 - Arquitetura modular para CPU Xenon, memória, GPU Xenos, áudio e kernel.
 
