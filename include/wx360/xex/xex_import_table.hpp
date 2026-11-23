@@ -32,7 +32,7 @@ struct ImportTable {
        strings_size>total-12 || strings_count>256)
         return ImportTableError::InvalidSize;
     const auto strings_begin=std::size_t(offset)+12;
-    const auto strings_end=strings_begin+strings_size-4;
+    const auto strings_end=strings_begin+strings_size;
     std::vector<std::string> names;
     std::size_t cursor=strings_begin;
     for(std::uint32_t i=0;i<strings_count;++i) {
