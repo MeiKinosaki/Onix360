@@ -21,3 +21,18 @@ jobs:
         run: cmake --build build --config Release --parallel 2
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
+      - name: Package portable Windows ZIP
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/WX360/WX360-data/roms, dist/WX360/WX360-data/covers, dist/WX360/WX360-data/saves | Out-Null
+          Copy-Item build/Release/WX360.exe dist/WX360/WX360.exe
+          Copy-Item README.md dist/WX360/README.txt
+          Compress-Archive -Path dist/WX360 -DestinationPath dist/WX360-Windows-x64-Portable.zip -Force
+      - name: Upload portable Windows package
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: WX360-Windows-x64-Portable
+          path: dist/WX360-Windows-x64-Portable.zip
+          if-no-files-found: error
