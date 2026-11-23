@@ -32,14 +32,14 @@ int main(){
     }
 
     // XEX import library directory: one padded name and one library record.
-    std::vector<std::uint8_t> imports(12+8+0x2C,0);
-    be32(imports,0,imports.size());be32(imports,4,8);be32(imports,8,1);
+    std::vector<std::uint8_t> imports(12+12+0x2C,0);
+    be32(imports,0,imports.size());be32(imports,4,12);be32(imports,8,1);
     imports[12]='x';imports[13]='b';imports[14]='o';imports[15]='x';
     imports[16]='k';imports[17]='r';imports[18]='n';imports[19]='l';
-    be32(imports,20,0x2C);be32(imports,20+0x18,0x12345678);
-    be32(imports,20+0x1C,0x00010002);be32(imports,20+0x20,0x00010000);
-    be16(imports,20+0x24,0);be16(imports,20+0x26,1);
-    be32(imports,20+0x28,0x82001000);
+    be32(imports,24,0x2C);be32(imports,24+0x18,0x12345678);
+    be32(imports,24+0x1C,0x00010002);be32(imports,24+0x20,0x00010000);
+    be16(imports,24+0x24,0);be16(imports,24+0x26,1);
+    be32(imports,24+0x28,0x82001000);
     wx360::xex::ImportTable table{};
     if(wx360::xex::parse_import_table(imports,0,table)!=wx360::xex::ImportTableError::Ok ||
        table.libraries.size()!=1 || table.libraries[0].name!="xboxkrnl" ||
