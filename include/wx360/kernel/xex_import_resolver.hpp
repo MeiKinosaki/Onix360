@@ -49,16 +49,14 @@ public:
             patches.emplace_back(item.thunk_address, found->second);
         }
         // Validate the complete import set before modifying guest memory.
+        auto bytes = guest_memory.raw_bytes();
         for (const auto& patch : patches) {
-            const auto address = patch.first;
+            const auto address = static_cast<std::size_t>(patch.first);
             const auto value = patch.second;
-            const std::uint8_t be[4] = {
-                static_cast<std::uint8_t>(value >> 24),
-                static_cast<std::uint8_t>(value >> 16),
-                static_cast<std::uint8_t>(value >> 8),
-                static_cast<std::uint8_t>(value)};
-            if (guest_memory.write(address, be) != memory::MemoryResult::Ok)
-                return ImportResolveError::MemoryWriteFailed;
+            bytes[address] = static_cast<std::uint8_t>(value >> 24);
+            bytes[address + 1] = static_cast<std::uint8_t>(value >> 16);
+            bytes[address + 2] = static_cast<std::uint8_t>(value >> 8);
+            bytes[address + 3] = static_cast<std::uint8_t>(value);
         }
         return ImportResolveError::None;
     }
