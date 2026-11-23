@@ -5,6 +5,8 @@
 #include "wx360/crypto/aes128.hpp"
 #include "wx360/xex/xex_pe_mapper.hpp"
 #include "wx360/kernel/xex_import_resolver.hpp"
+#include "wx360/compression/lzx_decoder.hpp"
+#include <bit>
 
 #include <algorithm>
 #include <array>
@@ -46,10 +48,44 @@ struct LoadResult {
     }
 };
 
+enum class NormalDecompressError : std::uint8_t {
+    Ok, WrongCompression, InvalidWindow, InvalidBlockStream, LzxFailure
+};
+
 class XexImageLoader {
 public:
     static constexpr std::size_t kHeaderWindow = 0x10000;
     static constexpr std::uint64_t kMaximumImageSize = 2ull * 1024ull * 1024ull * 1024ull;
+
+    // Input must already be decrypted. XEX Normal consists of linked
+    // SHA-1-authenticated blocks; each block contains u16-length-prefixed
+    // LZX chunks. Strip and authenticate that framing before LZX decoding.
+    [[nodiscard]] static NormalDecompressError decompress_normal_lzx(
+        std::span<const std::uint8_t> decrypted_payload,
+        const FileFormatInfo& format,
+        std::vector<std::uint8_t>& output) {
+        if (format.compression != XexCompression::Normal)
+            return NormalDecompressError::WrongCompression;
+        const auto window = format.normal_window_size;
+        if (window < 0x8000u || window > 0x200000u ||
+            (window & (window - 1u)) != 0)
+            return NormalDecompressError::InvalidWindow;
+
+        std::vector<std::uint8_t> compressed;
+        const auto framing = unpack_normal_chunks(
+            decrypted_payload, format.first_normal_block,
+            decrypted_payload.size(), compressed);
+        if (framing != NormalBlockError::Ok)
+            return NormalDecompressError::InvalidBlockStream;
+
+        std::vector<std::uint8_t> decoded;
+        const auto result = compression::decode_lzx(
+            compressed, std::countr_zero(window), 0, format.image_size, decoded);
+        if (result != compression::LzxError::None)
+            return NormalDecompressError::LzxFailure;
+        output = std::move(decoded);
+        return NormalDecompressError::Ok;
+    }
 
     [[nodiscard]] static kernel::ImportResolveError resolve_kernel_imports(
         LaunchPlan& plan,
