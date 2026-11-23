@@ -97,6 +97,7 @@ inline constexpr std::uint32_t kXexImagePageSize4Kb = 0x10000000u;
     std::size_t declared_pages = 0;
     for (const auto& page : security.pages) {
         if (page.page_count == 0 || page.type < 1 || page.type > 3 ||
+            page.raw != ((page.page_count << 4u) | page.type) ||
             declared_pages > required_pages ||
             page.page_count > required_pages - declared_pages)
             return PageHashResult::DescriptorOverflow;
@@ -116,11 +117,10 @@ inline constexpr std::uint32_t kXexImagePageSize4Kb = 0x10000000u;
             image.begin() + static_cast<std::ptrdiff_t>(offset),
             image.begin() + static_cast<std::ptrdiff_t>(offset + actual_size));
         authenticated.resize(declared_size, 0);
-        const auto raw = (page.page_count << 4u) | (page.type & 0xFu);
-        authenticated.push_back(static_cast<std::uint8_t>(raw >> 24u));
-        authenticated.push_back(static_cast<std::uint8_t>(raw >> 16u));
-        authenticated.push_back(static_cast<std::uint8_t>(raw >> 8u));
-        authenticated.push_back(static_cast<std::uint8_t>(raw));
+        authenticated.push_back(static_cast<std::uint8_t>(page.raw >> 24u));
+        authenticated.push_back(static_cast<std::uint8_t>(page.raw >> 16u));
+        authenticated.push_back(static_cast<std::uint8_t>(page.raw >> 8u));
+        authenticated.push_back(static_cast<std::uint8_t>(page.raw));
         authenticated.insert(authenticated.end(), page.digest.begin(), page.digest.end());
         if (!verify_sha1(authenticated, expected))
             return PageHashResult::DigestMismatch;
