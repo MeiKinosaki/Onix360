@@ -39,7 +39,7 @@ void put_utf16be(std::vector<std::uint8_t>& b, std::size_t o, const char* s) {
 int main() {
     int failures=0;
     const auto path=std::filesystem::temp_directory_path()/"wx360_stfs_header_test.con";
-    std::vector<std::uint8_t> bytes(0xC000,0);
+    std::vector<std::uint8_t> bytes(0xD000,0);
     bytes[0]='C';bytes[1]='O';bytes[2]='N';bytes[3]=' ';
     put_be32(bytes,0x340,0x971A);
     put_be32(bytes,0x344,0x00007000);
@@ -83,6 +83,30 @@ int main() {
        file_table.entries[0].file_size!=0x1800u ||
        file_table.entries[0].starting_block!=1u) {
         std::cerr<<"Read-only STFS file table was not parsed correctly\\n";++failures;
+    }
+
+    // Exercise a two-block directory table and the level-0 next-block link.
+    put_le16(bytes,0x379+3,2);
+    put_be32(bytes,0xA014,0x80000001u); // block 0 -> block 1, allocated
+    const std::size_t second_table=0xC000;
+    const char* second_name="second.bin";
+    for(std::size_t i=0;second_name[i];++i)
+        bytes[second_table+i]=static_cast<std::uint8_t>(second_name[i]);
+    bytes[second_table+0x28]=static_cast<std::uint8_t>(0x40u | 10u);
+    put_le24(bytes,second_table+0x29,1);
+    put_le24(bytes,second_table+0x2C,1);
+    put_le24(bytes,second_table+0x2F,2);
+    bytes[second_table+0x32]=0xFF; bytes[second_table+0x33]=0xFF;
+    put_be32(bytes,second_table+0x34,0x1000);
+    {
+        std::ofstream out(path,std::ios::binary|std::ios::trunc);
+        out.write(reinterpret_cast<const char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()));
+    }
+    const auto chained_header=wx360::storage::StfsPackageParser::parse(path);
+    const auto chained_table=wx360::storage::StfsPackageParser::read_file_table(path,chained_header.header);
+    if(!chained_header || !chained_table || chained_table.entries.size()!=2 ||
+       chained_table.entries[1].name!="second.bin") {
+        std::cerr<<"STFS file table block chain was not followed\\n";++failures;
     }
 
     bytes[0]='X';
