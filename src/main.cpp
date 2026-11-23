@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     std::error_code directory_error;
     if (!directories.create(&directory_error)) {
         std::cerr << "Unable to create portable WX360-data folders: "
-                  << directory_error.message() << "\\n";
+                  << directory_error.message() << "\n";
         return 3;
     }
     std::cout << "WX360 - Windows Xbox 360 Emulator\n"
