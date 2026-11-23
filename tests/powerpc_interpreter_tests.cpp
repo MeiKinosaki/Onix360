@@ -298,6 +298,28 @@ int main() {
     check(s.gpr[16] == 0xC000000000000001ULL && s.condition_field(0) == 0x8,
           "SRAD. records the 64-bit negative result in CR0");
 
+    // SRAW variable shifts at and beyond the 32-bit word boundary.
+    s.gpr[1] = 0x0000000080000001ULL;
+    s.gpr[2] = 32;
+    s.xer &= ~xer_ca;
+    check(execute(s, x_form(1, 17, 2, 792)) == StepResult::Executed,
+          "SRAW executes with shift amount 32");
+    check(s.gpr[17] == UINT64_MAX && (s.xer & xer_ca) != 0,
+          "SRAW shift by 32 sign-extends and sets CA for discarded ones");
+    s.gpr[1] = 0x0000000080000000ULL;
+    s.gpr[2] = 63;
+    s.xer |= xer_ca;
+    check(execute(s, x_form(1, 18, 2, 792)) == StepResult::Executed,
+          "SRAW executes with shift amount 63");
+    check(s.gpr[18] == UINT64_MAX && (s.xer & xer_ca) == 0,
+          "SRAW shift by 63 clears CA when discarded low bits are zero");
+    s.gpr[1] = 0x000000007FFFFFFFULL;
+    s.gpr[2] = 32;
+    check(execute(s, x_form(1, 19, 2, 792)) == StepResult::Executed,
+          "SRAW executes for a positive operand at shift 32");
+    check(s.gpr[19] == 0 && (s.xer & xer_ca) == 0,
+          "SRAW shift by 32 produces zero and clears CA for positive operands");
+
     std::array<std::uint8_t, 64> ram{};
     s.gpr[21] = 0x12345678U;
     check(execute(s, d_form(36, 21, 0, 8), ram) == StepResult::Executed, "STW executes");
