@@ -50,6 +50,11 @@ public:
         return MemoryResult::Ok;
     }
 
+    [[nodiscard]] MemoryResult check_access(
+        std::uint64_t address, std::size_t length, Access access) const noexcept {
+        return validate(address, length, access);
+    }
+
     [[nodiscard]] MemoryResult read(
         std::uint64_t address, std::span<std::uint8_t> output,
         Access access = Access::Read) const noexcept {
