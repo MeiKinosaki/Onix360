@@ -65,7 +65,8 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
 
 [[nodiscard]] inline StepResult execute(
     XenonThreadState& state, std::uint32_t instruction,
-    std::span<std::uint8_t> memory = {}) noexcept {
+    std::span<std::uint8_t> memory = {},
+    std::uint64_t* fault_address = nullptr) noexcept {
     const auto d = decode(instruction);
     std::uint64_t result = 0;
     bool writes_result = false;
@@ -127,10 +128,14 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         if (update && d.ra == 0) return StepResult::UnsupportedInstruction;
         if (update && load && d.ra == d.rt) return StepResult::UnsupportedInstruction;
         const std::size_t width = word_access ? 4U : (halfword_access ? 2U : 1U);
-        if (width > 1U && (address % width) != 0U)
+        if (width > 1U && (address % width) != 0U) {
+            if (fault_address) *fault_address = address;
             return StepResult::AlignmentFault;
-        if (address > memory.size() || width > memory.size() - static_cast<std::size_t>(address))
+        }
+        if (address > memory.size() || width > memory.size() - static_cast<std::size_t>(address)) {
+            if (fault_address) *fault_address = address;
             return StepResult::MemoryFault;
+        }
         const auto offset = static_cast<std::size_t>(address);
         if (d.primary_opcode == 32 || d.primary_opcode == 33) {
             result = (static_cast<std::uint32_t>(memory[offset]) << 24U) |
