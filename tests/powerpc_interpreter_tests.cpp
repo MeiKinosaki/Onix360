@@ -157,7 +157,7 @@ int main() {
     s.gpr[2] = 64;
     check(execute(s, x_form(1, 5, 2, 27)) == StepResult::Executed, "SLD handles shift >= 64");
     check(s.gpr[5] == 0, "SLD returns zero for shift >= 64");
-    s.gpr[1] = 0xFFFFFFFFFFFFFFF0ULL;
+    s.gpr[1] = 0xFFFFFFFFFFFFFFF3ULL;
     s.gpr[2] = 2;
     s.xer &= ~xer_ca;
     check(execute(s, x_form(1, 6, 2, 794)) == StepResult::Executed, "SRAD executes");
