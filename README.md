@@ -104,7 +104,7 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 - [x] Parser experimental da árvore XDVDFS da raiz e busca de `default.xex` (testes enviados ao CI).
 - [ ] Navegação recursiva XDVDFS e integração ISO/XEX ao carregador.
 - [x] Biblioteca de capas com cache local, downloader HTTPS WinHTTP no Windows e validação JPEG.
-- [x] Estrutura de pastas roms/covers/saves, criação idempotente e raiz portátil ao lado do executável (teste dedicado adicionado).
+- [x] Estrutura de pastas roms/covers/saves/configs, criação idempotente e raiz portátil ao lado do executável (teste dedicado adicionado).
 - [ ] Integrar catálogo/provedor de metadados, identificar jogos automaticamente e exibir capas reais na biblioteca gráfica.
 - [x] Dashboard Win32 inspirado no Aurora com telas distintas e seleção de menu por teclado/mouse.
 - [ ] Conectar a biblioteca a jogos indexados e capas reais; ligar importação ISO/XEX/GOD e gerenciamento dos save states; adicionar busca, filtros e controle Xbox 360.
