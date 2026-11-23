@@ -76,9 +76,13 @@ public:
         };
         const auto& first_fragment = result.fragments.front();
         const auto features = parsed.header.svod_device_features;
-        if ((features & 0x40u) != 0 &&
-            has_magic(first_fragment, 0x2000, "MICROSOFT*XBOX*MEDIA", 20)) {
-            result.layout = SvodLayout::EnhancedGdf;
+        if ((features & 0x40u) != 0) {
+            if (has_magic(first_fragment, 0x2000, "MICROSOFT*XBOX*MEDIA", 20))
+                result.layout = SvodLayout::EnhancedGdf;
+            else {
+                result.error = StfsParseError::UnsupportedSvodLayout;
+                return result;
+            }
         } else if (has_magic(first_fragment, 0x12000, "MICROSOFT*XBOX*MEDIA", 20)) {
             result.layout = has_magic(first_fragment, 0x2000, "XSF", 3)
                 ? SvodLayout::Xsf : SvodLayout::Unknown;
