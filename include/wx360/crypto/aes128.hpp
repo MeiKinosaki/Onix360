@@ -10,7 +10,7 @@ extern "C" {
 
 namespace wx360::crypto {
 using Aes128Key = std::array<std::uint8_t,16>;
-enum class AesResult : std::uint8_t { Ok, InvalidLength };
+enum class AesResult : std::uint8_t { Ok, InvalidLength, KeyUnavailable };
 
 inline void aes128_ecb_decrypt_block(
     const Aes128Key& key, std::span<std::uint8_t,16> block) {
@@ -29,8 +29,15 @@ inline void aes128_ecb_decrypt_block(
 }
 
 enum class XexKeySet : std::uint8_t { Retail, Devkit };
+
+// Only the retail master key is currently provisioned. Never silently use an
+// all-zero key for Devkit: that would make synthetic tests look like real support.
+[[nodiscard]] inline bool xex_master_key_available(XexKeySet set) noexcept {
+    return set == XexKeySet::Retail;
+}
 [[nodiscard]] inline Aes128Key xex_master_key(XexKeySet set) noexcept {
-    if (set == XexKeySet::Retail) return {0x20,0xB1,0x85,0xA5,0x9D,0x28,0xFD,0xC3,0x40,0x58,0x3F,0xBB,0x08,0x96,0xBF,0x91};
+    if (set == XexKeySet::Retail)
+        return {0x20,0xB1,0x85,0xA5,0x9D,0x28,0xFD,0xC3,0x40,0x58,0x3F,0xBB,0x08,0x96,0xBF,0x91};
     return {};
 }
 
@@ -42,9 +49,6 @@ enum class XexKeySet : std::uint8_t { Retail, Devkit };
     return aes128_cbc_decrypt(key, zero_iv, input, output);
 }
 
-// XEX stores the session key encrypted under a console-family master key.
-// This routine only unwraps the 16-byte field; callers must select the
-// correct retail/devkit key and validate the resulting image separately.
 [[nodiscard]] inline Aes128Key unwrap_xex_session_key(
     const Aes128Key& master_key, const Aes128Key& encrypted_session_key) {
     auto result=encrypted_session_key;
