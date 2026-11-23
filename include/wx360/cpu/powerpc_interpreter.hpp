@@ -11,6 +11,7 @@ enum class StepResult {
     Executed,
     UnsupportedInstruction,
     MemoryFault,
+    AlignmentFault,
 };
 
 struct DecodedInstruction {
@@ -126,6 +127,8 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         if (update && d.ra == 0) return StepResult::UnsupportedInstruction;
         if (update && load && d.ra == d.rt) return StepResult::UnsupportedInstruction;
         const std::size_t width = word_access ? 4U : (halfword_access ? 2U : 1U);
+        if (width > 1U && (address % width) != 0U)
+            return StepResult::AlignmentFault;
         if (address > memory.size() || width > memory.size() - static_cast<std::size_t>(address))
             return StepResult::MemoryFault;
         const auto offset = static_cast<std::size_t>(address);
