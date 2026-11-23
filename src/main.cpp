@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
     if (result != wx360::cpu::StepResult::Executed || thread.gpr[3] != 1) return 2;
 #if defined(_WIN32)
     wx360::ui::AuroraWindow dashboard;
-    return dashboard.run(GetModuleHandleW(nullptr), SW_SHOW);
+    return dashboard.run(GetModuleHandleW(nullptr), SW_SHOW, directories.roms());
 #else
     return 0;
 #endif
