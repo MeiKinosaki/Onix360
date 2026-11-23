@@ -101,7 +101,7 @@ public:
             if (logical_block < start) return false;
             std::uint64_t true_block = logical_block - start;
             if (result.inspection.layout == SvodLayout::EnhancedGdf) true_block += 2u;
-            const std::uint64_t fragment_index = true_block / kBlocksPerFragment;
+            std::uint64_t fragment_index = true_block / kBlocksPerFragment;
             const std::uint64_t file_block = true_block % kBlocksPerFragment;
             if (fragment_index >= fragments.size()) return false;
             const std::uint64_t level0_count = file_block / kBlocksPerLevel0 + 1u;
@@ -110,10 +110,10 @@ public:
                 (level0_count + level1_count) * 0x1000ull;
             if (result.inspection.layout == SvodLayout::SingleFile) offset += 0xB000ull;
             if (offset >= kFragmentPayloadSize) {
-                // Xenia advances to the next fragment and starts after its two
-                // leading hash tables when the calculated address crosses it.
-                return false;
+                ++fragment_index;
+                offset = (offset % kFragmentPayloadSize) + 0x2000ull;
             }
+            if (fragment_index >= fragments.size()) return false;
             std::ifstream data(fragments[static_cast<std::size_t>(fragment_index)], std::ios::binary);
             if (!data) return false;
             data.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
@@ -196,14 +196,18 @@ public:
                 if (block < start) return false;
                 std::uint64_t true_block = block - start;
                 if (parsed.layout == SvodLayout::EnhancedGdf) true_block += 2u;
-                const auto fragment_index = true_block / kBlocksPerFragment;
+                auto fragment_index = true_block / kBlocksPerFragment;
                 const auto file_block = true_block % kBlocksPerFragment;
                 if (fragment_index >= fragments.size()) return false;
                 const auto l0 = file_block / kBlocksPerLevel0 + 1u;
                 const auto l1 = l0 / kLevel0PerLevel1 + 1u;
                 std::uint64_t offset = file_block * kBlockSize + (l0 + l1) * 0x1000ull;
                 if (parsed.layout == SvodLayout::SingleFile) offset += 0xB000ull;
-                if (offset >= kFragmentPayloadSize) return false;
+                if (offset >= kFragmentPayloadSize) {
+                    ++fragment_index;
+                    offset = (offset % kFragmentPayloadSize) + 0x2000ull;
+                }
+                if (fragment_index >= fragments.size()) return false;
                 std::ifstream in(fragments[static_cast<std::size_t>(fragment_index)], std::ios::binary);
                 if (!in) return false;
                 const auto amount = static_cast<std::size_t>(std::min<std::uint64_t>(kBlockSize, size - done));
