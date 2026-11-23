@@ -2,6 +2,7 @@
 
 #include "wx360/xex/xex_header.hpp"
 #include "wx360/xex/xex_pe_mapper.hpp"
+#include "wx360/kernel/xex_import_resolver.hpp"
 
 #include <algorithm>
 #include <array>
@@ -47,6 +48,16 @@ class XexImageLoader {
 public:
     static constexpr std::size_t kHeaderWindow = 0x10000;
     static constexpr std::uint64_t kMaximumImageSize = 2ull * 1024ull * 1024ull * 1024ull;
+
+    [[nodiscard]] static kernel::ImportResolveError resolve_kernel_imports(
+        LaunchPlan& plan,
+        std::span<const kernel::XexImport> imports,
+        const kernel::XexImportResolver& resolver,
+        memory::PhysicalMemory& guest_memory) {
+        const auto status = resolver.resolve(imports, guest_memory);
+        plan.kernel_imports_resolved = status == kernel::ImportResolveError::None;
+        return status;
+    }
 
     [[nodiscard]] static LoadError map_transformed_pe(
         LaunchPlan& plan,
