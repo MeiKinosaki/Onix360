@@ -61,12 +61,12 @@ O interpretador inicial contém suporte experimental para:
 Requisitos: CMake 3.20+ e compilador C++20 (Visual Studio 2022 ou MinGW-w64 recente).
 
 ```powershell
-cmake -S . -B build -A Win32
+cmake -S . -B build -A x64
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-O alvo é Win32 de 32 bits. A configuração rejeita toolchains de 64 bits e desativa instruções SIMD SSE/SSE2 e posteriores. Em CPUs antigas, o suporte depende também do Windows e das bibliotecas do sistema.
+O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. AVX e AVX2 não são habilitados nem exigidos. Não use `-march=native`; mantenha o build compatível com o baseline x86-64. A configuração atual não oferece suporte a CPUs x86 de 32 bits.
 
 ## Estado do projeto
 
