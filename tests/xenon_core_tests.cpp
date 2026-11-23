@@ -52,7 +52,7 @@ int main() {
           core.state.pc == 0x100,
           "Xenon core accepts an executable mapped XEX entry point");
 
-    core.state.pc = 0x3000;
+    core.state.pc = 0x5000;
     check(core.step(ram) == machine::RunResult::FetchFault,
           "core reports fetch outside physical RAM");
     if (failures == 0) std::cout << "WX360 Xenon core integration tests passed\n";
