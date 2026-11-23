@@ -79,6 +79,33 @@ int main() {
     check(execute(s, x_form(8, 12, 9, 28)) == StepResult::Executed, "AND executes");
     check(s.gpr[12] == 0xC0, "AND computes bitwise result");
 
+    // Word shifts operate on the low 32 bits and zero/sign extend appropriately.
+    s.gpr[1] = 0x0000000080000001ULL;
+    s.gpr[2] = 1;
+    check(execute(s, x_form(1, 3, 2, 24)) == StepResult::Executed, "SLW executes");
+    check(s.gpr[3] == 2, "SLW shifts left and zero-extends word result");
+    s.gpr[1] = 0x0000000080000001ULL;
+    s.gpr[2] = 1;
+    check(execute(s, x_form(1, 4, 2, 536)) == StepResult::Executed, "SRW executes");
+    check(s.gpr[4] == 0x40000000ULL, "SRW shifts right logically");
+    s.gpr[1] = 0x0000000080000001ULL;
+    s.gpr[2] = 32;
+    check(execute(s, x_form(1, 5, 2, 24)) == StepResult::Executed, "SLW handles shift >= 32");
+    check(s.gpr[5] == 0, "SLW returns zero when RB bit 5 is set");
+    s.gpr[1] = 0x00000000FFFFFFF0ULL;
+    s.gpr[2] = 2;
+    check(execute(s, x_form(1, 6, 2, 792)) == StepResult::Executed, "SRAW executes");
+    check(s.gpr[6] == 0xFFFFFFFFFFFFFFFCULL, "SRAW sign-extends arithmetic word result");
+    check((s.xer & xer_ca) != 0, "SRAW sets CA when negative one bits are shifted out");
+    s.gpr[1] = 0x000000007FFFFFF0ULL;
+    s.gpr[2] = 2;
+    check(execute(s, x_form(1, 7, 2, 792)) == StepResult::Executed, "SRAW handles positive operand");
+    check(s.gpr[7] == 0x1FFFFFFCULL && (s.xer & xer_ca) == 0,
+          "SRAW positive result does not set CA");
+    s.gpr[1] = 0x00000000FFFFFFF0ULL;
+    check(execute(s, rlwinm_form(1, 8, 0, 0, 31)) == StepResult::Executed,
+          "RLWINM helper remains usable after shift tests");
+
     s.gpr[13] = 20;
     s.gpr[14] = 22;
     check(execute(s, x_form(15, 13, 14, 266)) == StepResult::Executed, "ADD executes");
