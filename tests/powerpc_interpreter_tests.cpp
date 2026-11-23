@@ -45,6 +45,27 @@ int main() {
     check(execute(s, d_form(14, 5, 0, 0xFFFF)) == StepResult::Executed, "ADDI accepts negative immediate");
     check(s.gpr[5] == UINT64_MAX, "ADDI sign-extends immediate");
 
+    // Immediate logical instructions use zero-extended 16-bit immediates.
+    s.gpr[1] = 0x1234000000000000ULL;
+    check(execute(s, d_form(24, 1, 2, 0x00F0)) == StepResult::Executed, "ORI executes");
+    check(s.gpr[2] == 0x12340000000000F0ULL, "ORI zero-extends immediate and writes RA");
+    s.gpr[1] = 0x00000000000000F0ULL;
+    check(execute(s, d_form(25, 1, 3, 0x0001)) == StepResult::Executed, "ORIS executes");
+    check(s.gpr[3] == 0x00000000000100F0ULL, "ORIS shifts immediate by 16");
+    s.gpr[1] = 0xFFFF0000000000FFULL;
+    check(execute(s, d_form(26, 1, 4, 0x00F0)) == StepResult::Executed, "XORI executes");
+    check(s.gpr[4] == 0xFFFF00000000000FULL, "XORI applies zero-extended immediate");
+    s.gpr[1] = 0x00000000000100F0ULL;
+    check(execute(s, d_form(27, 1, 5, 0x0001)) == StepResult::Executed, "XORIS executes");
+    check(s.gpr[5] == 0x00000000000000F0ULL, "XORIS shifts immediate by 16");
+    s.gpr[1] = 0x80000000000000FFULL;
+    check(execute(s, d_form(28, 1, 6, 0x00F0)) == StepResult::Executed, "ANDI. executes");
+    check(s.gpr[6] == 0xF0 && s.condition_field(0) == 0x4, "ANDI. masks and updates CR0");
+    s.gpr[1] = 0x80000000000100F0ULL;
+    check(execute(s, d_form(29, 1, 7, 0x0001)) == StepResult::Executed, "ANDIS. executes");
+    check(s.gpr[7] == 0x0000000000010000ULL && s.condition_field(0) == 0x4,
+          "ANDIS. shifts mask and updates CR0");
+
     s.gpr[6] = 2;
     check(execute(s, d_form(15, 7, 6, 1)) == StepResult::Executed, "ADDIS executes");
     check(s.gpr[7] == 0x10002, "ADDIS shifts signed immediate by 16");
