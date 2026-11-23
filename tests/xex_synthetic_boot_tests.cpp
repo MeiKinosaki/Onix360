@@ -1,5 +1,6 @@
 #include "wx360/machine/xenon_core.hpp"
 #include "wx360/xex/xex_image_loader.hpp"
+#include "wx360/crypto/sha1.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -48,9 +49,21 @@ std::vector<std::uint8_t> make_synthetic_xex2(const std::vector<std::uint8_t>& p
     put_be32(xex, 24, 0x00010100); put_be32(xex, 28, 0x82001000);
     put_be32(xex, 32, 0x000003FF); put_be32(xex, 36, format_info);
     put_be32(xex, format_info, 8);
-    put_be32(xex, security_info, 0x184);
+    put_be32(xex, security_info, 0x184 + 24);
     put_be32(xex, security_info + 4, static_cast<std::uint32_t>(pe.size()));
+    put_be32(xex, security_info + 0x10C, 0x10000000); // 4 KiB page mode
+    put_be32(xex, security_info + 0x180, 1);
+    put_be32(xex, security_info + 0x184, 0x11); // one code page
     std::copy(pe.begin(), pe.end(), xex.begin() + pe_offset);
+    std::vector<std::uint8_t> padded_page(0x1000, 0);
+    std::copy(pe.begin(), pe.end(), padded_page.begin());
+    const auto page_digest = crypto::sha1(padded_page);
+    std::copy(page_digest.begin(), page_digest.end(), xex.begin() + security_info + 0x188);
+    std::vector<std::uint8_t> authenticated = padded_page;
+    authenticated.insert(authenticated.end(), xex.begin() + security_info + 0x184,
+                         xex.begin() + security_info + 0x1A0);
+    const auto root_digest = crypto::sha1(authenticated);
+    std::copy(root_digest.begin(), root_digest.end(), xex.begin() + security_info + 0x114);
     return xex;
 }
 }
@@ -91,30 +104,21 @@ int main() {
         std::cerr << "Synthetic XEX2 file-format metadata failed\n"; return EXIT_FAILURE;
     }
     memory::PhysicalMemory ram(0x10000);
-    auto plan = inspected.plan;
     constexpr std::uint64_t physical_base = 0x2000;
     constexpr std::uint32_t guest_base = 0x82000000;
-    const auto mapped = xex::XexImageLoader::map_uncompressed_pe(
-        complete_image, plan, ram, physical_base, guest_base);
-    if (mapped != xex::LoadError::None || !plan.pe_mapped) {
-        std::cerr << "Synthetic XEX2 PE mapping failed\n"; return EXIT_FAILURE;
-    }
-    // The fixture has no imports, but still exercise the production resolver
-    // instead of manually asserting that import resolution succeeded.
-    kernel::XexImportResolver resolver;
-    const std::vector<kernel::XexImport> imports;
-    if (xex::XexImageLoader::resolve_kernel_imports(plan, imports, resolver, ram) !=
-            kernel::ImportResolveError::None ||
-        !plan.kernel_imports_resolved) {
-        std::cerr << "Synthetic XEX2 import-resolution stage failed\\n";
+    const auto validated = xex::XexImageLoader::load_uncompressed_validated(
+        complete_image, ram, physical_base, guest_base);
+    if (!validated) {
+        std::cerr << "Synthetic XEX2 integrity validation or PE mapping failed\n";
         return EXIT_FAILURE;
     }
     machine::XenonCore core;
-    if (core.start_xex(plan, ram) != machine::LaunchResult::Started) {
-        std::cerr << "XenonCore rejected the mapped synthetic XEX2\n"; return EXIT_FAILURE;
+    if (core.start_xex(*validated, ram) != machine::LaunchResult::Started) {
+        std::cerr << "XenonCore rejected the loader-validated synthetic XEX2\n";
+        return EXIT_FAILURE;
     }
     if (core.step(ram) != machine::RunResult::Executed ||
-        core.state.gpr[3] != 42 || core.state.pc != plan.mapped_entry_point + 4) {
+        core.state.gpr[3] != 42 || core.state.pc != validated->entry_point() + 4) {
         std::cerr << "First Xenon instruction did not execute from synthetic XEX2\n";
         return EXIT_FAILURE;
     }
