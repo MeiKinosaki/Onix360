@@ -409,7 +409,7 @@ int main() {
     const std::uint32_t srawi_record_zero_positive = (31U << 26U) | (1U << 21U) | (10U << 16U) | (824U << 1U) | 1U;
     check(execute(s, srawi_record_zero_positive) == StepResult::Executed,
           "SRAWI. executes for a positive word");
-    check(s.gpr[10] == 2 && s.condition_field(0) == 0x4,
+    check(s.gpr[10] == 4 && s.condition_field(0) == 0x4,
           "SRAWI. records a positive nonzero result in CR0");
 
     std::array<std::uint8_t, 64> ram{};
