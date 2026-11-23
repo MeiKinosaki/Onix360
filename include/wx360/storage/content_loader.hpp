@@ -2,6 +2,7 @@
 
 #include "wx360/storage/stfs_package.hpp"
 #include "wx360/storage/stfs_tree.hpp"
+#include "wx360/storage/svod_gdf.hpp"
 #include "wx360/xex/xex_header.hpp"
 
 #include <algorithm>
@@ -71,6 +72,27 @@ public:
         }
         std::sort(chunks.begin(), chunks.end());
         return chunks;
+    }
+
+    [[nodiscard]] static bool extract_god_svod(
+        const std::filesystem::path& package_header,
+        const std::filesystem::path& destination,
+        StfsParseError& error,
+        const std::filesystem::path& fragment_directory = {},
+        std::uint64_t maximum_total_bytes = 8ull * 1024ull * 1024ull * 1024ull) {
+        return SvodGdfReader::extract(package_header, destination, error,
+                                      maximum_total_bytes, fragment_directory);
+    }
+
+    [[nodiscard]] static std::optional<std::filesystem::path>
+    extract_god_default_xex(
+        const std::filesystem::path& package_header,
+        const std::filesystem::path& destination,
+        StfsParseError& error,
+        const std::filesystem::path& fragment_directory = {}) {
+        if (!extract_god_svod(package_header, destination, error, fragment_directory))
+            return std::nullopt;
+        return find_extracted_god_default_xex(destination);
     }
 
     [[nodiscard]] static bool extract_default_xex_from_stfs(
