@@ -78,9 +78,10 @@ public:
         const auto& first_fragment = result.fragments.front();
         const auto features = parsed.header.svod_device_features;
         if ((features & 0x40u) != 0) {
-            if (has_magic(first_fragment, 0x2000, "MICROSOFT*XBOX*MEDIA", 20))
+            if (has_magic(first_fragment, 0x2000, "MICROSOFT*XBOX*MEDIA", 20)) {
                 result.layout = SvodLayout::EnhancedGdf;
                 result.base_offset = 0;
+            }
             else {
                 result.error = StfsParseError::UnsupportedSvodLayout;
                 return result;
