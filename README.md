@@ -113,6 +113,17 @@ O interpretador inicial contém suporte experimental para:
 - Testes sintéticos adicionados para GDF single-file, extração, inspeção XEX e handoff protegido ao núcleo Xenon.
 - **Limitações críticas:** ainda não implementa descriptografia/descompressão XEX, interpretação de security info, mapeamento PE real, relocations, imports do kernel nem autenticação SHA-1/RSA. Portanto, o plano XEX ainda não é produzido como pronto para execução e jogos comerciais não estão executáveis. A leitura de fragmentos reais e layouts complexos requer validação adicional.
 
+## AES-128 XEX — integração parcial
+
+- Adicionada implementação AES-128 portátil tiny-AES-C (material em domínio público, com cópia de UNLICENSE em `third_party/tiny_aes`).
+- CMake agora habilita C além de C++ e compila a biblioteca AES como dependência estática do núcleo.
+- API C++ `crypto/aes128.hpp`: decrypt de bloco ECB, decrypt CBC com IV fornecido pelo chamador e unwrap do campo de chave de sessão usando chave retail/devkit selecionável.
+- O XEX loader expõe `decrypt_normal_payload`, conectando a extração da chave cifrada da Security Info, unwrap ECB e decrypt CBC.
+- Testes NIST de AES-128 ECB/CBC e teste do primitive de unwrap foram adicionados ao CTest; **a execução dos testes ainda não foi observada**, portanto não há aprovação de build/CI declarada.
+- Limitação importante: o IV é passado explicitamente; a extração/derivação correta do IV a partir do formato XEX2 e o fluxo completo de descriptografia ainda precisam ser validados com amostras legítimas retail/devkit. A chave de sessão só foi testada com vetor AES conhecido, não com XEX retail/devkit real.
+- O carregador ainda não marca automaticamente `decryption_complete` nem integra o resultado à descompressão/PE; isso evita liberar uma imagem como válida antes da validação SHA-1.
+- Descompressão Normal/LZX, verificação RSA e SHA-1 completa após reconstrução, parser de ordinais real, catálogo de exports xboxkrnl/xam e boot XEX pelo Xenon continuam pendentes.
+
 ## XEX2: segurança, SHA-1 e tabela de import libraries (etapa inicial)
 
 - Adicionado SHA-1 portátil com teste conhecido para a mensagem `abc`.
