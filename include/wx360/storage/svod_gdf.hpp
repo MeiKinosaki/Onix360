@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -122,6 +123,7 @@ public:
         };
 
         std::size_t visited = 0;
+        std::set<std::string> unique_paths;
         std::function<bool(std::uint32_t,std::uint32_t,const std::filesystem::path&,std::size_t)> walk_directory;
         walk_directory = [&](std::uint32_t directory_block, std::uint32_t ordinal,
                              const std::filesystem::path& parent, std::size_t depth) -> bool {
@@ -147,6 +149,7 @@ public:
             if (left && !walk_directory(directory_block, left, parent, depth + 1)) return false;
             const bool is_directory = (attributes & 0x10u) != 0;
             const auto relative = parent / name;
+            if (!unique_paths.insert(relative.generic_string()).second) return false;
             result.entries.push_back({name, is_directory, data_block, length, relative});
             if (is_directory && length != 0) {
                 if (!walk_directory(data_block, 0, relative, depth + 1)) return false;
