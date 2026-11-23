@@ -262,6 +262,49 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             state.set_condition_field(bf, field | ((state.xer >> 31U) & 1U));
             break;
         }
+        case 24: { // slw: shift left word; RB[5] forces zero
+            const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[d.rt]);
+            const unsigned shift = static_cast<unsigned>(state.gpr[d.rb] & 0x3FU);
+            result = (shift & 0x20U) != 0 ? 0U : static_cast<std::uint32_t>(value << shift);
+            destination = d.ra;
+            writes_result = true;
+            record_32bit = true;
+            break;
+        }
+        case 536: { // srw: logical shift right word; RB[5] forces zero
+            const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[d.rt]);
+            const unsigned shift = static_cast<unsigned>(state.gpr[d.rb] & 0x3FU);
+            result = (shift & 0x20U) != 0 ? 0U : (value >> shift);
+            destination = d.ra;
+            writes_result = true;
+            record_32bit = true;
+            break;
+        }
+        case 792: case 824: { // sraw / srawi: arithmetic shift right word
+            const std::uint32_t raw = static_cast<std::uint32_t>(state.gpr[d.rt]);
+            const std::int32_t value = static_cast<std::int32_t>(raw);
+            const unsigned shift = d.xo == 792
+                ? static_cast<unsigned>(state.gpr[d.rb] & 0x3FU)
+                : static_cast<unsigned>((instruction >> 11U) & 0x1FU);
+            const bool negative = value < 0;
+            bool shifted_out_one = false;
+            if (shift == 0) {
+                result = static_cast<std::uint64_t>(static_cast<std::int64_t>(value));
+            } else if (shift >= 32U) {
+                result = negative ? UINT64_MAX : 0U;
+                shifted_out_one = negative && (raw & 0x7FFFFFFFU) != 0;
+            } else {
+                const std::uint32_t discarded_mask = (std::uint32_t{1} << shift) - 1U;
+                shifted_out_one = negative && (raw & discarded_mask) != 0;
+                result = static_cast<std::uint64_t>(static_cast<std::int64_t>(value >> shift));
+            }
+            constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
+            state.xer = shifted_out_one ? (state.xer | xer_ca) : (state.xer & ~xer_ca);
+            destination = d.ra;
+            writes_result = true;
+            record_32bit = true;
+            break;
+        }
         case 28:  // and
             result = state.gpr[d.rt] & state.gpr[d.rb];
             destination = d.ra;
