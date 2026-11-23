@@ -48,11 +48,6 @@ int main() {
           static_cast<std::uint8_t>(memory::Access::Read) |
           static_cast<std::uint8_t>(memory::Access::Execute)) == memory::MemoryResult::Ok,
           "restore execute permission for mapped image");
-    pending_plan.decryption_complete = true;
-    pending_plan.decompression_complete = true;
-    pending_plan.pe_mapped = true;
-    pending_plan.kernel_imports_resolved = true;
-    pending_plan.mapped_entry_point = 0x100;
     check(core.start_xex(pending_plan, ram) == machine::LaunchResult::Started &&
           core.state.pc == 0x100,
           "Xenon core accepts an executable mapped XEX entry point");
