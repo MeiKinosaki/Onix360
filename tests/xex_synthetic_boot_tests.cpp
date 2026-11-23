@@ -94,9 +94,10 @@ int main() {
     auto plan = inspected.plan;
     constexpr std::uint64_t physical_base = 0x2000;
     constexpr std::uint32_t guest_base = 0x82000000;
+    const auto loaded_pe = std::span<const std::uint8_t>(complete_image.bytes).subspan(
+        complete_image.header.pe_data_offset, complete_image.security.image_size);
     const auto mapped = xex::XexImageLoader::map_transformed_pe(
-        plan, std::span<const std::uint8_t>(xex_bytes).subspan(0x300, pe.size()),
-        ram, physical_base, guest_base, true, true);
+        plan, loaded_pe, ram, physical_base, guest_base, true, true);
     if (mapped != xex::LoadError::None || !plan.pe_mapped) {
         std::cerr << "Synthetic XEX2 PE mapping failed\n"; return EXIT_FAILURE;
     }
