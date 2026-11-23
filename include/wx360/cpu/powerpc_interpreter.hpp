@@ -357,6 +357,38 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             destination = d.ra;
             writes_result = true;
             break;
+        case 60: // andc
+            result = state.gpr[d.rt] & ~state.gpr[d.rb];
+            destination = d.ra;
+            writes_result = true;
+            break;
+        case 124: // nor
+            result = ~(state.gpr[d.rt] | state.gpr[d.rb]);
+            destination = d.ra;
+            writes_result = true;
+            break;
+        case 954: // extsb
+            result = static_cast<std::uint64_t>(
+                static_cast<std::int64_t>(static_cast<std::int8_t>(state.gpr[d.rt])));
+            destination = d.ra;
+            writes_result = true;
+            break;
+        case 922: // extsh
+            result = static_cast<std::uint64_t>(
+                static_cast<std::int64_t>(static_cast<std::int16_t>(state.gpr[d.rt])));
+            destination = d.ra;
+            writes_result = true;
+            break;
+        case 58: { // cntlzd
+            const std::uint64_t value = state.gpr[d.rt];
+            unsigned count = 0;
+            while (count < 64U && (value & (std::uint64_t{1} << (63U - count))) == 0)
+                ++count;
+            result = count;
+            destination = d.ra;
+            writes_result = true;
+            break;
+        }
         case 104: { // neg (OE=0 only): RT = -RA
             if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
             result = std::uint64_t{0} - state.gpr[d.ra];
