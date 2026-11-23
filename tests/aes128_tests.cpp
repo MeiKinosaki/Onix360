@@ -34,17 +34,29 @@ int main(){
        decoded.size()!=16 || !std::equal(decoded.begin(),decoded.end(),plain.begin())){
         std::cerr<<"XEX zero-IV CBC known-answer vector failed\\n";return EXIT_FAILURE;
     }
-    // Devkit key material is intentionally not embedded in this repository.
-    // The loader must fail closed rather than treating an all-zero key as valid.
-    if (wx360::xex::XexImageLoader::decrypt_xex_normal_payload(
-            wx360::xex::SecurityInfo{}, XexKeySet::Devkit, zero_iv_cipher, decoded) !=
-        AesResult::KeyUnavailable) {
-        std::cerr << "XEX Devkit path accepted an unavailable master key\\n";
+    // Independent OpenSSL AES-128-ECB known-answer vectors for the public
+    // XEX2 retail and devkit master keys, unwrapping the same session key.
+    const Aes128Key session_key{
+        0x00,0x11,0x22,0x33,0x44,0x55,0x66,0x77,
+        0x88,0x99,0xaa,0xbb,0xcc,0xdd,0xee,0xff};
+    const Aes128Key retail_wrapped{
+        0x95,0x41,0x31,0xbc,0x3a,0x1b,0x4f,0x10,
+        0x59,0x70,0xcd,0x62,0xfe,0xc5,0xb5,0xb5};
+    const Aes128Key devkit_wrapped{
+        0xc8,0xa3,0x31,0xff,0x8e,0xdd,0x3d,0xb1,
+        0x75,0xe1,0x54,0x5d,0xbe,0xfb,0x76,0x0b};
+    if (unwrap_xex_session_key(XexKeySet::Retail, retail_wrapped) != session_key ||
+        unwrap_xex_session_key(XexKeySet::Devkit, devkit_wrapped) != session_key ||
+        !xex_master_key_available(XexKeySet::Retail) ||
+        !xex_master_key_available(XexKeySet::Devkit)) {
+        std::cerr << "XEX2 Retail/Devkit master-key unwrap vectors failed\\n";
         return EXIT_FAILURE;
     }
-    if (!xex_master_key_available(XexKeySet::Retail) ||
-        xex_master_key_available(XexKeySet::Devkit)) {
-        std::cerr << "XEX master-key availability policy failed\\n";
+    wx360::xex::SecurityInfo devkit_security{};
+    devkit_security.encrypted_image_key = devkit_wrapped;
+    if (wx360::xex::XexImageLoader::decrypt_xex_normal_payload(
+            devkit_security, XexKeySet::Devkit, zero_iv_cipher, decoded) != AesResult::Ok) {
+        std::cerr << "XEX Devkit payload decrypt path failed\\n";
         return EXIT_FAILURE;
     }
     std::array<std::uint8_t,15> invalid{};
