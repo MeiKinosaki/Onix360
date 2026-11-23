@@ -30,10 +30,10 @@ inline void aes128_ecb_decrypt_block(
 
 enum class XexKeySet : std::uint8_t { Retail, Devkit };
 
-// Only the retail master key is currently provisioned. Never silently use an
-// all-zero key for Devkit: that would make synthetic tests look like real support.
-[[nodiscard]] inline bool xex_master_key_available(XexKeySet set) noexcept {
-    return set == XexKeySet::Retail;
+// XEX2 master keys are public format constants documented by Xenia:
+// Retail = 20 B1 ... BF 91; Devkit = sixteen zero bytes.
+[[nodiscard]] inline bool xex_master_key_available(XexKeySet) noexcept {
+    return true;
 }
 [[nodiscard]] inline Aes128Key xex_master_key(XexKeySet set) noexcept {
     if (set == XexKeySet::Retail)
