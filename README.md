@@ -24,6 +24,19 @@ O interpretador inicial contém suporte experimental para:
 
 **Limitações conhecidas:** subconjunto muito pequeno da ISA; sem execução completa de threads, exceções, MMU, BAT/TLB, FPU/VMX, dispositivos, kernel ou GPU. A semântica de branches e condições ainda precisa de expansão e validação contra a especificação PowerPC/Xenon.
 
+## Memória física Xenon e integração inicial de execução
+
+- Memória física limitada e alocada sob demanda pelo tamanho configurado, com páginas de 4 KiB.
+- Permissões por página para leitura, escrita e execução; fetch de instrução em big-endian respeita a permissão Execute.
+- Núcleo experimental conecta PC da thread, fetch de instrução na RAM e interpretador PowerPC.
+- **Limitação:** acessos de dados do interpretador ainda usam o buffer legado diretamente; MMU, tradução virtual, BAT/TLB, proteção de dados e exceções arquiteturais ainda não estão integrados.
+
+## Cabeçalho XEX2 (análise inicial)
+
+- Validação de assinatura XEX2 e limites do diretório de cabeçalhos opcionais.
+- Extração experimental de flags do módulo, offset PE, offset de segurança e entry point (0x00010100).
+- **Limitação importante:** ainda não descriptografa/descomprime XEX, não interpreta todas as estruturas de segurança, não mapeia seções PE na memória e não inicia jogos comerciais.
+
 ## Imagens de disco Xbox 360 (em desenvolvimento)
 
 - Leitor inicial de arquivos ISO com leitura de setores sob demanda.
@@ -88,8 +101,11 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 - [ ] Conectar a biblioteca a jogos indexados e capas reais; ligar importação ISO/XEX/GOD e gerenciamento dos save states; adicionar busca, filtros e controle Xbox 360.
 - [ ] Integração dos slots com pausa/retomada do loop de emulação e interface gráfica.
 - [ ] Snapshot completo do sistema: GPU, áudio, dispositivos, timers, kernel e estado de todos os threads.
-- [ ] Memória do Xbox 360, MMU, BAT/TLB.
-- [ ] GPU Xenos, áudio, kernel/HAL e carregador XEX.
+- [x] Memória física experimental com permissões de página e fetch de instrução integrado ao núcleo Xenon (testes adicionados; CI pendente).
+- [ ] MMU, memória virtual, BAT/TLB e proteção dos acessos de dados.
+- [x] Parser inicial do cabeçalho XEX2 e diretório opcional (testes adicionados; CI pendente).
+- [ ] Descriptografia/descompressão XEX, mapeamento PE e carregamento completo.
+- [ ] GPU Xenos, áudio, kernel/HAL, exceções/interrupções e execução multicore.
 - [ ] Execução de jogos.
 
 ## Plano de versões
