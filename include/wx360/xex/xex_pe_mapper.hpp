@@ -36,7 +36,8 @@ public:
         std::span<const std::uint8_t> image,
         memory::PhysicalMemory& memory,
         std::uint64_t physical_base,
-        std::uint32_t guest_image_base) {
+        std::uint32_t guest_image_base,
+        std::uint32_t xex_entry_point = 0) {
         PeMapResult result;
         if (image.size() < 0x40) return fail(PeMapError::TooSmall);
         if (le16(image, 0) != 0x5A4D) return fail(PeMapError::BadDosSignature);
@@ -58,9 +59,11 @@ public:
         const auto size_of_image = le32(image, optional + 56);
         const auto size_of_headers = le32(image, optional + 60);
         const auto directory_count = le32(image, optional + 92);
+        const auto selected_entry_rva = xex_entry_point == 0 ? entry_rva :
+            (xex_entry_point >= guest_image_base ? xex_entry_point - guest_image_base : 0xFFFFFFFFu);
         if (size_of_image == 0 || size_of_image > 512u * 1024u * 1024u ||
             size_of_headers > image.size() || size_of_headers > size_of_image ||
-            entry_rva >= size_of_image)
+            selected_entry_rva >= size_of_image)
             return fail(PeMapError::InvalidImageRange);
         const auto section_table = optional + optional_size;
         const std::uint64_t section_bytes = static_cast<std::uint64_t>(section_count) * 40u;
@@ -154,8 +157,8 @@ public:
         }
         result.image_base = guest_image_base;
         result.image_size = size_of_image;
-        result.entry_rva = entry_rva;
-        result.mapped_entry = physical_base + entry_rva;
+        result.entry_rva = selected_entry_rva;
+        result.mapped_entry = physical_base + selected_entry_rva;
         return result;
     }
 
