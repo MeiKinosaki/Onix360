@@ -61,7 +61,7 @@ std::vector<std::uint8_t> make_synthetic_xex2(const std::vector<std::uint8_t>& p
     std::copy(page_digest.begin(), page_digest.end(), xex.begin() + security_info + 0x188);
     std::vector<std::uint8_t> authenticated = padded_page;
     authenticated.insert(authenticated.end(), xex.begin() + security_info + 0x184,
-                         xex.begin() + security_info + 0x1A0);
+                         xex.begin() + security_info + 0x19C);
     const auto root_digest = crypto::sha1(authenticated);
     std::copy(root_digest.begin(), root_digest.end(), xex.begin() + security_info + 0x114);
     return xex;
