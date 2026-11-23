@@ -21,6 +21,8 @@ struct ContentEntry {
     std::uint32_t title_id{};
     std::uint32_t content_type{};
     std::string title_name;
+    bool stfs_file_table_valid{};
+    std::size_t stfs_file_count{};
 };
 
 class ContentLibrary {
@@ -75,6 +77,11 @@ public:
                         entry.title_id = parsed.header.title_id;
                         entry.content_type = parsed.header.content_type;
                         entry.title_name = parsed.header.title_name;
+                        const auto table = StfsPackageParser::read_file_table(path, parsed.header);
+                        if (table) {
+                            entry.stfs_file_table_valid = true;
+                            entry.stfs_file_count = table.entries.size();
+                        }
                     }
                     entries.push_back(std::move(entry));
                 }
