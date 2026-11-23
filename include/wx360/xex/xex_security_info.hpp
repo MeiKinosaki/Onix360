@@ -62,4 +62,28 @@ enum class SecurityParseError : std::uint8_t { Ok, Truncated, InvalidSize, TooMa
     for(std::size_t i=0;i<actual.size();++i) difference|=actual[i]^expected[i];
     return difference==0;
 }
+
+enum class PageHashResult : std::uint8_t {
+    Ok, ImageSizeMismatch, DescriptorOverflow, DigestMismatch
+};
+
+// Page descriptors cover the image in 4 KiB units. Hashes are checked
+// independently and the input must match the declared image size exactly.
+[[nodiscard]] inline PageHashResult verify_page_hashes(
+    std::span<const std::uint8_t> image, const SecurityInfo& security,
+    std::size_t page_size = 0x1000) {
+    if (page_size == 0 || image.size() != security.image_size)
+        return PageHashResult::ImageSizeMismatch;
+    std::size_t offset = 0;
+    for (const auto& page : security.pages) {
+        if (page.page_count > (image.size() - offset) / page_size)
+            return PageHashResult::DescriptorOverflow;
+        const auto bytes = static_cast<std::size_t>(page.page_count) * page_size;
+        if (!verify_sha1(image.subspan(offset, bytes), page.digest))
+            return PageHashResult::DigestMismatch;
+        offset += bytes;
+    }
+    return offset == image.size() ? PageHashResult::Ok
+                                  : PageHashResult::ImageSizeMismatch;
+}
 } // namespace wx360::xex
