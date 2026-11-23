@@ -60,13 +60,22 @@ O interpretador inicial contém suporte experimental para:
 - Reutilização de capas já armazenadas, enumeração da cache e validação de identificadores para impedir traversal de diretórios.
 - A camada HTTP está implementada para Windows, mas ainda falta um catálogo/provedor de metadados e a identificação automática de Title ID a partir de XEX/ISO. O download online só pode ocorrer quando a aplicação fornecer uma URL de capa válida; a interface gráfica também está pendente.
 
+## Versão portátil (sem instalação)
+
+- O WX360 foi configurado para iniciar sem instalador: basta extrair o pacote ZIP e abrir `WX360.exe`.
+- Na inicialização, a aplicação cria `WX360-data/roms`, `WX360-data/covers` e `WX360-data/saves` ao lado do executável.
+- Configurações e dados graváveis ficam nessa pasta portátil, facilitando copiar a pasta completa para outro computador.
+- O runtime MSVC é ligado estaticamente no build Windows para evitar exigir a instalação separada do Visual C++ Redistributable.
+- O CI Windows prepara o artefato `WX360-Windows-x64-Portable.zip` após build e testes bem-sucedidos.
+- **Atenção:** o pacote portátil ainda depende do resultado do CI para ser considerado gerado e validado; a aplicação continua experimental e não executa jogos comerciais completos.
+
 ## Pastas de dados do usuário (em desenvolvimento)
 
 - Raiz padrão: `%LOCALAPPDATA%\\WX360` no Windows; `~/.local/share/WX360` em outros sistemas.
 - `roms/`: biblioteca de jogos (ISO, XEX e futuramente GOD); arquivos originais não são modificados.
 - `covers/`: cache de capas JPEG.
 - `saves/`: slots e arquivos de Save State.
-- O componente cria as pastas de forma idempotente e permite configurar uma raiz alternativa para testes/instalações portáteis.
+- O componente cria as pastas de forma idempotente e permite configurar uma raiz alternativa para testes.
 - A interface ainda precisa ser conectada a esses diretórios para importar e indexar jogos.
 
 ## Build no Windows
