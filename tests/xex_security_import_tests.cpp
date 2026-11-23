@@ -71,6 +71,7 @@ int main(){
     large_pages.image_size = 0x10000;
     std::vector<std::uint8_t> large_image(0x10000, 0xA5);
     wx360::xex::PageDescriptor large_descriptor{};
+    large_descriptor.raw = 0x11;
     large_descriptor.type = 1;
     large_descriptor.page_count = 1;
     large_descriptor.digest = wx360::crypto::sha1(large_image);
