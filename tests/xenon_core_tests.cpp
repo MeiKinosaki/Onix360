@@ -50,6 +50,19 @@ int main() {
     check(core.state.pc == 0x600 && core.state.srr0 == 0x102 &&
           core.state.dar == 0x102 && core.state.exception_vector == 0x600,
           "alignment exception saves PC, fault address and vector");
+    memory::PhysicalMemory data_ram(0x4000);
+    const std::array<std::uint8_t, 4> lwz_r4_r3{0x80, 0x83, 0x00, 0x00};
+    check(data_ram.write(0x200, lwz_r4_r3) == memory::MemoryResult::Ok,
+          "place LWZ instruction for data-alignment exception test");
+    machine::XenonCore data_core;
+    data_core.state.reset(0x200);
+    data_core.state.gpr[3] = 0x101;
+    check(data_core.step(data_ram) == machine::RunResult::ExceptionTaken,
+          "misaligned LWZ enters alignment exception");
+    check(data_core.state.pc == 0x600 && data_core.state.srr0 == 0x200 &&
+          data_core.state.dar == 0x101,
+          "data alignment exception saves effective address in DAR");
+
     if (failures == 0) std::cout << "WX360 Xenon core integration tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
