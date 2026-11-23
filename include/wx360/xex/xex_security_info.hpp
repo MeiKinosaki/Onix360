@@ -1,6 +1,8 @@
 #pragma once
 #include "wx360/crypto/sha1.hpp"
 #include <algorithm>
+#include <array>
+#include <utility>
 #include <cstdint>
 #include <span>
 #include <vector>
