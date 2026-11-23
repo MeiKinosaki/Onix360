@@ -13,7 +13,8 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
-#include <utility>\n#include <vector>
+#include <utility>
+#include <vector>
 
 namespace wx360::xex {
 
@@ -42,7 +43,14 @@ struct LaunchPlan {
     bool kernel_imports_resolved{};
 };
 
-struct FullXexImage {\n    std::vector<std::uint8_t> bytes;\n    Header header{};\n    SecurityInfo security{};\n    FileFormatInfo format{};\n};\n\nstruct LoadResult {
+struct FullXexImage {
+    std::vector<std::uint8_t> bytes;
+    Header header{};
+    SecurityInfo security{};
+    FileFormatInfo format{};
+};
+
+struct LoadResult {
     LoadError error{LoadError::None};
     LaunchPlan plan{};
     [[nodiscard]] explicit operator bool() const noexcept {
@@ -116,6 +124,35 @@ public:
         const auto mapped = XexPeMapper::map(
             decrypted_decompressed_pe, guest_memory, physical_base,
             guest_image_base, plan.entry_point);
+        if (!mapped) return LoadError::PeMappingFailed;
+        plan.decryption_complete = true;
+        plan.decompression_complete = true;
+        plan.pe_mapped = true;
+        plan.mapped_entry_point = mapped.mapped_entry;
+        return LoadError::None;
+    }
+
+    // Safe end-to-end path for XEX images explicitly marked unencrypted and
+    // uncompressed. The loader derives completion from parsed metadata rather
+    // than accepting caller-supplied success flags. This does not authenticate
+    // the RSA signature or claim retail/devkit trust.
+    [[nodiscard]] static LoadError map_uncompressed_pe(
+        const FullXexImage& image,
+        LaunchPlan& plan,
+        memory::PhysicalMemory& guest_memory,
+        std::uint64_t physical_base,
+        std::uint32_t guest_image_base) {
+        if (image.format.encryption != XexEncryption::None ||
+            image.format.compression != XexCompression::None)
+            return LoadError::TransformIncomplete;
+        const auto offset = static_cast<std::size_t>(image.header.pe_data_offset);
+        const auto length = static_cast<std::size_t>(image.format.image_size);
+        if (offset > image.bytes.size() || length > image.bytes.size() - offset ||
+            length != image.security.image_size)
+            return LoadError::ImageNotMapped;
+        const auto pe = std::span<const std::uint8_t>(image.bytes).subspan(offset, length);
+        const auto mapped = XexPeMapper::map(
+            pe, guest_memory, physical_base, guest_image_base, plan.entry_point);
         if (!mapped) return LoadError::PeMappingFailed;
         plan.decryption_complete = true;
         plan.decompression_complete = true;
