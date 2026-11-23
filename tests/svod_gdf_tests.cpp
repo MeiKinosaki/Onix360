@@ -19,7 +19,7 @@ static void put_be32(std::vector<std::uint8_t>& b, std::size_t o, std::uint32_t 
 }
 
 int main() {
-    auto bytes = std::vector<std::uint8_t>(0x10000, 0);
+    auto bytes = std::vector<std::uint8_t>(0x11000, 0);
     bytes[0] = 'P'; bytes[1] = 'I'; bytes[2] = 'R'; bytes[3] = 'S';
     put_be32(bytes, 0x340, 0x971A);
     bytes[0x379] = 0x24;
@@ -34,22 +34,22 @@ int main() {
     constexpr std::size_t magic = 0xD000;
     const char media[] = "MICROSOFT*XBOX*MEDIA";
     std::copy(media, media + 20, bytes.begin() + magic);
-    put_le32(bytes, magic + 0x14, 2); // root directory block
+    put_le32(bytes, magic + 0x14, 4); // root directory block
     put_le32(bytes, magic + 0x18, 1);
 
-    // SVOD block 2 maps to 0xE000 in a single-file image.
-    const std::size_t entry = 0xE000;
+    // SVOD block 4 maps to 0xF000? (hash tables + single-file header).
+    const std::size_t entry = 0xF000;
     put_le16(bytes, entry, 0); // left node
     put_le16(bytes, entry + 2, 0); // right node
-    put_le32(bytes, entry + 4, 4); // file data block
+    put_le32(bytes, entry + 4, 6); // file data block
     put_le32(bytes, entry + 8, 5); // file length
     bytes[entry + 12] = 0; // normal file
     const std::string name = "boot.xex";
     bytes[entry + 13] = static_cast<std::uint8_t>(name.size());
     std::copy(name.begin(), name.end(), bytes.begin() + entry + 14);
-    // SVOD block 4 maps to 0xF000.
+    // SVOD block 6 maps to 0x10000 in a single-file image.
     const std::string payload = "XEX2!";
-    std::copy(payload.begin(), payload.end(), bytes.begin() + 0xF000);
+    std::copy(payload.begin(), payload.end(), bytes.begin() + 0x10000);
 
     const auto root = std::filesystem::temp_directory_path() / "wx360_svod_single_file_test";
     std::error_code ec;
