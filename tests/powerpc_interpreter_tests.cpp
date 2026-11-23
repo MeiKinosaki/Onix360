@@ -381,6 +381,19 @@ int main() {
           "SRD executes at shift amount 127");
     check(s.gpr[28] == 0, "SRD shift by 127 produces zero");
 
+    // SRAWI record form: verify CR0 uses the sign of the 32-bit result.
+    s.gpr[1] = 0x0000000080000001ULL;
+    s.xer &= ~(std::uint64_t{1} << 31U);
+    check(execute(s, x_form(1, 9, 1, 824, true)) == StepResult::Executed,
+          "SRAWI. executes with record bit set");
+    check(s.gpr[9] == UINT64_MAX && s.condition_field(0) == 0x8,
+          "SRAWI. records a negative sign-extended word in CR0");
+    s.gpr[1] = 0x0000000000000004ULL;
+    check(execute(s, x_form(1, 10, 1, 824, true)) == StepResult::Executed,
+          "SRAWI. executes for a positive word");
+    check(s.gpr[10] == 2 && s.condition_field(0) == 0x4,
+          "SRAWI. records a positive nonzero result in CR0");
+
     std::array<std::uint8_t, 64> ram{};
     s.gpr[21] = 0x12345678U;
     check(execute(s, d_form(36, 21, 0, 8), ram) == StepResult::Executed, "STW executes");
