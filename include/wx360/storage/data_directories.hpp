@@ -22,14 +22,15 @@ public:
   if(error)error->clear();
   return true;
  }
+ // Portable mode stores writable data beside the executable.
+ static std::filesystem::path portable_root(const std::filesystem::path& executable){
+  std::error_code ec;
+  const auto absolute=std::filesystem::absolute(executable,ec);
+  const auto resolved=ec?executable:absolute;
+  return resolved.parent_path()/"WX360-data";
+ }
  static std::filesystem::path default_root(){
-#if defined(_WIN32)
-  if(const char* base=std::getenv("LOCALAPPDATA");base&&*base)
-   return std::filesystem::path(base)/"WX360";
-#endif
-  if(const char* home=std::getenv("HOME");home&&*home)
-   return std::filesystem::path(home)/".local"/"share"/"WX360";
-  return std::filesystem::current_path()/"WX360-data";
+  return portable_root(std::filesystem::current_path()/"WX360.exe");
  }
 private:
  std::filesystem::path root_;
