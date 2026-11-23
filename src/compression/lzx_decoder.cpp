@@ -18,19 +18,15 @@ struct MemoryFile {
     std::span<const std::uint8_t> input{};
     std::vector<std::uint8_t>* output{};
     std::size_t position{};
+    std::size_t output_limit{};
 };
-
-struct MemorySystem {
-    mspack_system api{};
-};
-
-struct MemorySystem* active_system = nullptr;
 
 mspack_file* open_file(mspack_system*, const char*, int) { return nullptr; }
 void close_file(mspack_file*) {}
 int read_file(mspack_file* file, void* buffer, int bytes) {
     if (!file || !buffer || bytes < 0) return -1;
     auto* memory = reinterpret_cast<MemoryFile*>(file);
+    if (memory->position > memory->input.size()) return -1;
     const auto count = std::min<std::size_t>(
         static_cast<std::size_t>(bytes), memory->input.size() - memory->position);
     if (count) std::memcpy(buffer, memory->input.data() + memory->position, count);
@@ -40,9 +36,15 @@ int read_file(mspack_file* file, void* buffer, int bytes) {
 int write_file(mspack_file* file, void* buffer, int bytes) {
     if (!file || !buffer || bytes < 0) return -1;
     auto* memory = reinterpret_cast<MemoryFile*>(file);
-    if (!memory->output) return -1;
+    if (!memory->output || static_cast<std::size_t>(bytes) >
+            memory->output_limit - std::min(memory->output->size(), memory->output_limit))
+        return -1;
     const auto* first = static_cast<const std::uint8_t*>(buffer);
-    memory->output->insert(memory->output->end(), first, first + bytes);
+    try {
+        memory->output->insert(memory->output->end(), first, first + bytes);
+    } catch (...) {
+        return -1;
+    }
     return bytes;
 }
 int seek_file(mspack_file* file, off_t offset, int mode) {
@@ -97,6 +99,7 @@ LzxError decode_lzx(std::span<const std::uint8_t> input,
     std::vector<std::uint8_t> decoded;
     decoded.reserve(output_size);
     destination.output = &decoded;
+    destination.output_limit = output_size;
 
     auto* stream = lzxd_init(&system.api, &source.base, &destination.base,
         static_cast<int>(window_bits), static_cast<int>(reset_interval),
