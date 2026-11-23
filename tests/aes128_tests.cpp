@@ -53,9 +53,13 @@ int main(){
         return EXIT_FAILURE;
     }
     wx360::xex::SecurityInfo devkit_security{};
-    devkit_security.encrypted_image_key = devkit_wrapped;
+    devkit_security.encrypted_image_key = {
+        0xf6,0x30,0x59,0xb4,0x70,0x5c,0x34,0x69,
+        0x16,0x0e,0x7e,0x42,0x37,0x34,0xf3,0x5a};
     if (wx360::xex::XexImageLoader::decrypt_xex_normal_payload(
-            devkit_security, XexKeySet::Devkit, zero_iv_cipher, decoded) != AesResult::Ok) {
+            devkit_security, XexKeySet::Devkit, zero_iv_cipher, decoded) != AesResult::Ok ||
+        decoded.size() != plain.size() ||
+        !std::equal(decoded.begin(), decoded.end(), plain.begin())) {
         std::cerr << "XEX Devkit payload decrypt path failed\\n";
         return EXIT_FAILURE;
     }
