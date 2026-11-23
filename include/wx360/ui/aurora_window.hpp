@@ -4,6 +4,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <algorithm>
 #include <string>
 #include <vector>
 #include "wx360/storage/data_directories.hpp"
@@ -15,9 +16,9 @@ class AuroraWindow {
 public:
  int run(HINSTANCE instance,int show, std::filesystem::path rom_root = {}) {
   rom_root_=std::move(rom_root);
-  if(rom_root_.empty()) rom_root_=DataDirectories::default_root()/"roms";
-  games_=GameLibrary::scan(rom_root_);
-  content_entries_=ContentLibrary::scan(rom_root_);
+  if(rom_root_.empty()) rom_root_=storage::DataDirectories::default_root()/"roms";
+  games_=storage::GameLibrary::scan(rom_root_);
+  content_entries_=storage::ContentLibrary::scan(rom_root_);
   WNDCLASSW wc{};wc.lpfnWndProc=window_proc;wc.hInstance=instance;wc.lpszClassName=L"WX360AuroraWindow";
   wc.hCursor=LoadCursorW(nullptr,MAKEINTRESOURCEW(32512));wc.hbrBackground=nullptr;
   RegisterClassW(&wc);instance_=instance;
