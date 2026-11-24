@@ -825,6 +825,19 @@ int main() {
     check(execute(s, invalid_bcctr) == StepResult::UnsupportedInstruction &&
           s.pc == 0x5700U, "BCCTR rejects BO encoding that requests CTR decrement");
 
+    // Link variants must capture the old target before updating LR.
+    s.reset(0x5800);
+    s.lr = 0xA123;
+    const std::uint32_t bclrl = bclr | 1U;
+    check(execute(s, bclrl) == StepResult::Executed && s.pc == 0xA120U &&
+          s.lr == 0x5804U, "BCLRL branches to old LR and writes return address");
+    s.reset(0x5900);
+    s.ctr = 0xB123;
+    const std::uint32_t bcctrl = bcctr | 1U;
+    check(execute(s, bcctrl) == StepResult::Executed && s.pc == 0xB120U &&
+          s.ctr == 0xB123U && s.lr == 0x5904U,
+          "BCCTRL branches to old CTR, preserves CTR and writes return address");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
