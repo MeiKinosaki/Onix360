@@ -25,9 +25,13 @@ int main() {
  core.kernel_runtime=&runtime;
  core.state.reset(0x200);
  core.state.gpr[3]=10;
+ core.state.lr=0x3000;
  check(core.step(ram)==machine::RunResult::Executed && core.state.gpr[0]==7,
        "trampoline loads service identifier");
- check(core.step(ram)==machine::RunResult::Executed && core.state.gpr[3]==11,
-       "SC dispatches host service through Xenon core");
+ check(core.step(ram)==machine::RunResult::Executed && core.state.gpr[3]==11 &&
+       core.state.pc==0x208,
+       "SC dispatches host service and advances to trampoline return");
+ check(core.step(ram)==machine::RunResult::Executed && core.state.pc==0x3000,
+       "trampoline BLR returns to guest caller through LR");
  return failures==0?EXIT_SUCCESS:EXIT_FAILURE;
 }
