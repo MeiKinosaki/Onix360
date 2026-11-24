@@ -1,5 +1,6 @@
 #include "wx360/kernel/kernel_runtime.hpp"
 #include "wx360/machine/xenon_core.hpp"
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <iostream>
@@ -21,6 +22,11 @@ int main() {
  check(!runtime.emit_trampoline("xboxkrnl.exe",43,8,0,ram),"rejects null trampoline address");
  check(!runtime.emit_trampoline("xboxkrnl.exe",43,8,0x3FFC,ram),"rejects trampoline that exceeds guest RAM");
  check(runtime.emit_trampoline("xboxkrnl.exe",42,7,0x200,ram),"emits guest SC trampoline");
+ check(!runtime.emit_trampoline("XBOXKRNL.EXE",42,7,0x300,ram),"rejects duplicate export before writing trampoline");
+ std::array<std::uint8_t,12> untouched{};
+ check(ram.read(0x300,untouched)==memory::MemoryResult::Ok &&
+       std::all_of(untouched.begin(),untouched.end(),[](std::uint8_t b){return b==0;}),
+       "duplicate trampoline rejection leaves guest memory unchanged");
  const std::array<kernel::XexImport,1> imports{{{"xboxkrnl.exe",42,0x1000,kernel::ImportKind::Function}}};
  check(runtime.resolve_imports(imports,ram)==kernel::ImportResolveError::None,"resolves function import to trampoline");
  std::array<std::uint8_t,4> thunk{};
