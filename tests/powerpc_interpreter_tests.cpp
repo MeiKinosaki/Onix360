@@ -646,6 +646,24 @@ int main() {
           indexed_ram[4] == 0x66 && s.gpr[3] == 4U,
           "STBUX stores byte and updates RA");
 
+    // VX-form VMX arithmetic: opcode extension includes its low bit.
+    const auto vx_form = [](unsigned vd, unsigned va, unsigned vb, unsigned xo) {
+        return (4U << 26U) | (vd << 21U) | (va << 16U) |
+               (vb << 11U) | (xo & 0x7FFU);
+    };
+    s.vr[1].lane = {0xFF01FE02U, 0xFFFFFFFFU, 0xFFFF0001U, 0x3F800000U};
+    s.vr[2].lane = {0x01020304U, 0x00000002U, 0x00020003U, 0x40000000U};
+    check(execute(s, vx_form(3, 1, 2, 0)) == StepResult::Executed &&
+          s.vr[3].lane[0] == 0x00030106U, "VMX VADDUBM wraps each byte independently");
+    check(execute(s, vx_form(3, 1, 2, 64)) == StepResult::Executed &&
+          s.vr[3].lane[2] == 0x00010004U, "VMX VADDUHM wraps each halfword independently");
+    check(execute(s, vx_form(3, 1, 2, 128)) == StepResult::Executed &&
+          s.vr[3].lane[1] == 1U, "VMX VADDUWM wraps 32-bit lanes");
+    check(execute(s, vx_form(3, 1, 2, 1024)) == StepResult::Executed &&
+          s.vr[3].lane[0] == 0xFEFFFBFEU, "VMX VSUBUBM uses the 11-bit opcode field");
+    check(execute(s, vx_form(3, 1, 2, 10)) == StepResult::Executed &&
+          std::bit_cast<float>(s.vr[3].lane[3]) == 3.0F, "VMX VADDFP adds four float lanes");
+
     // LMW/STMW: complete big-endian register-window transfers.
     std::array<std::uint8_t, 16> multiple_ram{
         0x11,0x22,0x33,0x44, 0x55,0x66,0x77,0x88,
