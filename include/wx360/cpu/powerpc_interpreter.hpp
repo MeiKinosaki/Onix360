@@ -288,8 +288,6 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             }
             break;
         }
-    case 31:
-        switch (d.xo) {
         case 0: { // cmp / cmpd / cmpw
             const unsigned bf = (instruction >> 23U) & 7U;
             const bool is_64 = ((instruction >> 21U) & 1U) != 0;
