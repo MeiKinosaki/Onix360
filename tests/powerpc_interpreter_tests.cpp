@@ -78,6 +78,7 @@ int main() {
     const std::uint32_t frsp = (63U << 26U) | (12U << 1U);
     check(execute(s, frsp) == StepResult::Executed, "FRSP executes");
 
+    s.reset(0x1000); // Keep the legacy integer tests independent of FPU PC changes.
     s.gpr[3] = 10;
     check(execute(s, d_form(14, 4, 3, 5)) == StepResult::Executed, "ADDI executes");
     check(s.gpr[4] == 15 && s.pc == 0x1004, "ADDI writes RT and advances PC");
