@@ -249,20 +249,69 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         branch_taken = true;
         break;
     }
-    case 63: { // Double-precision floating-point arithmetic subset.
+    case 48: case 49: case 50: case 51: case 52: case 53: case 54: case 55: { // lfs/lfd/stfs/stfd D-form.
+        const bool single = d.primary_opcode == 48 || d.primary_opcode == 49 ||
+                            d.primary_opcode == 52 || d.primary_opcode == 53;
+        const bool load = d.primary_opcode <= 51;
+        const bool update = (d.primary_opcode & 1U) != 0;
+        if (update && d.ra == 0) return StepResult::UnsupportedInstruction;
+        const std::uint64_t address = (d.ra == 0 ? 0 : state.gpr[d.ra]) +
+            static_cast<std::uint64_t>(static_cast<std::int64_t>(d.immediate));
+        const std::size_t width = single ? 4U : 8U;
+        if ((address & (width - 1U)) != 0U) {
+            if (fault_address) *fault_address = address;
+            return StepResult::AlignmentFault;
+        }
+        if (address > memory.size() || width > memory.size() - static_cast<std::size_t>(address)) {
+            if (fault_address) *fault_address = address;
+            return StepResult::MemoryFault;
+        }
+        const auto offset = static_cast<std::size_t>(address);
+        std::uint64_t raw = 0;
+        for (std::size_t n = 0; n < width; ++n)
+            raw = (raw << 8U) | memory[offset + n];
+        if (load) {
+            if (single) {
+                const float f = std::bit_cast<float>(static_cast<std::uint32_t>(raw));
+                state.fpr[d.rt] = std::bit_cast<std::uint64_t>(static_cast<double>(f));
+            } else {
+                state.fpr[d.rt] = raw;
+            }
+        } else {
+            if (single) raw = std::bit_cast<std::uint32_t>(
+                static_cast<float>(std::bit_cast<double>(state.fpr[d.rt])));
+            else raw = state.fpr[d.rt];
+            for (std::size_t n = 0; n < width; ++n)
+                memory[offset + n] = static_cast<std::uint8_t>(raw >> ((width - 1U - n) * 8U));
+        }
+        if (update) state.gpr[d.ra] = address;
+        break;
+    }
+    case 63: { // Floating-point arithmetic, compare, and conversion subset.
         const double a = std::bit_cast<double>(state.fpr[d.ra]);
         const double b = std::bit_cast<double>(state.fpr[d.rb]);
-        double value = 0.0;
         const unsigned fp_xo = (instruction >> 1U) & 0x1FU;
+        if (d.xo == 0U || d.xo == 32U) { // fcmpu / fcmpo
+            const unsigned bf = (instruction >> 23U) & 7U;
+            std::uint8_t field = 0x1U;
+            if (!std::isnan(a) && !std::isnan(b))
+                field = a < b ? 0x8U : (a > b ? 0x4U : 0x2U);
+            state.set_condition_field(bf, field);
+            if (std::isnan(a) || std::isnan(b)) state.fpscr |= (1U << 3U);
+            break;
+        }
+        double value = 0.0;
         switch (fp_xo) {
+        case 12: value = static_cast<double>(static_cast<float>(a)); break; // frsp
         case 18: value = a / b; break; // fdiv
         case 20: value = a - b; break; // fsub
         case 21: value = a + b; break; // fadd
-        case 25: { // fmul uses FRC in bits 6..10.
-            const unsigned frc = (instruction >> 6U) & 0x1FU;
-            value = a * std::bit_cast<double>(state.fpr[frc]);
-            break;
-        }
+        case 25: { const unsigned frc = (instruction >> 6U) & 0x1FU;
+            value = a * std::bit_cast<double>(state.fpr[frc]); break; } // fmul
+        case 40: value = -a; break; // fneg
+        case 72: value = a; break; // fmr
+        case 264: value = std::fabs(a); break; // fabs
+        case 136: value = -std::fabs(a); break; // fnabs
         default: return StepResult::UnsupportedInstruction;
         }
         state.fpr[d.rt] = std::bit_cast<std::uint64_t>(value);
