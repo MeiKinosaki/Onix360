@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <cmath>
 #include <vector>
 
 namespace wx360::gpu {
@@ -24,6 +25,38 @@ public:
     [[nodiscard]] bool write_pixel(std::uint32_t x,std::uint32_t y,std::uint32_t rgba) noexcept {
         if(x>=width_||y>=height_) return false;
         pixels_[static_cast<std::size_t>(y)*width_+x]=rgba;return true;
+    }
+    // Minimal host-side triangle rasterization stage for framebuffer tests.
+    // It is not a substitute for Xenos PM4 command or shader execution.
+    [[nodiscard]] bool draw_triangle(float x0, float y0, float x1, float y1,
+                                      float x2, float y2, std::uint32_t rgba) noexcept {
+        if (pixels_.empty() || !std::isfinite(x0) || !std::isfinite(y0) ||
+            !std::isfinite(x1) || !std::isfinite(y1) ||
+            !std::isfinite(x2) || !std::isfinite(y2)) return false;
+        const float area = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0);
+        if (area == 0.0F) return false;
+        const int min_x = std::max(0, static_cast<int>(std::floor(std::min({x0,x1,x2}))));
+        const int min_y = std::max(0, static_cast<int>(std::floor(std::min({y0,y1,y2}))));
+        const int max_x = std::min(static_cast<int>(width_) - 1,
+                                   static_cast<int>(std::ceil(std::max({x0,x1,x2}))));
+        const int max_y = std::min(static_cast<int>(height_) - 1,
+                                   static_cast<int>(std::ceil(std::max({y0,y1,y2}))));
+        if (min_x > max_x || min_y > max_y) return true;
+        const float inverse_area = 1.0F / area;
+        for (int y = min_y; y <= max_y; ++y) {
+            for (int x = min_x; x <= max_x; ++x) {
+                const float px = static_cast<float>(x) + 0.5F;
+                const float py = static_cast<float>(y) + 0.5F;
+                const float w0 = (x1 - px) * (y2 - py) - (y1 - py) * (x2 - px);
+                const float w1 = (x2 - px) * (y0 - py) - (y2 - py) * (x0 - px);
+                const float w2 = (x0 - px) * (y1 - py) - (y0 - py) * (x1 - px);
+                if ((area > 0.0F && w0 >= 0.0F && w1 >= 0.0F && w2 >= 0.0F) ||
+                    (area < 0.0F && w0 <= 0.0F && w1 <= 0.0F && w2 <= 0.0F))
+                    pixels_[static_cast<std::size_t>(y) * width_ +
+                            static_cast<std::size_t>(x)] = rgba;
+            }
+        }
+        return true;
     }
     [[nodiscard]] bool present() {
         if(pixels_.empty()) return false;
