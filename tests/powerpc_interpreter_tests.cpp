@@ -800,7 +800,6 @@ int main() {
     check(execute(s, bclr_ctr) == StepResult::Executed && s.pc == 0x5670U &&
           s.ctr == 1U, "BCLR decrements CTR and branches when count test passes");
 
-    if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     // XL-form BCCTR: branch through CTR; unlike BCLR it must not decrement CTR.
     s.reset(0x5400);
     s.ctr = 0x6783;
@@ -826,5 +825,6 @@ int main() {
     check(execute(s, invalid_bcctr) == StepResult::UnsupportedInstruction &&
           s.pc == 0x5700U, "BCCTR rejects BO encoding that requests CTR decrement");
 
+    if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
