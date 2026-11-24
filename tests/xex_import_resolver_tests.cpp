@@ -24,8 +24,8 @@ int main() {
     }
 
     const std::array imports{
-        XexImport{"XBOXKRNL.EXE", 0x123, 0x200, ImportKind::Function},
-        XexImport{"xboxkrnl.exe", 0x124, 0x204, ImportKind::Variable}
+        XexImport{"XBOXKRNL.EXE", 0x123, 0x220, ImportKind::Function, 0x200},
+        XexImport{"xboxkrnl.exe", 0x124, 0, ImportKind::Variable, 0x204}
     };
     if (resolver.resolve(imports, ram) != ImportResolveError::None) {
         std::cerr << "Function/variable imports did not resolve\n";
@@ -38,13 +38,13 @@ int main() {
                bytes[p+2] == static_cast<std::uint8_t>(v >> 8) &&
                bytes[p+3] == static_cast<std::uint8_t>(v);
     };
-    if (!is_be_address(0x200, 0x82001000) || !is_be_address(0x204, 0x82002000)) {
+    if (!is_be_address(0x200, 0x220) || !is_be_address(0x204, 0x82002000)) {
         std::cerr << "Resolved guest addresses were not written in big-endian order\n";
         return EXIT_FAILURE;
     }
 
     const std::array wrong_kind{
-        XexImport{"xboxkrnl.exe", 0x124, 0x208, ImportKind::Function}
+        XexImport{"xboxkrnl.exe", 0x124, 0x228, ImportKind::Function, 0x208}
     };
     if (resolver.resolve(wrong_kind, ram) != ImportResolveError::KindMismatch ||
         bytes[0x208] != 0) {
@@ -53,7 +53,7 @@ int main() {
     }
 
     const std::array missing{
-        XexImport{"xam.xex", 0x999, 0x20C, ImportKind::Function}
+        XexImport{"xam.xex", 0x999, 0x22C, ImportKind::Function, 0x20C}
     };
     if (resolver.resolve(missing, ram) != ImportResolveError::MissingExport ||
         bytes[0x20C] != 0) {
@@ -62,7 +62,7 @@ int main() {
     }
 
     const std::array bad_range{
-        XexImport{"xboxkrnl.exe", 0x123, 0x3FFF, ImportKind::Function}
+        XexImport{"xboxkrnl.exe", 0x123, 0x3FFF, ImportKind::Function, 0x210}
     };
     if (resolver.resolve(bad_range, ram) != ImportResolveError::InvalidThunk) {
         std::cerr << "Out-of-range thunk was not rejected\n";
@@ -70,8 +70,8 @@ int main() {
     }
 
     const std::array duplicate_thunk{
-        XexImport{"xboxkrnl.exe", 0x123, 0x300, ImportKind::Function},
-        XexImport{"xboxkrnl.exe", 0x124, 0x300, ImportKind::Variable}
+        XexImport{"xboxkrnl.exe", 0x123, 0x230, ImportKind::Function, 0x300},
+        XexImport{"xboxkrnl.exe", 0x124, 0, ImportKind::Variable, 0x304}
     };
     if (resolver.resolve(duplicate_thunk, ram) != ImportResolveError::DuplicateThunk ||
         bytes[0x300] != 0) {
