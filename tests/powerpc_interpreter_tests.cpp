@@ -56,6 +56,28 @@ int main() {
     check(execute(s, fmul) == StepResult::Executed, "FMUL double executes");
     check(std::bit_cast<double>(s.fpr[7]) == 6.0, "FMUL uses FRC operand");
 
+    // FPU memory transfers and compare/conversion coverage.
+    std::array<std::uint8_t, 64> fpu_ram{};
+    s.gpr[0] = 0;
+    s.fpr[8] = std::bit_cast<std::uint64_t>(3.5);
+    const std::uint32_t stfd = (54U << 26U) | (8U << 21U) | 16U;
+    check(execute(s, stfd, fpu_ram) == StepResult::Executed, "STFD stores double");
+    check(fpu_ram[16] == 0x40 && fpu_ram[17] == 0x0C, "STFD stores big-endian IEEE-754 bytes");
+    const std::uint32_t lfd = (50U << 26U) | (9U << 21U) | 16U;
+    check(execute(s, lfd, fpu_ram) == StepResult::Executed, "LFD loads double");
+    check(std::bit_cast<double>(s.fpr[9]) == 3.5, "LFD restores double value");
+    s.fpr[10] = std::bit_cast<std::uint64_t>(1.25);
+    const std::uint32_t stfs = (52U << 26U) | (10U << 21U) | 24U;
+    check(execute(s, stfs, fpu_ram) == StepResult::Executed, "STFS stores single");
+    const std::uint32_t lfs = (48U << 26U) | (11U << 21U) | 24U;
+    check(execute(s, lfs, fpu_ram) == StepResult::Executed, "LFS loads single");
+    check(std::bit_cast<double>(s.fpr[11]) == 1.25, "LFS converts single to internal double");
+    const std::uint32_t fcmpu = (63U << 26U) | (2U << 23U) | (1U << 16U) | (2U << 11U);
+    check(execute(s, fcmpu) == StepResult::Executed, "FCMPU executes");
+    check(s.condition_field(2) == 0x8, "FCMPU writes less-than condition field");
+    const std::uint32_t frsp = (63U << 26U) | (12U << 1U);
+    check(execute(s, frsp) == StepResult::Executed, "FRSP executes");
+
     s.gpr[3] = 10;
     check(execute(s, d_form(14, 4, 3, 5)) == StepResult::Executed, "ADDI executes");
     check(s.gpr[4] == 15 && s.pc == 0x1004, "ADDI writes RT and advances PC");
