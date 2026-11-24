@@ -551,7 +551,7 @@ int main() {
     const std::uint32_t mtcrf_cr0_cr2 = (31U << 26U) | (9U << 21U) |
         (0xA0U << 12U) | (144U << 1U);
     check(execute(s, mtcrf_cr0_cr2) == StepResult::Executed, "MTCRF executes");
-    check(s.condition_field(0) == 0xA && s.condition_field(2) == 0xC &&
+    check(s.condition_field(0) == 0xA && s.condition_field(2) == 0xB &&
           s.condition_field(1) == 0x2, "MTCRF updates only selected CR fields");
     const auto unsupported_spr_pc = s.pc;
     check(execute(s, encode_spr(10, 268, 339)) == StepResult::UnsupportedInstruction,
