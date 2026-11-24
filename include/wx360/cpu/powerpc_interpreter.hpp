@@ -327,7 +327,35 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         record_32bit = true;
         break;
     }
-    case 19: { // XL-form privileged return from interrupt (RFI), XO=50.
+    case 19: {
+        if (d.xo == 16U) { // bclr: conditional branch to LR.
+            const unsigned bo = (instruction >> 21U) & 0x1FU;
+            const unsigned bi = (instruction >> 16U) & 0x1FU;
+            bool condition_ok = (bo & 0x10U) != 0;
+            if (!condition_ok) {
+                const unsigned cr_bit = (state.cr >> (31U - bi)) & 1U;
+                condition_ok = cr_bit == ((bo >> 3U) & 1U);
+            }
+            bool count_ok = true;
+            if ((bo & 0x04U) == 0) {
+                --state.ctr;
+                count_ok = ((state.ctr != 0) != ((bo & 0x02U) != 0));
+            }
+            if (condition_ok && count_ok) {
+                branch_target = state.lr & ~std::uint64_t{3};
+                branch_taken = true;
+            }
+            if ((instruction & 1U) != 0) state.lr = state.pc + 4U;
+            break;
+        }
+        // XL-form privileged return from interrupt (RFI), XO=50.
+        if (d.xo != 50U) return StepResult::UnsupportedInstruction;
+        branch_target = state.srr0;
+        state.msr = state.srr1;
+        state.clear_exception();
+        branch_taken = true;
+        break;
+    }
         if (d.xo != 50U) return StepResult::UnsupportedInstruction;
         branch_target = state.srr0;
         state.msr = state.srr1;
