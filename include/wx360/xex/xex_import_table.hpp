@@ -76,9 +76,9 @@ struct ImportTable {
     return ImportTableError::Ok;
 }
 
-// Decode the 32-bit import records referenced by the XEX import directory.
-// Record layout: type in bits 31..24 (0 = variable, 1 = function),
-// ordinal in bits 15..0. The address is a guest-memory address after mapping.
+// Decode the 32-bit import metadata records referenced by the XEX import directory.
+// Layout: type in bits 31..24, library index in bits 23..16, ordinal in bits 15..0.
+// The record address is value_address, not the executable code thunk address.
 [[nodiscard]] inline ImportTableError decode_import_records(
     const ImportTable& table, const memory::PhysicalMemory& guest_memory,
     std::vector<kernel::XexImport>& output) {
@@ -102,8 +102,9 @@ struct ImportTable {
             if (type > 1U) return ImportTableError::InvalidThunkRecord;
             const auto kind = type == 0U ? kernel::ImportKind::Variable
                                          : kernel::ImportKind::Function;
+            const auto library_index = static_cast<std::uint8_t>(value >> 16U);
             decoded.push_back({library_name, static_cast<std::uint16_t>(value),
-                               address, kind});
+                               0, kind, address, library_index});
         }
     }
     output = std::move(decoded);
