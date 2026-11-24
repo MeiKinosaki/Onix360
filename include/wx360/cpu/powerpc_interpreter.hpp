@@ -265,8 +265,8 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             break;
         }
         case 339: { // mfspr: supported Xenon-visible SPRs
-            const unsigned spr = (((instruction >> 16U) & 0x1FU) << 5U) |
-                                 ((instruction >> 11U) & 0x1FU);
+            const unsigned spr = (((instruction >> 11U) & 0x1FU) << 5U) |
+                                 ((instruction >> 16U) & 0x1FU);
             switch (spr) {
             case 1: result = state.xer; break; // XER
             case 8: result = state.lr; break;  // LR
@@ -277,8 +277,8 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             break;
         }
         case 467: { // mtspr: supported Xenon-visible SPRs
-            const unsigned spr = (((instruction >> 16U) & 0x1FU) << 5U) |
-                                 ((instruction >> 11U) & 0x1FU);
+            const unsigned spr = (((instruction >> 11U) & 0x1FU) << 5U) |
+                                 ((instruction >> 16U) & 0x1FU);
             const std::uint64_t source = state.gpr[d.rt];
             switch (spr) {
             case 1: state.xer = source; break; // XER
