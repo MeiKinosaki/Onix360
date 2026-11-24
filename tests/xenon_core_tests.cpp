@@ -119,6 +119,40 @@ int main() {
           virtual_core.state.exception_vector == 0x300,
           "STW to read-only virtual page raises data-storage exception");
 
+    // Indexed LWZX/STWX use the same translated guest memory bus.
+    const auto xform = [](unsigned rt, unsigned ra, unsigned rb, unsigned xo) {
+        return (31U << 26U) | (rt << 21U) | (ra << 16U) | (rb << 11U) | (xo << 1U);
+    };
+    const auto encode_be = [](std::uint32_t word) {
+        return std::array<std::uint8_t, 4>{
+            static_cast<std::uint8_t>(word >> 24U),
+            static_cast<std::uint8_t>(word >> 16U),
+            static_cast<std::uint8_t>(word >> 8U),
+            static_cast<std::uint8_t>(word)};
+    };
+    const auto lwzx = encode_be(xform(4, 3, 5, 23));
+    const auto stwx = encode_be(xform(4, 3, 5, 151));
+    check(virtual_ram.write(0x110, lwzx) == memory::MemoryResult::Ok &&
+          virtual_ram.write(0x114, stwx) == memory::MemoryResult::Ok,
+          "place indexed LWZX and STWX instructions");
+    check(virtual_core.map_guest_page(0x5000, 0x2000,
+          static_cast<std::uint8_t>(memory::Access::Read) |
+          static_cast<std::uint8_t>(memory::Access::Write)) == memory::MemoryResult::Ok,
+          "map indexed data virtual page");
+    virtual_core.state.gpr[3] = 0x5000;
+    virtual_core.state.gpr[5] = 0;
+    virtual_core.state.pc = 0x1110;
+    check(virtual_core.step(virtual_ram) == machine::RunResult::Executed &&
+          virtual_core.state.gpr[4] == 0xDEADBEEFU,
+          "LWZX loads from translated indexed virtual address");
+    virtual_core.state.gpr[4] = 0xCAFEBABEU;
+    virtual_core.state.pc = 0x1114;
+    check(virtual_core.step(virtual_ram) == machine::RunResult::Executed,
+          "STWX stores to translated indexed virtual address");
+    check(virtual_ram.read(0x2000, stored_value) == memory::MemoryResult::Ok &&
+          stored_value == std::array<std::uint8_t, 4>{0xCA, 0xFE, 0xBA, 0xBE},
+          "STWX updates translated physical memory");
+
     const std::array<std::uint8_t, 4> guest_data{0x11, 0x22, 0x33, 0x44};
     check(virtual_core.write_guest(virtual_ram, 0x1120, guest_data) == memory::MemoryResult::Ok,
           "writes data through guest virtual address");
