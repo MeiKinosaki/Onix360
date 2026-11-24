@@ -306,12 +306,9 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         break;
     }
     case 7: { // mulli: signed low-word multiply by sign-extended immediate
-        const auto lhs = static_cast<std::int32_t>(state.gpr[d.ra]);
-        const auto rhs = static_cast<std::int32_t>(d.immediate);
-        const std::int64_t product = static_cast<std::int64_t>(lhs) * rhs;
-        result = static_cast<std::uint64_t>(product);
+        const std::uint64_t rhs = static_cast<std::uint64_t>(static_cast<std::int64_t>(d.immediate));
+        result = state.gpr[d.ra] * rhs; // Unsigned arithmetic gives the low 64 bits without signed-overflow UB.
         writes_result = true;
-        record_32bit = true;
         break;
     }
     case 14: // addi
@@ -936,10 +933,11 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         }
         case 235: { // mullw (OE=0): signed 32-bit product, sign-extended to GPR width
             if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
-            const auto lhs = static_cast<std::int32_t>(state.gpr[d.ra]);
-            const auto rhs = static_cast<std::int32_t>(state.gpr[d.rb]);
-            const std::int64_t product = static_cast<std::int64_t>(lhs) * rhs;
-            result = static_cast<std::uint64_t>(product);
+            const auto lhs = static_cast<std::uint32_t>(state.gpr[d.ra]);
+            const auto rhs = static_cast<std::uint32_t>(state.gpr[d.rb]);
+            const std::uint32_t low_product = lhs * rhs;
+            result = static_cast<std::uint64_t>(static_cast<std::int64_t>(
+                static_cast<std::int32_t>(low_product)));
             destination = d.rt;
             writes_result = true;
             record_32bit = true;
