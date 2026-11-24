@@ -168,6 +168,42 @@ int main() {
     check(virtual_ram.read(0x2000, stored_value) == memory::MemoryResult::Ok &&
           stored_value == std::array<std::uint8_t, 4>{0xCA, 0xFE, 0xBA, 0xBE},
           "STWX updates translated physical memory");
+    const auto lbzx = encode_be(xform(6, 3, 5, 87));
+    const auto stbx = encode_be(xform(7, 3, 5, 215));
+    const auto lhzx = encode_be(xform(8, 3, 5, 279));
+    const auto sthx = encode_be(xform(9, 3, 5, 407));
+    check(virtual_ram.write(0x118, lbzx) == memory::MemoryResult::Ok &&
+          virtual_ram.write(0x11C, stbx) == memory::MemoryResult::Ok &&
+          virtual_ram.write(0x120, lhzx) == memory::MemoryResult::Ok &&
+          virtual_ram.write(0x124, sthx) == memory::MemoryResult::Ok,
+          "place indexed byte and halfword instructions");
+    virtual_core.state.gpr[3] = 0x5000;
+    virtual_core.state.gpr[5] = 1;
+    virtual_core.state.pc = 0x1118;
+    check(virtual_core.step(virtual_ram) == machine::RunResult::Executed &&
+          virtual_core.state.gpr[6] == 0xFEU,
+          "LBZX reads byte through translated guest memory");
+    virtual_core.state.gpr[5] = 2;
+    virtual_core.state.gpr[7] = 0x77U;
+    virtual_core.state.pc = 0x111C;
+    check(virtual_core.step(virtual_ram) == machine::RunResult::Executed,
+          "STBX writes byte through translated guest memory");
+    std::array<std::uint8_t, 4> indexed_bytes{};
+    check(virtual_ram.read(0x2000, indexed_bytes) == memory::MemoryResult::Ok &&
+          indexed_bytes == std::array<std::uint8_t, 4>{0xCA, 0xFE, 0x77, 0xBE},
+          "STBX changes only indexed translated byte");
+    virtual_core.state.gpr[5] = 0;
+    virtual_core.state.pc = 0x1120;
+    check(virtual_core.step(virtual_ram) == machine::RunResult::Executed &&
+          virtual_core.state.gpr[8] == 0xCAFEU,
+          "LHZX reads big-endian halfword through guest MMU");
+    virtual_core.state.gpr[9] = 0x1234U;
+    virtual_core.state.pc = 0x1124;
+    check(virtual_core.step(virtual_ram) == machine::RunResult::Executed,
+          "STHX writes halfword through guest MMU");
+    check(virtual_ram.read(0x2000, indexed_bytes) == memory::MemoryResult::Ok &&
+          indexed_bytes == std::array<std::uint8_t, 4>{0x12, 0x34, 0x77, 0xBE},
+          "STHX updates translated memory in big-endian order");
 
     const std::array<std::uint8_t, 4> guest_data{0x11, 0x22, 0x33, 0x44};
     check(virtual_core.write_guest(virtual_ram, 0x1120, guest_data) == memory::MemoryResult::Ok,
