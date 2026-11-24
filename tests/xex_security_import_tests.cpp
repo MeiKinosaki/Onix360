@@ -164,9 +164,9 @@ int main(){
         return EXIT_FAILURE;
     }
     malformed_imports=imports;
-    be32(malformed_imports,8,2);
+    be32(malformed_imports,4,4);
     if (wx360::xex::parse_import_table(malformed_imports,0,table)!=
-        wx360::xex::ImportTableError::InvalidSize) {
+        wx360::xex::ImportTableError::InvalidStringTable) {
         std::cerr<<"Truncated import string table was not rejected\\n";
         return EXIT_FAILURE;
     }
