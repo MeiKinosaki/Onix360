@@ -671,7 +671,7 @@ int main() {
           "LMW rejects unaligned address");
     check(s.pc == multiple_fault_pc, "unaligned LMW leaves PC unchanged");
     std::array<std::uint8_t, 8> short_multiple_ram{};
-    check(execute(s, d_form(46, 30, 0, 0), short_multiple_ram) == StepResult::MemoryFault,
+    check(execute(s, d_form(46, 28, 0, 0), short_multiple_ram) == StepResult::MemoryFault,
           "LMW reports incomplete memory range");
 
     // Indexed loads/stores: XO 23 is LWZX; XO 20 is LWARX.
@@ -708,5 +708,6 @@ int main() {
           "ordinary store executes while reservation is active");
     check(!s.reservation_valid, "overlapping ordinary store invalidates reservation");
 
+    if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
