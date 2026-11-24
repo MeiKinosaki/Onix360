@@ -3,6 +3,7 @@
 #include "wx360/cpu/powerpc_interpreter.hpp"
 #include "wx360/memory/physical_memory.hpp"
 #include "wx360/memory/address_space.hpp"
+#include "wx360/kernel/kernel_runtime.hpp"
 #include "wx360/xex/xex_image_loader.hpp"
 
 namespace wx360::machine {
@@ -21,6 +22,7 @@ enum class LaunchResult : std::uint8_t { Started, EntryPointNotExecutable };
 
 struct XenonCore {
     cpu::XenonThreadState state{};
+    kernel::KernelRuntime* kernel_runtime{nullptr};
     memory::AddressSpace address_space{};
     bool mmu_enabled{false};
 
@@ -59,6 +61,14 @@ struct XenonCore {
         }
         if (fetch != memory::MemoryResult::Ok) {
             state.raise_exception(0x400U, state.pc);
+            return RunResult::ExceptionTaken;
+        }
+        if (instruction == 0x44000002U) { // sc: host kernel dispatch bridge
+            if (kernel_runtime && kernel_runtime->dispatch(state)) {
+                state.pc += 4U;
+                return RunResult::Executed;
+            }
+            state.raise_exception(0xC00U);
             return RunResult::ExceptionTaken;
         }
         std::uint64_t fault_address = 0;
