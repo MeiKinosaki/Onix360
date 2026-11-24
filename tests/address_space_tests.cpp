@@ -9,6 +9,10 @@ int main() {
  auto tr=mmu.translate(0x1234,Access::Read,ram);
  check(tr.result==MemoryResult::Ok && tr.physical_address==0x5234,"translates offset");
  check(mmu.translate(0x1234,Access::Execute,ram).result==MemoryResult::PermissionDenied,"checks execute permission");
+ auto range=mmu.translate_range(0x1230,8,Access::Read,ram);
+ check(range.result==MemoryResult::Ok && range.physical_address==0x5230,"translates full in-page range");
+ check(mmu.translate_range(0x1FFC,8,Access::Read,ram).result==MemoryResult::Unmapped,"rejects access crossing guest page");
+ check(mmu.translate_range(0x1234,0,Access::Read,ram).result==MemoryResult::OutOfRange,"rejects empty access range");
  check(mmu.translate(0x2234,Access::Read,ram).result==MemoryResult::Unmapped,"unmapped page faults");
  check(mmu.map_page(0x2001,0x6000,3)==MemoryResult::AlignmentFault,"rejects unaligned map");
  mmu.unmap_page(0x1000);
