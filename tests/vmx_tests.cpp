@@ -23,6 +23,15 @@ int main() {
  check(std::bit_cast<float>(vm.lane[0])==3.75F && std::bit_cast<float>(vm.lane[2])==-5.0F,"VMX vector float multiply");
  auto m=vmx::max_s32(s.vr[0],s.vr[1]);
  check(m.lane[0]==4U && m.lane[1]==3U,"signed vector maximum");
+ auto ac=vmx::bit_andc(s.vr[0],s.vr[1]);
+ check(ac.lane[0]==1U && ac.lane[1]==0U,"VMX AND-complement");
+ auto no=vmx::bit_nor(s.vr[0],s.vr[1]);
+ check(no.lane[0]==~5U,"VMX NOR");
+ s.vr[4].lane={0xFF00FF00U,0x01020304U,0x00000000U,0xFFFFFFFFU};
+ s.vr[5].lane={0x01010101U,0x01010101U,0xFFFFFFFFU,0x01010101U};
+ auto bytes=vmx::add_u8(s.vr[4],s.vr[5]);
+ check(bytes.lane[0]==0x00010001U && bytes.lane[1]==0x02030405U,
+       "VMX unsigned byte addition wraps each byte lane");
  s.set_fpscr_exception(0x10U);
  check((s.fpscr&0x10U)!=0,"FPSCR exception flag can be set");
  s.clear_fpscr_exceptions();
