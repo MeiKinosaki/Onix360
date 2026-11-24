@@ -22,10 +22,13 @@ enum class LaunchResult : std::uint8_t { Started, EntryPointNotExecutable };
 struct XenonCore {
     cpu::XenonThreadState state{};
     memory::AddressSpace address_space{};
+    bool mmu_enabled{false};
 
     [[nodiscard]] memory::MemoryResult map_guest_page(std::uint64_t virtual_address,
         std::uint64_t physical_address, std::uint8_t permissions) noexcept {
-        return address_space.map_page(virtual_address, physical_address, permissions);
+        const auto result = address_space.map_page(virtual_address, physical_address, permissions);
+        if (result == memory::MemoryResult::Ok) mmu_enabled = true;
+        return result;
     }
 
     // Only the loader-minted validation token can start execution.
@@ -40,14 +43,16 @@ struct XenonCore {
 
     [[nodiscard]] RunResult step(memory::PhysicalMemory& ram) noexcept {
         std::uint32_t instruction = 0;
-        const auto translated = address_space.translate(state.pc, memory::Access::Execute, ram);
-        if (translated.result == memory::MemoryResult::Unmapped ||
-            translated.result == memory::MemoryResult::PermissionDenied ||
-            translated.result == memory::MemoryResult::OutOfRange) {
-            state.raise_exception(0x400U, state.pc);
-            return RunResult::ExceptionTaken;
+        std::uint64_t fetch_address = state.pc;
+        if (mmu_enabled) {
+            const auto translated = address_space.translate(state.pc, memory::Access::Execute, ram);
+            if (translated.result != memory::MemoryResult::Ok) {
+                state.raise_exception(0x400U, state.pc);
+                return RunResult::ExceptionTaken;
+            }
+            fetch_address = translated.physical_address;
         }
-        const auto fetch = ram.fetch_u32(translated.physical_address, instruction);
+        const auto fetch = ram.fetch_u32(fetch_address, instruction);
         if (fetch == memory::MemoryResult::AlignmentFault) {
             state.raise_exception(0x600U, state.pc);
             return RunResult::ExceptionTaken;
