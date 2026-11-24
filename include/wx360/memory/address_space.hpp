@@ -33,13 +33,25 @@ public:
     void flush() noexcept { for (auto& e : entries_) e.valid = false; replacement_ = 0; }
     [[nodiscard]] Translation translate(std::uint64_t va, Access access,
                                         const PhysicalMemory& physical) const noexcept {
-        const auto vpn = va / page_size, offset = va & (page_size - 1U);
+        return translate_range(va, 1, access, physical);
+    }
+
+    // Translate a complete access, not just its first byte. This initial
+    // page-table model deliberately rejects accesses crossing a 4 KiB page;
+    // callers can split them once multi-page architectural access handling exists.
+    [[nodiscard]] Translation translate_range(std::uint64_t va, std::size_t length,
+                                               Access access,
+                                               const PhysicalMemory& physical) const noexcept {
+        if (length == 0) return {MemoryResult::OutOfRange, 0};
+        const auto offset = va & (page_size - 1U);
+        if (length > page_size - offset) return {MemoryResult::Unmapped, 0};
+        const auto vpn = va / page_size;
         for (const auto& e : entries_) {
             if (!e.valid || e.vpn != vpn) continue;
             if ((e.permissions & static_cast<std::uint8_t>(access)) == 0)
                 return {MemoryResult::PermissionDenied, 0};
             const auto pa = e.ppn * page_size + offset;
-            const auto check = physical.check_access(pa, 1, access);
+            const auto check = physical.check_access(pa, length, access);
             if (check != MemoryResult::Ok) return {check, 0};
             return {MemoryResult::Ok, pa};
         }
