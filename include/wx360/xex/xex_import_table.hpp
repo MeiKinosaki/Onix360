@@ -3,7 +3,6 @@
 #include "wx360/kernel/xex_import_resolver.hpp"
 #include "wx360/memory/physical_memory.hpp"
 #include <array>
-#include <limits>
 #include <cstdint>
 #include <span>
 #include <string>
