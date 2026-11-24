@@ -14,6 +14,12 @@ int main() {
  memory::PhysicalMemory ram(0x4000);
  kernel::KernelRuntime runtime;
  check(runtime.register_service(7,&service_increment),"registers host kernel service");
+ check(!runtime.register_service(7,&service_increment),"rejects duplicate service identifiers");
+ cpu::XenonThreadState dispatch_state;
+ dispatch_state.gpr[0]=99;
+ check(!runtime.dispatch(dispatch_state),"rejects unknown kernel service identifiers");
+ check(!runtime.emit_trampoline("xboxkrnl.exe",43,8,0,ram),"rejects null trampoline address");
+ check(!runtime.emit_trampoline("xboxkrnl.exe",43,8,0x3FFC,ram),"rejects trampoline that exceeds guest RAM");
  check(runtime.emit_trampoline("xboxkrnl.exe",42,7,0x200,ram),"emits guest SC trampoline");
  const std::array<kernel::XexImport,1> imports{{{"xboxkrnl.exe",42,0x1000,kernel::ImportKind::Function}}};
  check(runtime.resolve_imports(imports,ram)==kernel::ImportResolveError::None,"resolves function import to trampoline");
