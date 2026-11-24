@@ -110,6 +110,19 @@ struct ImportTable {
     return ImportTableError::Ok;
 }
 
+// End-to-end bridge: parse/decode the guest thunk records, then resolve
+// each ordinal through the registered kernel/XAM export table.
+[[nodiscard]] inline ImportTableError resolve_import_table(
+    const ImportTable& table, memory::PhysicalMemory& guest_memory,
+    const kernel::XexImportResolver& resolver,
+    kernel::ImportResolveError& resolution_error) {
+    std::vector<kernel::XexImport> imports;
+    const auto decoded = decode_import_records(table, guest_memory, imports);
+    if (decoded != ImportTableError::Ok) return decoded;
+    resolution_error = resolver.resolve(imports, guest_memory);
+    return ImportTableError::Ok;
+}
+
 [[nodiscard]] inline ImportTableError parse_import_table(
     std::span<const std::uint8_t> file, const Header& header,
     ImportTable& output) {
