@@ -215,5 +215,34 @@ int main(){
         std::cerr << "Out-of-range XEX import thunk address was not rejected\\n";
         return EXIT_FAILURE;
     }
+    wx360::memory::PhysicalMemory resolved_guest(0x1000);
+    const std::array<std::uint8_t, 4> function_record{0x01, 0x00, 0x01, 0x23};
+    if (resolved_guest.write(0x180, function_record) != wx360::memory::MemoryResult::Ok) {
+        std::cerr << "Could not prepare end-to-end import record\\n";
+        return EXIT_FAILURE;
+    }
+    wx360::xex::ImportTable end_to_end_table{};
+    end_to_end_table.libraries.push_back({"xboxkrnl", 0, 0, 0, 0, 1, {0x180}});
+    wx360::kernel::XexImportResolver end_to_end_resolver;
+    if (!end_to_end_resolver.register_export(
+            {"xboxkrnl.exe", 0x123, 0x82001000,
+             wx360::kernel::ImportKind::Function})) {
+        std::cerr << "Could not register test kernel export\\n";
+        return EXIT_FAILURE;
+    }
+    wx360::kernel::ImportResolveError resolution_error =
+        wx360::kernel::ImportResolveError::MissingExport;
+    if (wx360::xex::resolve_import_table(end_to_end_table, resolved_guest,
+            end_to_end_resolver, resolution_error) != wx360::xex::ImportTableError::Ok ||
+        resolution_error != wx360::kernel::ImportResolveError::None) {
+        std::cerr << "XEX table to kernel ordinal resolution failed\\n";
+        return EXIT_FAILURE;
+    }
+    std::array<std::uint8_t, 4> resolved_bytes{};
+    if (resolved_guest.read(0x180, resolved_bytes) != wx360::memory::MemoryResult::Ok ||
+        resolved_bytes != std::array<std::uint8_t, 4>{0x82, 0x00, 0x10, 0x00}) {
+        std::cerr << "Resolved kernel export address was not patched into guest thunk\\n";
+        return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
 }
