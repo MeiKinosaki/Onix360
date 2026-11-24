@@ -62,13 +62,13 @@ public:
         return translate_range(va, 1, access, physical);
     }
 
-    // Translate a complete access, not just its first byte. This initial
-    // page-table model deliberately rejects accesses crossing a 4 KiB page;
-    // callers can split them once multi-page architectural access handling exists.
+    // Translate a complete access across one or more adjacent virtual pages.
+    // A single contiguous host span is returned only when physical pages adjoin.
     [[nodiscard]] Translation translate_range(std::uint64_t va, std::size_t length,
                                                Access access,
                                                const PhysicalMemory& physical) const noexcept {
-        if (length == 0) return {MemoryResult::OutOfRange, 0};
+        if (length == 0 || length - 1U > std::numeric_limits<std::uint64_t>::max() - va)
+            return {MemoryResult::OutOfRange, 0};
         for (const auto& bat : bats_) {
             if (!bat.valid || va < bat.virtual_base ||
                 va - bat.virtual_base >= bat.size) continue;
@@ -76,12 +76,13 @@ public:
             if (length > bat.size - offset) return {MemoryResult::Unmapped, 0};
             if ((bat.permissions & static_cast<std::uint8_t>(access)) == 0)
                 return {MemoryResult::PermissionDenied, 0};
+            if (offset > std::numeric_limits<std::uint64_t>::max() - bat.physical_base)
+                return {MemoryResult::OutOfRange, 0};
             const auto pa = bat.physical_base + offset;
             const auto check = physical.check_access(pa, length, access);
             if (check != MemoryResult::Ok) return {check, 0};
             return {MemoryResult::Ok, pa};
         }
-        if (length - 1U > std::numeric_limits<std::uint64_t>::max() - va) return {MemoryResult::OutOfRange, 0};
         std::uint64_t current_va = va;
         std::size_t remaining = length;
         std::uint64_t first_physical = 0;
