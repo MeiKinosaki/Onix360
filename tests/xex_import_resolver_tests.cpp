@@ -71,7 +71,7 @@ int main() {
 
     const std::array duplicate_thunk{
         XexImport{"xboxkrnl.exe", 0x123, 0x230, ImportKind::Function, 0x300},
-        XexImport{"xboxkrnl.exe", 0x124, 0, ImportKind::Variable, 0x304}
+        XexImport{"xboxkrnl.exe", 0x124, 0, ImportKind::Variable, 0x300}
     };
     if (resolver.resolve(duplicate_thunk, ram) != ImportResolveError::DuplicateThunk ||
         bytes[0x300] != 0) {
