@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <span>
+#include <algorithm>
 
 namespace wx360::cpu {
 
@@ -362,6 +363,64 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
     }
     case 31:
         switch (d.xo) {
+        case 20: case 23: case 55: case 87: case 119:
+        case 279: case 311: case 343: case 375:
+        case 151: case 183: case 215: case 247:
+        case 407: case 439: case 534: case 662: { // Indexed integer loads/stores.
+            const bool store = d.xo == 151 || d.xo == 183 || d.xo == 215 ||
+                               d.xo == 247 || d.xo == 407 || d.xo == 439 || d.xo == 662;
+            const bool byte_access = d.xo == 87 || d.xo == 119 ||
+                                     d.xo == 215 || d.xo == 247;
+            const bool half_access = d.xo == 279 || d.xo == 311 ||
+                                     d.xo == 343 || d.xo == 375 ||
+                                     d.xo == 407 || d.xo == 439;
+            const bool reversed = d.xo == 534 || d.xo == 662;
+            const bool update = d.xo == 55 || d.xo == 119 || d.xo == 183 ||
+                                d.xo == 247 || d.xo == 311 || d.xo == 375 ||
+                                d.xo == 439;
+            if (update && (d.ra == 0 || (!store && d.ra == d.rt)))
+                return StepResult::UnsupportedInstruction;
+            const std::size_t width = byte_access ? 1U : (half_access ? 2U : 4U);
+            const std::uint64_t address = (d.ra == 0 ? 0U : state.gpr[d.ra]) +
+                                          state.gpr[d.rb];
+            if (width > 1U && (address & (width - 1U)) != 0U) {
+                if (fault_address) *fault_address = address;
+                return StepResult::AlignmentFault;
+            }
+            std::array<std::uint8_t, 4> bytes{};
+            if (!store) {
+                if (!read_memory(address, std::span<std::uint8_t>(bytes.data(), width))) {
+                    if (fault_address) *fault_address = address;
+                    return StepResult::MemoryFault;
+                }
+                if (reversed) std::reverse(bytes.begin(), bytes.begin() + width);
+                if (width == 4U) {
+                    result = (static_cast<std::uint32_t>(bytes[0]) << 24U) |
+                             (static_cast<std::uint32_t>(bytes[1]) << 16U) |
+                             (static_cast<std::uint32_t>(bytes[2]) << 8U) | bytes[3];
+                } else if (width == 2U) {
+                    const std::uint16_t value = static_cast<std::uint16_t>(
+                        (static_cast<std::uint16_t>(bytes[0]) << 8U) | bytes[1]);
+                    result = (d.xo == 343 || d.xo == 375)
+                        ? static_cast<std::uint64_t>(static_cast<std::int64_t>(
+                              static_cast<std::int16_t>(value))) : value;
+                } else {
+                    result = bytes[0];
+                }
+                writes_result = true;
+            } else {
+                const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[d.rt]);
+                for (std::size_t n = 0; n < width; ++n)
+                    bytes[n] = static_cast<std::uint8_t>(value >> ((width - 1U - n) * 8U));
+                if (reversed) std::reverse(bytes.begin(), bytes.begin() + width);
+                if (!write_memory(address, std::span<const std::uint8_t>(bytes.data(), width))) {
+                    if (fault_address) *fault_address = address;
+                    return StepResult::MemoryFault;
+                }
+            }
+            if (update) state.gpr[d.ra] = address;
+            break;
+        }
         case 19: // mfcr: RT = CR
             result = state.cr;
             writes_result = true;
