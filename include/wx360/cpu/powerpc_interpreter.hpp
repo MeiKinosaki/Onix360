@@ -373,13 +373,6 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         branch_taken = true;
         break;
     }
-        if (d.xo != 50U) return StepResult::UnsupportedInstruction;
-        branch_target = state.srr0;
-        state.msr = state.srr1;
-        state.clear_exception();
-        branch_taken = true;
-        break;
-    }
     case 48: case 49: case 50: case 51: case 52: case 53: case 54: case 55: { // lfs/lfd/stfs/stfd D-form.
         const bool single = d.primary_opcode == 48 || d.primary_opcode == 49 ||
                             d.primary_opcode == 52 || d.primary_opcode == 53;
