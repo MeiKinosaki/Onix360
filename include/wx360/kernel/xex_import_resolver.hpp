@@ -70,15 +70,23 @@ public:
             const auto found = exports_.find(make_key(item.library, item.ordinal));
             if (found == exports_.end()) return ImportResolveError::MissingExport;
             if (found->second.kind != item.kind) return ImportResolveError::KindMismatch;
-            if (found->second.guest_address == 0)
+            std::uint64_t patch_address = item.value_address;
+            std::uint32_t patch_value = found->second.guest_address;
+            if (item.kind == ImportKind::Function) {
+                if (item.thunk_address == 0)
+                    return ImportResolveError::InvalidThunk;
+                patch_value = static_cast<std::uint32_t>(item.thunk_address);
+            } else if (found->second.guest_address == 0) {
                 return ImportResolveError::InvalidGuestAddress;
-            if (guest_memory.check_access(item.thunk_address, 4, memory::Access::Write) !=
-                memory::MemoryResult::Ok)
+            }
+            if (patch_address == 0 ||
+                guest_memory.check_access(patch_address, 4, memory::Access::Write) !=
+                    memory::MemoryResult::Ok)
                 return ImportResolveError::InvalidThunk;
             for (const auto& prior : patches)
-                if (prior.address == item.thunk_address)
+                if (prior.address == patch_address)
                     return ImportResolveError::DuplicateThunk;
-            patches.push_back({item.thunk_address, found->second.guest_address});
+            patches.push_back({patch_address, patch_value});
         }
 
         for (const auto& patch : patches) {
