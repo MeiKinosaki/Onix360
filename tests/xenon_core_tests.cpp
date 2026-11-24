@@ -118,6 +118,22 @@ int main() {
     check(virtual_core.step(virtual_ram) == machine::RunResult::ExceptionTaken &&
           virtual_core.state.exception_vector == 0x300,
           "STW to read-only virtual page raises data-storage exception");
+    check(virtual_core.state.dar == 0x4000,
+          "data-storage protection exception records faulting guest address in DAR");
+    const std::array<std::uint8_t, 4> lwz_unmapped{0x80, 0x83, 0x00, 0x00};
+    check(virtual_ram.write(0x118, lwz_unmapped) == memory::MemoryResult::Ok,
+          "place LWZ for unmapped guest data test");
+    virtual_core.state.pc = 0x1118;
+    virtual_core.state.gpr[3] = 0x6000;
+    check(virtual_core.step(virtual_ram) == machine::RunResult::ExceptionTaken &&
+          virtual_core.state.exception_vector == 0x300 &&
+          virtual_core.state.dar == 0x6000,
+          "unmapped guest data access raises DSI and records DAR");
+    virtual_core.state.pc = 0x9000;
+    check(virtual_core.step(virtual_ram) == machine::RunResult::ExceptionTaken &&
+          virtual_core.state.exception_vector == 0x400 &&
+          virtual_core.state.dar == 0x9000,
+          "unmapped guest instruction fetch raises ISI and records faulting PC");
 
     // Indexed LWZX/STWX use the same translated guest memory bus.
     const auto xform = [](unsigned rt, unsigned ra, unsigned rb, unsigned xo) {
