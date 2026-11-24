@@ -1,6 +1,7 @@
 #include "wx360/cpu/powerpc_interpreter.hpp"
 
 #include <array>
+#include <bit>
 #include <cstdlib>
 #include <iostream>
 
@@ -38,6 +39,23 @@ int main() {
     constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
     XenonThreadState s;
     s.reset(0x1000);
+    // Initial double-precision FPU arithmetic coverage.
+    s.fpr[1] = std::bit_cast<std::uint64_t>(1.5);
+    s.fpr[2] = std::bit_cast<std::uint64_t>(2.25);
+    const std::uint32_t fadd = (63U << 26U) | (3U << 21U) | (1U << 16U) | (2U << 11U) | (21U << 1U);
+    check(execute(s, fadd) == StepResult::Executed, "FADD double executes");
+    check(std::bit_cast<double>(s.fpr[3]) == 3.75, "FADD writes IEEE-754 result");
+    const std::uint32_t fsub = (63U << 26U) | (4U << 21U) | (2U << 16U) | (1U << 11U) | (20U << 1U);
+    check(execute(s, fsub) == StepResult::Executed, "FSUB double executes");
+    check(std::bit_cast<double>(s.fpr[4]) == 0.75, "FSUB computes FRA minus FRB");
+    const std::uint32_t fdiv = (63U << 26U) | (5U << 21U) | (2U << 16U) | (1U << 11U) | (18U << 1U);
+    check(execute(s, fdiv) == StepResult::Executed, "FDIV double executes");
+    check(std::bit_cast<double>(s.fpr[5]) == 1.5, "FDIV computes FRA divided by FRB");
+    s.fpr[6] = std::bit_cast<std::uint64_t>(4.0);
+    const std::uint32_t fmul = (63U << 26U) | (7U << 21U) | (1U << 16U) | (6U << 6U) | (25U << 1U);
+    check(execute(s, fmul) == StepResult::Executed, "FMUL double executes");
+    check(std::bit_cast<double>(s.fpr[7]) == 6.0, "FMUL uses FRC operand");
+
     s.gpr[3] = 10;
     check(execute(s, d_form(14, 4, 3, 5)) == StepResult::Executed, "ADDI executes");
     check(s.gpr[4] == 15 && s.pc == 0x1004, "ADDI writes RT and advances PC");
