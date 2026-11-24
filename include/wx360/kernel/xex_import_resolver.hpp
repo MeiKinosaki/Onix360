@@ -38,6 +38,10 @@ enum class ImportResolveError : std::uint8_t {
 
 class XexImportResolver {
 public:
+    [[nodiscard]] bool has_export(std::string_view library, std::uint16_t ordinal) const {
+        return exports_.find(make_key(library, ordinal)) != exports_.end();
+    }
+
     [[nodiscard]] bool register_export(KernelExport item) {
         if (item.library.empty() || item.guest_address == 0 ||
             (item.kind != ImportKind::Function && item.kind != ImportKind::Variable))
