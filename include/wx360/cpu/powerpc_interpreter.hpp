@@ -931,7 +931,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             writes_result = true;
             break;
         }
-        case 235: { // mullw (OE=0): signed 32-bit product, sign-extended to GPR width
+        case 235: case 747: { // mullw (OE=0): signed 32-bit product, sign-extended to GPR width
             if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
             const auto lhs = static_cast<std::uint32_t>(state.gpr[d.ra]);
             const auto rhs = static_cast<std::uint32_t>(state.gpr[d.rb]);
@@ -943,7 +943,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             record_32bit = true;
             break;
         }
-        case 491: { // divw (OE=0): signed word division; zero/overflow result is architecturally undefined
+        case 491: case 1003: { // divw (OE=0): signed word division; zero/overflow result is architecturally undefined
             if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
             const auto dividend = static_cast<std::int32_t>(state.gpr[d.ra]);
             const auto divisor = static_cast<std::int32_t>(state.gpr[d.rb]);
@@ -956,7 +956,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             record_32bit = true;
             break;
         }
-        case 459: { // divwu (OE=0): unsigned word division; zero divisor result is undefined
+        case 459: case 971: { // divwu (OE=0): unsigned word division; zero divisor result is undefined
             if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
             const auto dividend = static_cast<std::uint32_t>(state.gpr[d.ra]);
             const auto divisor = static_cast<std::uint32_t>(state.gpr[d.rb]);
