@@ -102,7 +102,7 @@ struct ImportTable {
             const auto ordinal = static_cast<std::uint16_t>(value);
             if (type == 0U) {
                 decoded.push_back({library_name, ordinal, 0,
-                    kernel::ImportKind::Variable, address, 0});
+                    kernel::ImportKind::Variable, address});
             } else if (type == 1U) {
                 if (decoded.empty() || decoded.back().library != library_name ||
                     decoded.back().ordinal != ordinal || decoded.back().thunk_address != 0)
