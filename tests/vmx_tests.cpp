@@ -1,4 +1,5 @@
 #include "wx360/cpu/vmx.hpp"
+#include <bit>
 #include <cstdlib>
 #include <iostream>
 int main() {
@@ -14,6 +15,12 @@ int main() {
  check(x.lane[0]==5U && x.lane[1]==1U,"vector XOR");
  auto a=vmx::add_u32(s.vr[0],s.vr[1]);
  check(a.lane[0]==5U && a.lane[2]==0U,"vector add wraps modulo 32 bits");
+ s.vr[2].lane={std::bit_cast<std::uint32_t>(1.5F),std::bit_cast<std::uint32_t>(2.0F),std::bit_cast<std::uint32_t>(-1.0F),std::bit_cast<std::uint32_t>(4.0F)};
+ s.vr[3].lane={std::bit_cast<std::uint32_t>(2.5F),std::bit_cast<std::uint32_t>(3.0F),std::bit_cast<std::uint32_t>(5.0F),std::bit_cast<std::uint32_t>(0.5F)};
+ auto vf=vmx::add_f32(s.vr[2],s.vr[3]);
+ check(std::bit_cast<float>(vf.lane[0])==4.0F && std::bit_cast<float>(vf.lane[3])==4.5F,"VMX vector float add");
+ auto vm=vmx::mul_f32(s.vr[2],s.vr[3]);
+ check(std::bit_cast<float>(vm.lane[0])==3.75F && std::bit_cast<float>(vm.lane[2])==-5.0F,"VMX vector float multiply");
  auto m=vmx::max_s32(s.vr[0],s.vr[1]);
  check(m.lane[0]==4U && m.lane[1]==3U,"signed vector maximum");
  s.set_fpscr_exception(0x10U);
