@@ -78,6 +78,13 @@ int main() {
     const std::uint32_t frsp = (63U << 26U) | (12U << 1U);
     check(execute(s, frsp) == StepResult::Executed, "FRSP executes");
 
+    s.fpr[1] = std::bit_cast<std::uint64_t>(1.0);
+    s.fpr[2] = std::bit_cast<std::uint64_t>(0.0);
+    const std::uint32_t fdiv_zero = (63U << 26U) | (13U << 21U) |
+        (1U << 16U) | (2U << 11U) | (18U << 1U);
+    check(execute(s, fdiv_zero) == StepResult::Executed, "FDIV by zero executes with FPSCR status");
+    check((s.fpscr & 0x84000000U) == 0x84000000U, "FDIV by zero sets sticky FX and ZX flags");
+
     s.reset(0x1000); // Keep the legacy integer tests independent of FPU PC changes.
     s.gpr[3] = 10;
     check(execute(s, d_form(14, 4, 3, 5)) == StepResult::Executed, "ADDI executes");
