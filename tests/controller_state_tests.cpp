@@ -12,7 +12,7 @@ int main() {
     if (pad.left_x != 1200 || pad.left_trigger != 200) return EXIT_FAILURE;
     if (ControllerState::normalize_axis(0) != 0.0F ||
         ControllerState::normalize_axis(7000) != 0.0F ||
-        ControllerState::normalize_axis(-32768) >= -1.0F ||
+        ControllerState::normalize_axis(-32768) > -1.0F ||
         std::fabs(ControllerState::normalize_axis(32767) - 1.0F) > 0.0001F)
         return EXIT_FAILURE;
     if (std::fabs(pad.left_x_normalized()) > 0.0001F) return EXIT_FAILURE;
