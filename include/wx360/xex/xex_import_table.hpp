@@ -76,9 +76,9 @@ struct ImportTable {
     return ImportTableError::Ok;
 }
 
-// Decode the 32-bit import metadata records referenced by the XEX import directory.
-// Layout: type in bits 31..24, library index in bits 23..16, ordinal in bits 15..0.
-// The record address is value_address, not the executable code thunk address.
+// XEX import records are paired by ordinal: type 0 is the value slot;
+// type 1 is the executable thunk. Function value slots receive the thunk
+// address; variable value slots receive the resolved guest variable address.
 [[nodiscard]] inline ImportTableError decode_import_records(
     const ImportTable& table, const memory::PhysicalMemory& guest_memory,
     std::vector<kernel::XexImport>& output) {
@@ -99,12 +99,19 @@ struct ImportTable {
                 (std::uint32_t(bytes[1]) << 16U) |
                 (std::uint32_t(bytes[2]) << 8U) | bytes[3];
             const auto type = static_cast<std::uint8_t>(value >> 24U);
-            if (type > 1U) return ImportTableError::InvalidThunkRecord;
-            const auto kind = type == 0U ? kernel::ImportKind::Variable
-                                         : kernel::ImportKind::Function;
-            const auto library_index = static_cast<std::uint8_t>(value >> 16U);
-            decoded.push_back({library_name, static_cast<std::uint16_t>(value),
-                               0, kind, address, library_index});
+            const auto ordinal = static_cast<std::uint16_t>(value);
+            if (type == 0U) {
+                decoded.push_back({library_name, ordinal, 0,
+                    kernel::ImportKind::Variable, address, 0});
+            } else if (type == 1U) {
+                if (decoded.empty() || decoded.back().library != library_name ||
+                    decoded.back().ordinal != ordinal || decoded.back().thunk_address != 0)
+                    return ImportTableError::InvalidThunkRecord;
+                decoded.back().kind = kernel::ImportKind::Function;
+                decoded.back().thunk_address = address;
+            } else {
+                return ImportTableError::InvalidThunkRecord;
+            }
         }
     }
     output = std::move(decoded);
