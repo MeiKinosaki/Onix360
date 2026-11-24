@@ -4,6 +4,8 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <algorithm>
+#include <limits>
 
 namespace wx360::memory {
 
@@ -79,19 +81,40 @@ public:
             if (check != MemoryResult::Ok) return {check, 0};
             return {MemoryResult::Ok, pa};
         }
-        const auto offset = va & (page_size - 1U);
-        if (length > page_size - offset) return {MemoryResult::Unmapped, 0};
-        const auto vpn = va / page_size;
-        for (const auto& e : entries_) {
-            if (!e.valid || e.vpn != vpn) continue;
-            if ((e.permissions & static_cast<std::uint8_t>(access)) == 0)
+        if (length - 1U > std::numeric_limits<std::uint64_t>::max() - va) return {MemoryResult::OutOfRange, 0};
+        std::uint64_t current_va = va;
+        std::size_t remaining = length;
+        std::uint64_t first_physical = 0;
+        std::uint64_t expected_physical = 0;
+        bool first_page = true;
+        while (remaining != 0) {
+            const auto offset = current_va & (page_size - 1U);
+            const auto chunk = std::min<std::size_t>(
+                remaining, static_cast<std::size_t>(page_size - offset));
+            const auto vpn = current_va / page_size;
+            const Entry* mapped = nullptr;
+            for (const auto& e : entries_) {
+                if (e.valid && e.vpn == vpn) { mapped = &e; break; }
+            }
+            if (!mapped) return {MemoryResult::Unmapped, 0};
+            if ((mapped->permissions & static_cast<std::uint8_t>(access)) == 0)
                 return {MemoryResult::PermissionDenied, 0};
-            const auto pa = e.ppn * page_size + offset;
-            const auto check = physical.check_access(pa, length, access);
-            if (check != MemoryResult::Ok) return {check, 0};
-            return {MemoryResult::Ok, pa};
+            const std::uint64_t page_physical = mapped->ppn * page_size + offset;
+            if (first_page) {
+                first_physical = page_physical;
+                first_page = false;
+            } else if (page_physical != expected_physical) {
+                // A single host span can represent this access only if adjacent
+                // guest pages map to adjacent physical pages.
+                return {MemoryResult::Unmapped, 0};
+            }
+            expected_physical = page_physical + chunk;
+            current_va += chunk;
+            remaining -= chunk;
         }
-        return {MemoryResult::Unmapped, 0};
+        const auto check = physical.check_access(first_physical, length, access);
+        if (check != MemoryResult::Ok) return {check, 0};
+        return {MemoryResult::Ok, first_physical};
     }
 private:
     struct Entry { std::uint64_t vpn{}, ppn{}; std::uint8_t permissions{}; bool valid{}; };
