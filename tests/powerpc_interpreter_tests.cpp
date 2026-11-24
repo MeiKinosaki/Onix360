@@ -862,9 +862,34 @@ int main() {
     check(execute(s, x_form(6, 3, 5, 459)) == StepResult::Executed &&
           s.gpr[6] == 5U,
           "DIVWU performs unsigned word division");
+    // OE variants report signed overflow in XER[OV,SO]; SO remains sticky.
+    constexpr std::uint64_t xer_ov = std::uint64_t{1} << 30U;
+    constexpr std::uint64_t xer_so = std::uint64_t{1} << 31U;
     s.reset(0x6040);
-    check(execute(s, (x_form(6, 3, 5, 491) | (1U << 10U))) == StepResult::UnsupportedInstruction,
-          "DIVW rejects OE variant until overflow semantics are implemented");
+    s.gpr[3] = 0x7FFFFFFFU;
+    s.gpr[5] = 2U;
+    check(execute(s, x_form(6, 3, 5, 235) | (1U << 10U)) == StepResult::Executed &&
+          (s.xer & (xer_ov | xer_so)) == (xer_ov | xer_so),
+          "MULLW with OE sets OV and sticky SO on signed overflow");
+    s.reset(0x6050);
+    s.gpr[3] = 6U;
+    s.gpr[5] = 7U;
+    s.xer = xer_so | xer_ov;
+    check(execute(s, x_form(6, 3, 5, 235) | (1U << 10U)) == StepResult::Executed &&
+          (s.xer & xer_ov) == 0 && (s.xer & xer_so) != 0,
+          "MULLW with OE clears OV without clearing sticky SO");
+    s.reset(0x6060);
+    s.gpr[3] = 123U;
+    s.gpr[5] = 0U;
+    check(execute(s, x_form(6, 3, 5, 491) | (1U << 10U)) == StepResult::Executed &&
+          (s.xer & (xer_ov | xer_so)) == (xer_ov | xer_so),
+          "DIVW with OE reports divide-by-zero overflow");
+    s.reset(0x6070);
+    s.gpr[3] = static_cast<std::uint32_t>(INT32_MIN);
+    s.gpr[5] = UINT32_MAX;
+    check(execute(s, x_form(6, 3, 5, 491) | (1U << 10U)) == StepResult::Executed &&
+          (s.xer & (xer_ov | xer_so)) == (xer_ov | xer_so),
+          "DIVW with OE reports signed minimum divided by negative one");
 
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
