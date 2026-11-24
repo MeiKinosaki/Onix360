@@ -32,7 +32,10 @@ public:
                                       float x2, float y2, std::uint32_t rgba) noexcept {
         if (pixels_.empty() || !std::isfinite(x0) || !std::isfinite(y0) ||
             !std::isfinite(x1) || !std::isfinite(y1) ||
-            !std::isfinite(x2) || !std::isfinite(y2)) return false;
+            !std::isfinite(x2) || !std::isfinite(y2) ||
+            std::fabs(x0) > 1000000.0F || std::fabs(y0) > 1000000.0F ||
+            std::fabs(x1) > 1000000.0F || std::fabs(y1) > 1000000.0F ||
+            std::fabs(x2) > 1000000.0F || std::fabs(y2) > 1000000.0F) return false;
         const float area = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0);
         if (area == 0.0F) return false;
         const int min_x = std::max(0, static_cast<int>(std::floor(std::min({x0,x1,x2}))));
