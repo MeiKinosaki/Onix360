@@ -42,8 +42,8 @@ int main() {
     const bool variable_added = resolver.register_export(
         {"xboxkrnl.exe", 0x124, 0x82002000, kernel::ImportKind::Variable});
     const std::array imports{
-        kernel::XexImport{"xboxkrnl.exe",0x123,0x200,kernel::ImportKind::Function},
-        kernel::XexImport{"xboxkrnl.exe",0x124,0x204,kernel::ImportKind::Variable}
+        kernel::XexImport{"xboxkrnl.exe",0x123,0x3000,kernel::ImportKind::Function,0x200},
+        kernel::XexImport{"xboxkrnl.exe",0x124,0,kernel::ImportKind::Variable,0x204}
     };
     const auto resolved = resolver.resolve(imports, ram);
     const auto bytes = ram.raw_bytes();
@@ -54,7 +54,7 @@ int main() {
                bytes[at+3] == static_cast<std::uint8_t>(v);
     };
     check(function_added && variable_added && resolved == kernel::ImportResolveError::None &&
-          be(0x200,0x220) && be(0x204,0x3000),
+          be(0x200,0x3000) && be(0x204,0x82002000),
           "typed kernel function/variable import resolution");
 
     const std::array invalid{
