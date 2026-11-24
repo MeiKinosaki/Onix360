@@ -179,8 +179,8 @@ int main(){
     }
     wx360::memory::PhysicalMemory guest(0x1000);
     const std::array<std::uint8_t, 8> thunk_bytes{
-        0x01, 0x00, 0x01, 0x23, // function ordinal 0x0123
-        0x00, 0x00, 0x01, 0x24  // variable ordinal 0x0124
+        0x00, 0x00, 0x01, 0x23, // function value slot, ordinal 0x0123
+        0x01, 0x00, 0x01, 0x23  // function code thunk, same ordinal
     };
     if (guest.write(0x100, thunk_bytes) != wx360::memory::MemoryResult::Ok) {
         std::cerr << "Could not prepare guest import thunk records\\n";
@@ -190,12 +190,12 @@ int main(){
     std::vector<wx360::kernel::XexImport> decoded_imports;
     if (wx360::xex::decode_import_records(table, guest, decoded_imports) !=
             wx360::xex::ImportTableError::Ok ||
-        decoded_imports.size() != 2 ||
+        decoded_imports.size() != 1 ||
         decoded_imports[0].library != "xboxkrnl.exe" ||
         decoded_imports[0].ordinal != 0x123 ||
         decoded_imports[0].kind != wx360::kernel::ImportKind::Function ||
-        decoded_imports[1].ordinal != 0x124 ||
-        decoded_imports[1].kind != wx360::kernel::ImportKind::Variable) {
+        decoded_imports[0].value_address != 0x100 ||
+        decoded_imports[0].thunk_address != 0x104) {
         std::cerr << "XEX import thunk records were not decoded correctly\\n";
         return EXIT_FAILURE;
     }
@@ -216,13 +216,14 @@ int main(){
         return EXIT_FAILURE;
     }
     wx360::memory::PhysicalMemory resolved_guest(0x1000);
-    const std::array<std::uint8_t, 4> function_record{0x01, 0x00, 0x01, 0x23};
+    const std::array<std::uint8_t, 8> function_record{
+        0x00, 0x00, 0x01, 0x23, 0x01, 0x00, 0x01, 0x23};
     if (resolved_guest.write(0x180, function_record) != wx360::memory::MemoryResult::Ok) {
         std::cerr << "Could not prepare end-to-end import record\\n";
         return EXIT_FAILURE;
     }
     wx360::xex::ImportTable end_to_end_table{};
-    end_to_end_table.libraries.push_back({"xboxkrnl", 0, 0, 0, 0, 1, {0x180}});
+    end_to_end_table.libraries.push_back({"xboxkrnl", 0, 0, 0, 0, 2, {0x180, 0x184}});
     wx360::kernel::XexImportResolver end_to_end_resolver;
     if (!end_to_end_resolver.register_export(
             {"xboxkrnl.exe", 0x123, 0x82001000,
@@ -240,7 +241,7 @@ int main(){
     }
     std::array<std::uint8_t, 4> resolved_bytes{};
     if (resolved_guest.read(0x180, resolved_bytes) != wx360::memory::MemoryResult::Ok ||
-        resolved_bytes != std::array<std::uint8_t, 4>{0x82, 0x00, 0x10, 0x00}) {
+        resolved_bytes != std::array<std::uint8_t, 4>{0x00, 0x00, 0x01, 0x84}) {
         std::cerr << "Resolved kernel export address was not patched into guest thunk\\n";
         return EXIT_FAILURE;
     }
