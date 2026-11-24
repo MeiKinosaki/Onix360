@@ -838,6 +838,34 @@ int main() {
           s.ctr == 0xB123U && s.lr == 0x5904U,
           "BCCTRL branches to old CTR, preserves CTR and writes return address");
 
+    // Integer multiply/divide coverage (X-form and D-form).
+    s.reset(0x6000);
+    s.gpr[3] = 0x100000000ULL;
+    check(execute(s, d_form(7, 4, 3, 0xFFFEU)) == StepResult::Executed &&
+          s.gpr[4] == 0xFFFFFFFE00000000ULL,
+          "MULLI multiplies 64-bit RA by signed immediate");
+    s.reset(0x6010);
+    s.gpr[3] = 0x7FFFFFFFULL;
+    s.gpr[5] = 2U;
+    check(execute(s, x_form(6, 3, 5, 235)) == StepResult::Executed &&
+          s.gpr[6] == 0xFFFFFFFFFFFFFFFEULL,
+          "MULLW keeps low 32-bit product and sign-extends result");
+    s.reset(0x6020);
+    s.gpr[3] = static_cast<std::uint64_t>(static_cast<std::int64_t>(-21));
+    s.gpr[5] = 4U;
+    check(execute(s, x_form(6, 3, 5, 491)) == StepResult::Executed &&
+          s.gpr[6] == 0xFFFFFFFFFFFFFFFBU,
+          "DIVW performs signed division rounded toward zero");
+    s.reset(0x6030);
+    s.gpr[3] = 21U;
+    s.gpr[5] = 4U;
+    check(execute(s, x_form(6, 3, 5, 459)) == StepResult::Executed &&
+          s.gpr[6] == 5U,
+          "DIVWU performs unsigned word division");
+    s.reset(0x6040);
+    check(execute(s, x_form(6, 3, 5, 491, true)) == StepResult::UnsupportedInstruction,
+          "DIVW rejects OE variant until overflow semantics are implemented");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
