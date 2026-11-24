@@ -19,7 +19,8 @@ struct ImportLibraryRecord {
 };
 enum class ImportTableError : std::uint8_t {
     Ok, MissingHeader, Truncated, InvalidSize, InvalidStringTable,
-    InvalidLibrary, TooManyLibraries, InvalidName
+    InvalidLibrary, TooManyLibraries, InvalidName, InvalidThunkAddress,
+    InvalidThunkRecord
 };
 struct ImportTable {
     std::vector<ImportLibraryRecord> libraries;
@@ -72,6 +73,40 @@ struct ImportTable {
         cursor+=size;
     }
     output=std::move(parsed);
+    return ImportTableError::Ok;
+}
+
+// Decode the 32-bit import records referenced by the XEX import directory.
+// Record layout: type in bits 31..24 (0 = variable, 1 = function),
+// ordinal in bits 15..0. The address is a guest-memory address after mapping.
+[[nodiscard]] inline ImportTableError decode_import_records(
+    const ImportTable& table, const memory::PhysicalMemory& guest_memory,
+    std::vector<kernel::XexImport>& output) {
+    std::vector<kernel::XexImport> decoded;
+    for (const auto& library : table.libraries) {
+        std::string library_name = library.name;
+        if (library_name == "xboxkrnl") library_name = "xboxkrnl.exe";
+        else if (library_name == "xam") library_name = "xam.xex";
+        for (const auto address : library.import_thunks) {
+            if ((address & 3U) != 0 ||
+                guest_memory.check_access(address, 4, memory::Access::Read) !=
+                    memory::MemoryResult::Ok)
+                return ImportTableError::InvalidThunkAddress;
+            std::array<std::uint8_t, 4> bytes{};
+            if (guest_memory.read(address, bytes) != memory::MemoryResult::Ok)
+                return ImportTableError::InvalidThunkAddress;
+            const std::uint32_t value = (std::uint32_t(bytes[0]) << 24U) |
+                (std::uint32_t(bytes[1]) << 16U) |
+                (std::uint32_t(bytes[2]) << 8U) | bytes[3];
+            const auto type = static_cast<std::uint8_t>(value >> 24U);
+            if (type > 1U) return ImportTableError::InvalidThunkRecord;
+            const auto kind = type == 0U ? kernel::ImportKind::Variable
+                                         : kernel::ImportKind::Function;
+            decoded.push_back({library_name, static_cast<std::uint16_t>(value),
+                               address, kind});
+        }
+    }
+    output = std::move(decoded);
     return ImportTableError::Ok;
 }
 
