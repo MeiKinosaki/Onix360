@@ -66,5 +66,20 @@ int main() {
           Pm4DecodeResult::EndOfStream,
           "reports end of command stream");
 
+    // WX360-only software draw packet: 3 XY pairs (float bit patterns) + RGBA.
+    XenosCommandProcessor draw;
+    check(draw.configure_framebuffer(32, 32), "configures command processor framebuffer");
+    const std::array<std::uint32_t, 7> tri{
+        std::bit_cast<std::uint32_t>(4.0F), std::bit_cast<std::uint32_t>(4.0F),
+        std::bit_cast<std::uint32_t>(24.0F), std::bit_cast<std::uint32_t>(4.0F),
+        std::bit_cast<std::uint32_t>(4.0F), std::bit_cast<std::uint32_t>(24.0F),
+        0xFF55AA33U};
+    Pm4PacketView draw_packet{Pm4PacketType::Type3,
+        XenosCommandProcessor::wx360_draw_triangle_opcode, 0, false, tri, 8};
+    check(draw.execute_packet(draw_packet), "executes WX360 software triangle packet");
+    check(draw.framebuffer().pixels()[10U * 32U + 10U] == 0xFF55AA33U,
+          "PM4 software triangle reaches framebuffer");
+    draw_packet.payload = std::span<const std::uint32_t>(tri.data(), 6);
+    check(!draw.execute_packet(draw_packet), "rejects malformed software draw packet");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
