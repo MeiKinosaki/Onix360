@@ -73,7 +73,9 @@ public:
             std::uint64_t patch_address = item.value_address;
             std::uint32_t patch_value = found->second.guest_address;
             if (item.kind == ImportKind::Function) {
-                if (item.thunk_address == 0)
+                if (item.thunk_address == 0 ||
+                    guest_memory.check_access(item.thunk_address, 16, memory::Access::Write) !=
+                        memory::MemoryResult::Ok)
                     return ImportResolveError::InvalidThunk;
                 patch_value = static_cast<std::uint32_t>(item.thunk_address);
             } else if (found->second.guest_address == 0) {
