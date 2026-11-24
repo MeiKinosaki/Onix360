@@ -38,8 +38,10 @@ public:
             return Pm4DecodeResult::Ok;
         }
 
+        const std::size_t encoded_count =
+            static_cast<std::size_t>((header >> 16U) & 0x3FFFU);
         const std::size_t payload_count =
-            static_cast<std::size_t>((header >> 16U) & 0x3FFFU) + 1U;
+            raw_type == 0U ? encoded_count + 1U : encoded_count + 1U;
         if (payload_count > stream.size() - cursor - 1U)
             return Pm4DecodeResult::TruncatedPacket;
 
