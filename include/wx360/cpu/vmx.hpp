@@ -12,6 +12,19 @@ using Vector = XenonThreadState::VectorRegister;
 [[nodiscard]] inline Vector bit_and(const Vector& a,const Vector& b) noexcept {
  Vector r{}; for(unsigned i=0;i<4;++i) r.lane[i]=a.lane[i]&b.lane[i]; return r;
 }
+[[nodiscard]] inline Vector bit_andc(const Vector& a,const Vector& b) noexcept {
+ Vector r{}; for(unsigned i=0;i<4;++i) r.lane[i]=a.lane[i]&~b.lane[i]; return r;
+}
+[[nodiscard]] inline Vector bit_nor(const Vector& a,const Vector& b) noexcept {
+ Vector r{}; for(unsigned i=0;i<4;++i) r.lane[i]=~(a.lane[i]|b.lane[i]); return r;
+}
+[[nodiscard]] inline Vector add_u8(const Vector& a,const Vector& b) noexcept {
+ Vector r{}; for(unsigned i=0;i<16;++i) {
+  const unsigned shift=(i%4U)*8U, lane=i/4U;
+  const auto x=(a.lane[lane]>>shift)&0xFFU, y=(b.lane[lane]>>shift)&0xFFU;
+  r.lane[lane] |= ((x+y)&0xFFU)<<shift;
+ } return r;
+}
 [[nodiscard]] inline Vector bit_or(const Vector& a,const Vector& b) noexcept {
  Vector r{}; for(unsigned i=0;i<4;++i) r.lane[i]=a.lane[i]|b.lane[i]; return r;
 }
