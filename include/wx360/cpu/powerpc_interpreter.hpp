@@ -253,7 +253,8 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         const double a = std::bit_cast<double>(state.fpr[d.ra]);
         const double b = std::bit_cast<double>(state.fpr[d.rb]);
         double value = 0.0;
-        switch (d.xo) {
+        const unsigned fp_xo = (instruction >> 1U) & 0x1FU;
+        switch (fp_xo) {
         case 18: value = a / b; break; // fdiv
         case 20: value = a - b; break; // fsub
         case 21: value = a + b; break; // fadd
