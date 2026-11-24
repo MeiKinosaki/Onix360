@@ -613,6 +613,39 @@ int main() {
     check(s.pc == unsupported_spr_pc, "unsupported MFSPR leaves PC unchanged");
 
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
+    // Indexed byte/halfword loads and stores, including update variants.
+    indexed_ram[4] = 0x80; indexed_ram[5] = 0x01;
+    s.gpr[3] = 0; s.gpr[5] = 4;
+    check(execute(s, indexed(9, 3, 5, 87), indexed_ram) == StepResult::Executed &&
+          s.gpr[9] == 0x80U, "LBZX zero-extends indexed byte");
+    check(execute(s, indexed(10, 3, 5, 279), indexed_ram) == StepResult::Executed &&
+          s.gpr[10] == 0x8001U, "LHZX zero-extends indexed halfword");
+    check(execute(s, indexed(11, 3, 5, 343), indexed_ram) == StepResult::Executed &&
+          s.gpr[11] == 0xFFFFFFFFFFFF8001ULL, "LHAX sign-extends indexed halfword");
+    s.gpr[12] = 0x5AU;
+    check(execute(s, indexed(12, 3, 5, 215), indexed_ram) == StepResult::Executed &&
+          indexed_ram[4] == 0x5A, "STBX stores indexed byte");
+    s.gpr[12] = 0xBEEFU;
+    check(execute(s, indexed(12, 3, 5, 407), indexed_ram) == StepResult::Executed &&
+          indexed_ram[4] == 0xBE && indexed_ram[5] == 0xEF,
+          "STHX stores indexed big-endian halfword");
+    s.gpr[3] = 0; s.gpr[5] = 4;
+    check(execute(s, indexed(13, 3, 5, 311), indexed_ram) == StepResult::Executed &&
+          s.gpr[13] == 0xBEEFU && s.gpr[3] == 4U,
+          "LHZUX loads halfword and updates RA");
+    s.gpr[3] = 0; s.gpr[5] = 4;
+    check(execute(s, indexed(14, 3, 5, 375), indexed_ram) == StepResult::Executed &&
+          s.gpr[14] == 0xFFFFFFFFFFFFBEEFULL && s.gpr[3] == 4U,
+          "LHAUX sign-extends and updates RA");
+    s.gpr[3] = 0; s.gpr[5] = 4; s.gpr[12] = 0x1234U;
+    check(execute(s, indexed(12, 3, 5, 439), indexed_ram) == StepResult::Executed &&
+          indexed_ram[4] == 0x12 && indexed_ram[5] == 0x34 && s.gpr[3] == 4U,
+          "STHUX stores and updates RA");
+    s.gpr[3] = 0; s.gpr[5] = 4; s.gpr[12] = 0x66U;
+    check(execute(s, indexed(12, 3, 5, 247), indexed_ram) == StepResult::Executed &&
+          indexed_ram[4] == 0x66 && s.gpr[3] == 4U,
+          "STBUX stores byte and updates RA");
+
     // LMW/STMW: complete big-endian register-window transfers.
     std::array<std::uint8_t, 16> multiple_ram{
         0x11,0x22,0x33,0x44, 0x55,0x66,0x77,0x88,
