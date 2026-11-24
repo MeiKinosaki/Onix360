@@ -670,6 +670,12 @@ int main() {
           s.vr[3].lane[0] == 0xFEFFFBFEU, "VMX VSUBUBM uses the 11-bit opcode field");
     check(execute(s, vx_form(3, 1, 2, 10)) == StepResult::Executed &&
           std::bit_cast<float>(s.vr[3].lane[3]) == 3.0F, "VMX VADDFP adds four float lanes");
+    check(execute(s, vx_form(3, 1, 2, 1028)) == StepResult::Executed &&
+          s.vr[3].lane[0] == (0xFF01FE02U & 0x01020304U), "VMX VAND executes");
+    check(execute(s, vx_form(3, 1, 2, 1220)) == StepResult::Executed &&
+          s.vr[3].lane[0] == (0xFF01FE02U ^ 0x01020304U), "VMX VXOR executes");
+    check(execute(s, vx_form(3, 1, 2, 1156)) == StepResult::Executed &&
+          s.vr[3].lane[0] == (0xFF01FE02U | 0x01020304U), "VMX VOR executes");
 
     // LMW/STMW: complete big-endian register-window transfers.
     std::array<std::uint8_t, 16> multiple_ram{
