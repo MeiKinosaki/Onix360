@@ -416,7 +416,8 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         auto& out = state.vr[vd];
         const auto& a = state.vr[va];
         const auto& b = state.vr[vb];
-        const unsigned xo = d.xo;
+        // VX-form VMX encodings carry an 11-bit extended opcode including bit 0.
+        const unsigned xo = instruction & 0x7FFU;
         if (xo == 0U || xo == 1024U) { // vaddubm / vsububm
             for (unsigned lane = 0; lane < 4; ++lane) {
                 std::uint32_t value = 0;
