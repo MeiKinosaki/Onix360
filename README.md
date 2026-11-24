@@ -2,9 +2,9 @@
 
 **Windows Xbox 360 Emulator** — emulador experimental do Xbox 360 para Windows x64, com foco em computadores modestos.
 
-> **Versão em desenvolvimento:** v0.6b. O projeto ainda não executa jogos comerciais.
+> **Versão em desenvolvimento:** v0.7b. O projeto ainda não executa jogos comerciais.
 >
-> **Marcos v0.6b validados em 23/11/2026:** build Release e 25/25 testes aprovados no Windows e Linux; vetores SHA-1 positivos e negativos; fluxo sintético XEX2 → validação pelo loader → token opaco → XenonCore → execução da primeira instrução sem flags de sucesso artificiais. O ZIP portátil Windows foi gerado e publicado como artefato do GitHub Actions. Esses resultados não comprovam boot de XEX comercial, assinatura RSA ou compatibilidade com jogos.
+> **Marcos v0.7b validados em 24/11/2026:** além dos marcos anteriores, os testes de branches PowerPC `BCLR`/`BCCTR`, incluindo variantes com link (`BCLRL`/`BCCTRL`), condições CR, destinos LR/CTR e semântica de CTR/LR passaram na CI #549 e #550. Isso valida apenas os testes do interpretador; não comprova boot de homebrew ou XEX comercial, assinatura RSA ou compatibilidade com jogos.
 
 ## Objetivos
 
