@@ -177,5 +177,43 @@ int main(){
         std::cerr<<"Out-of-range import library record was not rejected\\n";
         return EXIT_FAILURE;
     }
+    wx360::memory::PhysicalMemory guest(0x1000);
+    const std::array<std::uint8_t, 8> thunk_bytes{
+        0x01, 0x00, 0x01, 0x23, // function ordinal 0x0123
+        0x00, 0x00, 0x01, 0x24  // variable ordinal 0x0124
+    };
+    if (guest.write(0x100, thunk_bytes) != wx360::memory::MemoryResult::Ok) {
+        std::cerr << "Could not prepare guest import thunk records\\n";
+        return EXIT_FAILURE;
+    }
+    table.libraries[0].import_thunks = {0x100, 0x104};
+    std::vector<wx360::kernel::XexImport> decoded_imports;
+    if (wx360::xex::decode_import_records(table, guest, decoded_imports) !=
+            wx360::xex::ImportTableError::Ok ||
+        decoded_imports.size() != 2 ||
+        decoded_imports[0].library != "xboxkrnl.exe" ||
+        decoded_imports[0].ordinal != 0x123 ||
+        decoded_imports[0].kind != wx360::kernel::ImportKind::Function ||
+        decoded_imports[1].ordinal != 0x124 ||
+        decoded_imports[1].kind != wx360::kernel::ImportKind::Variable) {
+        std::cerr << "XEX import thunk records were not decoded correctly\\n";
+        return EXIT_FAILURE;
+    }
+    const auto previous_decoded_count = decoded_imports.size();
+    table.libraries[0].import_thunks = {0x108};
+    const std::array<std::uint8_t, 4> invalid_type{0x02, 0x00, 0x00, 0x01};
+    if (guest.write(0x108, invalid_type) != wx360::memory::MemoryResult::Ok ||
+        wx360::xex::decode_import_records(table, guest, decoded_imports) !=
+            wx360::xex::ImportTableError::InvalidThunkRecord ||
+        decoded_imports.size() != previous_decoded_count) {
+        std::cerr << "Invalid XEX import record type was not rejected atomically\\n";
+        return EXIT_FAILURE;
+    }
+    table.libraries[0].import_thunks = {0xFFF};
+    if (wx360::xex::decode_import_records(table, guest, decoded_imports) !=
+            wx360::xex::ImportTableError::InvalidThunkAddress) {
+        std::cerr << "Out-of-range XEX import thunk address was not rejected\\n";
+        return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
 }
