@@ -652,6 +652,14 @@ int main() {
     check(execute(s, indexed(12, 3, 5, 247), indexed_ram) == StepResult::Executed &&
           indexed_ram[4] == 0x66 && s.gpr[3] == 4U,
           "STBUX stores byte and updates RA");
+    indexed_ram[4] = 0x12; indexed_ram[5] = 0x34;
+    s.gpr[3] = 0; s.gpr[5] = 4;
+    check(execute(s, indexed(15, 3, 5, 790), indexed_ram) == StepResult::Executed &&
+          s.gpr[15] == 0x3412U, "LHBRX reverses indexed halfword byte order");
+    s.gpr[3] = 0; s.gpr[5] = 4; s.gpr[16] = 0xABCDU;
+    check(execute(s, indexed(16, 3, 5, 918), indexed_ram) == StepResult::Executed &&
+          indexed_ram[4] == 0xCD && indexed_ram[5] == 0xAB,
+          "STHBRX stores indexed halfword in reversed byte order");
 
     // VX-form VMX arithmetic: opcode extension includes its low bit.
     const auto vx_form = [](unsigned vd, unsigned va, unsigned vb, unsigned xo) {
