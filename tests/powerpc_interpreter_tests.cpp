@@ -801,5 +801,30 @@ int main() {
           s.ctr == 1U, "BCLR decrements CTR and branches when count test passes");
 
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
+    // XL-form BCCTR: branch through CTR; unlike BCLR it must not decrement CTR.
+    s.reset(0x5400);
+    s.ctr = 0x6783;
+    const std::uint32_t bcctr = (19U << 26U) | (20U << 21U) | (528U << 1U);
+    check(execute(s, bcctr) == StepResult::Executed && s.pc == 0x6780U &&
+          s.ctr == 0x6783U, "BCCTR branches to aligned CTR target without decrement");
+    s.reset(0x5500);
+    s.ctr = 0x7890;
+    s.set_condition_field(0, 0x2U);
+    const std::uint32_t bcctr_if_eq = (19U << 26U) | (12U << 21U) |
+        (2U << 16U) | (528U << 1U);
+    check(execute(s, bcctr_if_eq) == StepResult::Executed && s.pc == 0x7890U,
+          "BCCTR honors CR condition");
+    s.reset(0x5600);
+    s.ctr = 0x89A0;
+    s.set_condition_field(0, 0x4U);
+    check(execute(s, bcctr_if_eq) == StepResult::Executed && s.pc == 0x5604U,
+          "BCCTR falls through when CR condition is false");
+    s.reset(0x5700);
+    s.ctr = 0x9AB0;
+    const std::uint32_t invalid_bcctr = (19U << 26U) | (16U << 21U) |
+        (528U << 1U);
+    check(execute(s, invalid_bcctr) == StepResult::UnsupportedInstruction &&
+          s.pc == 0x5700U, "BCCTR rejects BO encoding that requests CTR decrement");
+
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
