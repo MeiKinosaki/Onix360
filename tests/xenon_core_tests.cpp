@@ -79,6 +79,46 @@ int main() {
     check(virtual_core.state.gpr[3] == 42 && virtual_core.state.pc == 0x1104,
           "translated fetch preserves virtual PC progression");
 
+    // D-form data instructions must translate their effective virtual address,
+    // not index the physical RAM span directly.
+    const std::array<std::uint8_t, 4> lwz_virtual{0x80, 0x83, 0x00, 0x00};
+    const std::array<std::uint8_t, 4> stw_virtual{0x90, 0x83, 0x00, 0x04};
+    const std::array<std::uint8_t, 4> physical_value{0xDE, 0xAD, 0xBE, 0xEF};
+    check(virtual_ram.write(0x104, lwz_virtual) == memory::MemoryResult::Ok &&
+          virtual_ram.write(0x108, stw_virtual) == memory::MemoryResult::Ok,
+          "place virtual LWZ and STW instructions in translated code page");
+    check(virtual_ram.write(0x2000, physical_value) == memory::MemoryResult::Ok,
+          "initialize data at translated physical page");
+    check(virtual_core.map_guest_page(0x3000, 0x2000,
+          static_cast<std::uint8_t>(memory::Access::Read) |
+          static_cast<std::uint8_t>(memory::Access::Write)) == memory::MemoryResult::Ok,
+          "map guest data page to a different physical page");
+    virtual_core.state.pc = 0x1104;
+    virtual_core.state.gpr[3] = 0x3000;
+    check(virtual_core.step(virtual_ram) == machine::RunResult::Executed &&
+          virtual_core.state.gpr[4] == 0xDEADBEEFU,
+          "LWZ reads through the guest virtual-to-physical mapping");
+    virtual_core.state.pc = 0x1108;
+    virtual_core.state.gpr[4] = 0x12345678U;
+    check(virtual_core.step(virtual_ram) == machine::RunResult::Executed,
+          "STW writes through the guest virtual-to-physical mapping");
+    std::array<std::uint8_t, 4> stored_value{};
+    check(virtual_ram.read(0x2004, stored_value) == memory::MemoryResult::Ok &&
+          stored_value == std::array<std::uint8_t, 4>{0x12, 0x34, 0x56, 0x78},
+          "STW updates translated physical memory in big-endian order");
+
+    check(virtual_core.map_guest_page(0x4000, 0x2000,
+          static_cast<std::uint8_t>(memory::Access::Read)) == memory::MemoryResult::Ok,
+          "map a read-only guest data page");
+    const std::array<std::uint8_t, 4> stw_read_only{0x90, 0x83, 0x00, 0x00};
+    check(virtual_ram.write(0x10C, stw_read_only) == memory::MemoryResult::Ok,
+          "place STW instruction for guest write-protection test");
+    virtual_core.state.pc = 0x110C;
+    virtual_core.state.gpr[3] = 0x4000;
+    check(virtual_core.step(virtual_ram) == machine::RunResult::ExceptionTaken &&
+          virtual_core.state.exception_vector == 0x300,
+          "STW to read-only virtual page raises data-storage exception");
+
     const std::array<std::uint8_t, 4> guest_data{0x11, 0x22, 0x33, 0x44};
     check(virtual_core.write_guest(virtual_ram, 0x1120, guest_data) == memory::MemoryResult::Ok,
           "writes data through guest virtual address");
