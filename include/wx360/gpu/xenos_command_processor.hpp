@@ -30,14 +30,21 @@ public:
     // WX360 development extension: 0xF0 carries three XY float pairs and RGBA.
     // It is NOT asserted to be a native Xbox 360 Xenos PM4 opcode.
     static constexpr std::uint8_t wx360_draw_triangle_opcode = 0xF0U;
+    static constexpr std::uint8_t wx360_clear_opcode = 0xF1U;
+    static constexpr std::uint8_t wx360_present_opcode = 0xF2U;
     [[nodiscard]] bool configure_framebuffer(std::uint32_t width, std::uint32_t height) {
         return framebuffer_.resize(width, height);
     }
     [[nodiscard]] bool execute_packet(const Pm4PacketView& packet) noexcept {
         if (packet.type == Pm4PacketType::Type0) return execute_type0(packet);
-        if (packet.type != Pm4PacketType::Type3 ||
-            packet.opcode != wx360_draw_triangle_opcode || packet.payload.size() != 7U)
-            return false;
+        if (packet.type == Pm4PacketType::Type2) return packet.payload.empty();
+        if (packet.type != Pm4PacketType::Type3) return false;
+        if (packet.opcode == wx360_clear_opcode && packet.payload.size() == 1U) {
+            framebuffer_.clear(packet.payload[0]);
+            return true;
+        }
+        if (packet.opcode == wx360_present_opcode && packet.payload.empty()) return framebuffer_.present();
+        if (packet.opcode != wx360_draw_triangle_opcode || packet.payload.size() != 7U) return false;
         const auto& p = packet.payload;
         return framebuffer_.draw_triangle(
             std::bit_cast<float>(p[0]), std::bit_cast<float>(p[1]),
@@ -45,6 +52,17 @@ public:
             std::bit_cast<float>(p[4]), std::bit_cast<float>(p[5]), p[6]);
     }
     [[nodiscard]] const XenosFramebuffer& framebuffer() const noexcept { return framebuffer_; }
+
+    // Executes a complete bounded stream; unsupported packets fail closed.
+    [[nodiscard]] bool execute_stream(std::span<const std::uint32_t> stream) noexcept {
+        std::size_t cursor = 0;
+        while (cursor < stream.size()) {
+            Pm4PacketView packet{};
+            const auto decoded = decode_one(stream, cursor, packet);
+            if (decoded != Pm4DecodeResult::Ok || !execute_packet(packet)) return false;
+        }
+        return true;
+    }
 
     // Type-0 packets write consecutive MMIO registers. The register file is
     // intentionally a bounded software model; device-specific side effects
