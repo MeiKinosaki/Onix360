@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <span>
+#include <limits>
 #include <algorithm>
 
 namespace wx360::cpu {
@@ -99,10 +100,15 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             written = true;
         }
         if (written && state.reservation_valid && !input.empty()) {
-            const std::uint64_t first = address & ~std::uint64_t{31};
-            const std::uint64_t last = (address + input.size() - 1U) & ~std::uint64_t{31};
-            if (first <= state.reservation_address && state.reservation_address <= last)
-                state.reservation_valid = false;
+            const std::uint64_t span = static_cast<std::uint64_t>(input.size() - 1U);
+            if (span > std::numeric_limits<std::uint64_t>::max() - address) {
+                state.reservation_valid = false; // Conservatively invalidate wrapped ranges.
+            } else {
+                const std::uint64_t first = address & ~std::uint64_t{31};
+                const std::uint64_t last = (address + span) & ~std::uint64_t{31};
+                if (first <= state.reservation_address && state.reservation_address <= last)
+                    state.reservation_valid = false;
+            }
         }
         return written;
     };
