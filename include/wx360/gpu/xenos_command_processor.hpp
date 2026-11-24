@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <span>
 #include <array>
+#include <bit>
+#include "wx360/gpu/xenos_framebuffer.hpp"
 
 namespace wx360::gpu {
 
@@ -25,6 +27,25 @@ struct Pm4PacketView {
 
 class XenosCommandProcessor {
 public:
+    // WX360 development extension: 0xF0 carries three XY float pairs and RGBA.
+    // It is NOT asserted to be a native Xbox 360 Xenos PM4 opcode.
+    static constexpr std::uint8_t wx360_draw_triangle_opcode = 0xF0U;
+    [[nodiscard]] bool configure_framebuffer(std::uint32_t width, std::uint32_t height) {
+        return framebuffer_.resize(width, height);
+    }
+    [[nodiscard]] bool execute_packet(const Pm4PacketView& packet) noexcept {
+        if (packet.type == Pm4PacketType::Type0) return execute_type0(packet);
+        if (packet.type != Pm4PacketType::Type3 ||
+            packet.opcode != wx360_draw_triangle_opcode || packet.payload.size() != 7U)
+            return false;
+        const auto& p = packet.payload;
+        return framebuffer_.draw_triangle(
+            std::bit_cast<float>(p[0]), std::bit_cast<float>(p[1]),
+            std::bit_cast<float>(p[2]), std::bit_cast<float>(p[3]),
+            std::bit_cast<float>(p[4]), std::bit_cast<float>(p[5]), p[6]);
+    }
+    [[nodiscard]] const XenosFramebuffer& framebuffer() const noexcept { return framebuffer_; }
+
     // Type-0 packets write consecutive MMIO registers. The register file is
     // intentionally a bounded software model; device-specific side effects
     // are added only when their Xenos register semantics are implemented.
@@ -77,6 +98,7 @@ public:
     }
 private:
     std::array<std::uint32_t, 0x8000> registers_{};
+    XenosFramebuffer framebuffer_{};
 };
 
 } // namespace wx360::gpu
