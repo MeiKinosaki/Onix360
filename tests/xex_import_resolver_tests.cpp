@@ -84,5 +84,19 @@ int main() {
         std::cerr << "Zero guest address was accepted as an export\n";
         return EXIT_FAILURE;
     }
+    if (invalid_registry.register_export({"", 2, 0x82004000, ImportKind::Function}) ||
+        invalid_registry.register_export({"xboxkrnl.exe", 3, 0x82004000,
+            static_cast<ImportKind>(0xFF)})) {
+        std::cerr << "Malformed export metadata was accepted\n";
+        return EXIT_FAILURE;
+    }
+    const std::array malformed_imports{
+        XexImport{"", 0x123, 0x304, ImportKind::Function}
+    };
+    if (resolver.resolve(malformed_imports, ram) != ImportResolveError::MissingExport ||
+        bytes[0x304] != 0) {
+        std::cerr << "Empty import library was not rejected atomically\n";
+        return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
 }
