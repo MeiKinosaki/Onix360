@@ -13,7 +13,7 @@ int main() {
     const std::array<std::uint32_t, 8> stream{
         (0U << 30U) | (1U << 16U) | 0x123U, 0xAABBCCDDU, 0x01020304U,
         (2U << 30U),
-        (3U << 30U) | (2U << 16U) | (0x4AU << 8U) | 1U,
+        (3U << 30U) | (1U << 16U) | (0x4AU << 8U) | 1U,
         0x11111111U, 0x22222222U,
         (1U << 30U)
     };
@@ -28,7 +28,7 @@ int main() {
           "decodes Type-2 padding packet");
     check(XenosCommandProcessor::decode_one(stream, cursor, packet) == Pm4DecodeResult::Ok &&
           packet.type == Pm4PacketType::Type3 && packet.opcode == 0x4AU &&
-          packet.predicate && packet.payload.size() == 3,
+          packet.predicate && packet.payload.size() == 2,
           "decodes Type-3 packet and predicate bit");
     check(XenosCommandProcessor::decode_one(stream, cursor, packet) ==
           Pm4DecodeResult::UnsupportedPacketType,
