@@ -474,6 +474,41 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
     }
     case 31:
         switch (d.xo) {
+        case 103: case 359: case 231: case 487: { // LVX/LVXL/STVX/STVXL.
+            const bool store_vector = d.xo == 231U || d.xo == 487U;
+            const std::uint64_t effective = (d.ra == 0 ? 0U : state.gpr[d.ra]) +
+                                            state.gpr[d.rb];
+            const std::uint64_t address = effective & ~std::uint64_t{15};
+            std::array<std::uint8_t, 16> bytes{};
+            if (!store_vector) {
+                if (!read_memory(address, bytes)) {
+                    if (fault_address) *fault_address = address;
+                    return StepResult::MemoryFault;
+                }
+                for (unsigned lane = 0; lane < 4; ++lane) {
+                    const unsigned offset = lane * 4U;
+                    state.vr[d.rt].lane[lane] =
+                        (static_cast<std::uint32_t>(bytes[offset]) << 24U) |
+                        (static_cast<std::uint32_t>(bytes[offset + 1U]) << 16U) |
+                        (static_cast<std::uint32_t>(bytes[offset + 2U]) << 8U) |
+                        bytes[offset + 3U];
+                }
+            } else {
+                for (unsigned lane = 0; lane < 4; ++lane) {
+                    const std::uint32_t value = state.vr[d.rt].lane[lane];
+                    const unsigned offset = lane * 4U;
+                    bytes[offset] = static_cast<std::uint8_t>(value >> 24U);
+                    bytes[offset + 1U] = static_cast<std::uint8_t>(value >> 16U);
+                    bytes[offset + 2U] = static_cast<std::uint8_t>(value >> 8U);
+                    bytes[offset + 3U] = static_cast<std::uint8_t>(value);
+                }
+                if (!write_memory(address, bytes)) {
+                    if (fault_address) *fault_address = address;
+                    return StepResult::MemoryFault;
+                }
+            }
+            break;
+        }
         case 20: { // lwarx: load word and establish a reservation.
             const std::uint64_t address = (d.ra == 0 ? 0U : state.gpr[d.ra]) +
                                           state.gpr[d.rb];
