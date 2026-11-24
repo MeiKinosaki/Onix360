@@ -19,10 +19,22 @@ int main() {
     };
     std::size_t cursor = 0;
     Pm4PacketView packet{};
+    XenosCommandProcessor processor;
     check(XenosCommandProcessor::decode_one(stream, cursor, packet) == Pm4DecodeResult::Ok &&
           packet.type == Pm4PacketType::Type0 && packet.register_index == 0x123U &&
           packet.payload.size() == 2 && packet.payload[0] == 0xAABBCCDDU,
           "decodes Type-0 register write packet");
+    check(processor.execute_type0(packet) &&
+          processor.register_value(0x123U) == 0xAABBCCDDU &&
+          processor.register_value(0x124U) == 0x01020304U,
+          "executes Type-0 consecutive register writes");
+    Pm4PacketView overflow{};
+    overflow.type = Pm4PacketType::Type0;
+    overflow.register_index = 0x7FFFU;
+    overflow.payload = std::span<const std::uint32_t>(stream.data(), 2);
+    check(!processor.execute_type0(overflow) &&
+          processor.register_value(0x7FFFU) == 0U,
+          "rejects Type-0 register range overflow without partial writes");
     check(XenosCommandProcessor::decode_one(stream, cursor, packet) == Pm4DecodeResult::Ok &&
           packet.type == Pm4PacketType::Type2 && packet.dword_count == 1,
           "decodes Type-2 padding packet");
