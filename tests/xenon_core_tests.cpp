@@ -78,6 +78,17 @@ int main() {
     check(virtual_core.state.gpr[3] == 42 && virtual_core.state.pc == 0x1104,
           "translated fetch preserves virtual PC progression");
 
+    const std::array<std::uint8_t, 4> guest_data{0x11, 0x22, 0x33, 0x44};
+    check(virtual_core.write_guest(virtual_ram, 0x1120, guest_data) == memory::MemoryResult::Ok,
+          "writes data through guest virtual address");
+    std::array<std::uint8_t, 4> guest_read{};
+    check(virtual_core.read_guest(virtual_ram, 0x1120, guest_read) == memory::MemoryResult::Ok &&
+          guest_read == guest_data, "reads data through guest virtual address");
+    check(virtual_core.write_guest(virtual_ram, 0x1120, guest_data) ==
+          memory::MemoryResult::Ok, "guest write translation remains available");
+    check(virtual_core.read_guest(virtual_ram, 0x2120, guest_read) ==
+          memory::MemoryResult::Unmapped, "guest data access faults on unmapped page");
+
     if (failures == 0) std::cout << "WX360 Xenon core integration tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
