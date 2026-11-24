@@ -931,25 +931,37 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             writes_result = true;
             break;
         }
-        case 235: case 747: { // mullw (OE=0): signed 32-bit product, sign-extended to GPR width
-            if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
-            const auto lhs = static_cast<std::uint32_t>(state.gpr[d.ra]);
-            const auto rhs = static_cast<std::uint32_t>(state.gpr[d.rb]);
-            const std::uint32_t low_product = lhs * rhs;
+        case 235: case 747: { // mullw: signed 32-bit product; OE updates XER[OV,SO].
+            const auto lhs = static_cast<std::int32_t>(state.gpr[d.ra]);
+            const auto rhs = static_cast<std::int32_t>(state.gpr[d.rb]);
+            const std::int64_t product = static_cast<std::int64_t>(lhs) * rhs;
+            const std::uint32_t low_product = static_cast<std::uint32_t>(product);
             result = static_cast<std::uint64_t>(static_cast<std::int64_t>(
                 static_cast<std::int32_t>(low_product)));
+            if ((instruction & (1U << 10U)) != 0) {
+                constexpr std::uint64_t xer_ov = std::uint64_t{1} << 30U;
+                constexpr std::uint64_t xer_so = std::uint64_t{1} << 31U;
+                const bool overflow = product < INT32_MIN || product > INT32_MAX;
+                state.xer = overflow ? (state.xer | xer_ov | xer_so)
+                                     : (state.xer & ~xer_ov);
+            }
             destination = d.rt;
             writes_result = true;
             record_32bit = true;
             break;
         }
-        case 491: case 1003: { // divw (OE=0): signed word division; zero/overflow result is architecturally undefined
-            if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
+        case 491: case 1003: { // divw: signed word division; OE reports divide-by-zero and signed overflow.
             const auto dividend = static_cast<std::int32_t>(state.gpr[d.ra]);
             const auto divisor = static_cast<std::int32_t>(state.gpr[d.rb]);
+            const bool overflow = divisor == 0 || (dividend == INT32_MIN && divisor == -1);
             std::int32_t quotient = 0;
-            if (divisor != 0 && !(dividend == INT32_MIN && divisor == -1))
-                quotient = static_cast<std::int32_t>(dividend / divisor);
+            if (!overflow) quotient = static_cast<std::int32_t>(dividend / divisor);
+            if ((instruction & (1U << 10U)) != 0) {
+                constexpr std::uint64_t xer_ov = std::uint64_t{1} << 30U;
+                constexpr std::uint64_t xer_so = std::uint64_t{1} << 31U;
+                state.xer = overflow ? (state.xer | xer_ov | xer_so)
+                                     : (state.xer & ~xer_ov);
+            }
             result = static_cast<std::uint64_t>(static_cast<std::int64_t>(quotient));
             destination = d.rt;
             writes_result = true;
