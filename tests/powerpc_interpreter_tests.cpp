@@ -613,6 +613,14 @@ int main() {
     check(s.pc == unsupported_spr_pc, "unsupported MFSPR leaves PC unchanged");
 
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
+    std::array<std::uint8_t, 16> indexed_ram{
+        0x12,0x34,0x56,0x78, 0,0,0,0, 0,0,0,0, 0,0,0,0
+    };
+    const auto indexed = [](unsigned rt, unsigned ra, unsigned rb, unsigned xo, bool rc = false) {
+        return (31U << 26U) | (rt << 21U) | (ra << 16U) |
+               (rb << 11U) | (xo << 1U) | (rc ? 1U : 0U);
+    };
+
     // Indexed byte/halfword loads and stores, including update variants.
     indexed_ram[4] = 0x80; indexed_ram[5] = 0x01;
     s.gpr[3] = 0; s.gpr[5] = 4;
@@ -693,13 +701,6 @@ int main() {
           "LMW reports incomplete memory range");
 
     // Indexed loads/stores: XO 23 is LWZX; XO 20 is LWARX.
-    std::array<std::uint8_t, 16> indexed_ram{
-        0x12,0x34,0x56,0x78, 0,0,0,0, 0,0,0,0, 0,0,0,0
-    };
-    const auto indexed = [](unsigned rt, unsigned ra, unsigned rb, unsigned xo, bool rc = false) {
-        return (31U << 26U) | (rt << 21U) | (ra << 16U) |
-               (rb << 11U) | (xo << 1U) | (rc ? 1U : 0U);
-    };
     s.reset(0x3000);
     s.gpr[3] = 0; s.gpr[5] = 0;
     check(execute(s, indexed(6, 3, 5, 23), indexed_ram) == StepResult::Executed &&
@@ -726,6 +727,5 @@ int main() {
           "ordinary store executes while reservation is active");
     check(!s.reservation_valid, "overlapping ordinary store invalidates reservation");
 
-    if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
