@@ -526,6 +526,38 @@ int main() {
     check(!s.exception_pending && s.exception_vector == 0,
           "RFI clears pending exception state");
 
+    // SPR and condition-register moves used by compiled PowerPC code.
+    const auto encode_spr = [](unsigned rt, unsigned spr, unsigned xo) {
+        return (31U << 26U) | (rt << 21U) | ((spr & 0x1FU) << 16U) |
+               ((spr >> 5U) << 11U) | (xo << 1U);
+    };
+    s.lr = 0x1122334455667788ULL;
+    check(execute(s, encode_spr(4, 8, 339)) == StepResult::Executed, "MFSPR reads LR");
+    check(s.gpr[4] == s.lr, "MFSPR copies LR to RT");
+    s.ctr = 0x8877665544332211ULL;
+    check(execute(s, encode_spr(5, 9, 339)) == StepResult::Executed, "MFSPR reads CTR");
+    check(s.gpr[5] == s.ctr, "MFSPR copies CTR to RT");
+    s.gpr[6] = 0xAABBCCDDEEFF0011ULL;
+    check(execute(s, encode_spr(6, 8, 467)) == StepResult::Executed, "MTSPR writes LR");
+    check(s.lr == s.gpr[6], "MTSPR copies RS to LR");
+    s.gpr[7] = 0x123456789ABCDEF0ULL;
+    check(execute(s, encode_spr(7, 9, 467)) == StepResult::Executed, "MTSPR writes CTR");
+    check(s.ctr == s.gpr[7], "MTSPR copies RS to CTR");
+    s.cr = 0x12345678U;
+    check(execute(s, (31U << 26U) | (8U << 21U) | (19U << 1U)) == StepResult::Executed,
+          "MFCR executes");
+    check(s.gpr[8] == 0x12345678U, "MFCR copies complete CR to RT");
+    s.gpr[9] = 0xA5B6C7D8U;
+    const std::uint32_t mtcrf_cr0_cr2 = (31U << 26U) | (9U << 21U) |
+        (0xA0U << 12U) | (144U << 1U);
+    check(execute(s, mtcrf_cr0_cr2) == StepResult::Executed, "MTCRF executes");
+    check(s.condition_field(0) == 0xA && s.condition_field(2) == 0xC &&
+          s.condition_field(1) == 0x2, "MTCRF updates only selected CR fields");
+    const auto unsupported_spr_pc = s.pc;
+    check(execute(s, encode_spr(10, 268, 339)) == StepResult::UnsupportedInstruction,
+          "MFSPR rejects unsupported SPR without fabricating a value");
+    check(s.pc == unsupported_spr_pc, "unsupported MFSPR leaves PC unchanged");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
