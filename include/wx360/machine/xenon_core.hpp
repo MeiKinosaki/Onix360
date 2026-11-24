@@ -33,10 +33,41 @@ struct XenonCore {
         return result;
     }
 
+    struct InterpreterBusContext {
+        XenonCore* core{};
+        memory::PhysicalMemory* ram{};
+    };
+
+    [[nodiscard]] static bool interpreter_read(
+        void* opaque, std::uint64_t guest_address,
+        std::span<std::uint8_t> output) noexcept {
+        auto& context = *static_cast<InterpreterBusContext*>(opaque);
+        auto& core = *context.core;
+        auto& ram = *context.ram;
+        if (!core.mmu_enabled)
+            return ram.read(guest_address, output, memory::Access::Read) == memory::MemoryResult::Ok;
+        const auto translated = core.address_space.translate_range(
+            guest_address, output.size(), memory::Access::Read, ram);
+        return translated.result == memory::MemoryResult::Ok &&
+            ram.read(translated.physical_address, output, memory::Access::Read) == memory::MemoryResult::Ok;
+    }
+
+    [[nodiscard]] static bool interpreter_write(
+        void* opaque, std::uint64_t guest_address,
+        std::span<const std::uint8_t> input) noexcept {
+        auto& context = *static_cast<InterpreterBusContext*>(opaque);
+        auto& core = *context.core;
+        auto& ram = *context.ram;
+        if (!core.mmu_enabled)
+            return ram.write(guest_address, input) == memory::MemoryResult::Ok;
+        const auto translated = core.address_space.translate_range(
+            guest_address, input.size(), memory::Access::Write, ram);
+        return translated.result == memory::MemoryResult::Ok &&
+            ram.write(translated.physical_address, input) == memory::MemoryResult::Ok;
+    }
+
     // Only the loader-minted validation token can start execution.
     // Explicit guest data accessors share the same translator as instruction fetch.
-    // The current interpreter still needs a memory-bus callback before all load/store
-    // opcodes can use these accessors transparently.
     [[nodiscard]] memory::MemoryResult read_guest(
         memory::PhysicalMemory& ram, std::uint64_t guest_address,
         std::span<std::uint8_t> output) const noexcept {
@@ -101,7 +132,11 @@ struct XenonCore {
             return RunResult::ExceptionTaken;
         }
         std::uint64_t fault_address = 0;
-        const auto result = cpu::execute(state, instruction, ram.raw_bytes(), &fault_address);
+        InterpreterBusContext bus_context{this, &ram};
+        const cpu::MemoryAccess bus{&bus_context, &XenonCore::interpreter_read,
+                                    &XenonCore::interpreter_write};
+        const auto result = cpu::execute(state, instruction, ram.raw_bytes(),
+                                         &fault_address, &bus);
         switch (result) {
         case cpu::StepResult::Executed: return RunResult::Executed;
         case cpu::StepResult::UnsupportedInstruction:
