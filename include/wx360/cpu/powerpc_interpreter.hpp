@@ -2,6 +2,7 @@
 
 #include "wx360/cpu/xenon_state.hpp"
 
+#include <array>
 #include <bit>
 #include <cmath>
 #include <cstdint>
@@ -14,6 +15,12 @@ enum class StepResult {
     UnsupportedInstruction,
     MemoryFault,
     AlignmentFault,
+};
+
+struct MemoryAccess {
+    void* context{};
+    bool (*read)(void*, std::uint64_t, std::span<std::uint8_t>) noexcept{};
+    bool (*write)(void*, std::uint64_t, std::span<const std::uint8_t>) noexcept{};
 };
 
 struct DecodedInstruction {
@@ -68,8 +75,25 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
 [[nodiscard]] inline StepResult execute(
     XenonThreadState& state, std::uint32_t instruction,
     std::span<std::uint8_t> memory = {},
-    std::uint64_t* fault_address = nullptr) noexcept {
+    std::uint64_t* fault_address = nullptr,
+    const MemoryAccess* bus = nullptr) noexcept {
     const auto d = decode(instruction);
+    const auto read_memory = [&](std::uint64_t address, std::span<std::uint8_t> output) noexcept {
+        if (bus && bus->read) return bus->read(bus->context, address, output);
+        if (address > memory.size() || output.size() > memory.size() - static_cast<std::size_t>(address))
+            return false;
+        for (std::size_t i = 0; i < output.size(); ++i)
+            output[i] = memory[static_cast<std::size_t>(address) + i];
+        return true;
+    };
+    const auto write_memory = [&](std::uint64_t address, std::span<const std::uint8_t> input) noexcept {
+        if (bus && bus->write) return bus->write(bus->context, address, input);
+        if (address > memory.size() || input.size() > memory.size() - static_cast<std::size_t>(address))
+            return false;
+        for (std::size_t i = 0; i < input.size(); ++i)
+            memory[static_cast<std::size_t>(address) + i] = input[i];
+        return true;
+    };
     std::uint64_t result = 0;
     bool writes_result = false;
     bool record_32bit = false;
@@ -134,40 +158,44 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             if (fault_address) *fault_address = address;
             return StepResult::AlignmentFault;
         }
-        if (address > memory.size() || width > memory.size() - static_cast<std::size_t>(address)) {
-            if (fault_address) *fault_address = address;
-            return StepResult::MemoryFault;
-        }
-        const auto offset = static_cast<std::size_t>(address);
-        if (d.primary_opcode == 32 || d.primary_opcode == 33) {
-            result = (static_cast<std::uint32_t>(memory[offset]) << 24U) |
-                     (static_cast<std::uint32_t>(memory[offset + 1]) << 16U) |
-                     (static_cast<std::uint32_t>(memory[offset + 2]) << 8U) |
-                     static_cast<std::uint32_t>(memory[offset + 3]);
+        std::array<std::uint8_t, 4> bytes{};
+        if (load) {
+            if (!read_memory(address, std::span<std::uint8_t>(bytes.data(), width))) {
+                if (fault_address) *fault_address = address;
+                return StepResult::MemoryFault;
+            }
+            if (word_access) {
+                result = (static_cast<std::uint32_t>(bytes[0]) << 24U) |
+                         (static_cast<std::uint32_t>(bytes[1]) << 16U) |
+                         (static_cast<std::uint32_t>(bytes[2]) << 8U) | bytes[3];
+            } else if (halfword_access) {
+                const std::uint16_t value = static_cast<std::uint16_t>(
+                    (static_cast<std::uint16_t>(bytes[0]) << 8U) | bytes[1]);
+                result = (d.primary_opcode == 42 || d.primary_opcode == 43)
+                    ? static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int16_t>(value)))
+                    : value;
+            } else {
+                result = bytes[0];
+            }
             writes_result = true;
-        } else if (d.primary_opcode == 34 || d.primary_opcode == 35) {
-            result = memory[offset];
-            writes_result = true;
-        } else if (d.primary_opcode == 40 || d.primary_opcode == 41 ||
-                   d.primary_opcode == 42 || d.primary_opcode == 43) {
-            const std::uint16_t value = static_cast<std::uint16_t>(
-                (static_cast<std::uint16_t>(memory[offset]) << 8U) | memory[offset + 1]);
-            result = (d.primary_opcode == 42 || d.primary_opcode == 43)
-                ? static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int16_t>(value)))
-                : value;
-            writes_result = true;
-        } else if (d.primary_opcode == 44 || d.primary_opcode == 45) {
-            const std::uint16_t value = static_cast<std::uint16_t>(state.gpr[d.rt]);
-            memory[offset] = static_cast<std::uint8_t>(value >> 8U);
-            memory[offset + 1] = static_cast<std::uint8_t>(value);
-        } else if (d.primary_opcode == 36 || d.primary_opcode == 37) {
-            const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[d.rt]);
-            memory[offset] = static_cast<std::uint8_t>(value >> 24U);
-            memory[offset + 1] = static_cast<std::uint8_t>(value >> 16U);
-            memory[offset + 2] = static_cast<std::uint8_t>(value >> 8U);
-            memory[offset + 3] = static_cast<std::uint8_t>(value);
         } else {
-            memory[offset] = static_cast<std::uint8_t>(state.gpr[d.rt]);
+            if (word_access) {
+                const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[d.rt]);
+                bytes[0] = static_cast<std::uint8_t>(value >> 24U);
+                bytes[1] = static_cast<std::uint8_t>(value >> 16U);
+                bytes[2] = static_cast<std::uint8_t>(value >> 8U);
+                bytes[3] = static_cast<std::uint8_t>(value);
+            } else if (halfword_access) {
+                const std::uint16_t value = static_cast<std::uint16_t>(state.gpr[d.rt]);
+                bytes[0] = static_cast<std::uint8_t>(value >> 8U);
+                bytes[1] = static_cast<std::uint8_t>(value);
+            } else {
+                bytes[0] = static_cast<std::uint8_t>(state.gpr[d.rt]);
+            }
+            if (!write_memory(address, std::span<const std::uint8_t>(bytes.data(), width))) {
+                if (fault_address) *fault_address = address;
+                return StepResult::MemoryFault;
+            }
         }
         if (update) { update_base = true; updated_address = address; }
         break;
@@ -262,14 +290,15 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             if (fault_address) *fault_address = address;
             return StepResult::AlignmentFault;
         }
-        if (address > memory.size() || width > memory.size() - static_cast<std::size_t>(address)) {
+        std::array<std::uint8_t, 8> bytes{};
+        if (load && !read_memory(address, std::span<std::uint8_t>(bytes.data(), width))) {
             if (fault_address) *fault_address = address;
             return StepResult::MemoryFault;
         }
-        const auto offset = static_cast<std::size_t>(address);
         std::uint64_t raw = 0;
-        for (std::size_t n = 0; n < width; ++n)
-            raw = (raw << 8U) | memory[offset + n];
+        if (load) {
+            for (std::size_t n = 0; n < width; ++n) raw = (raw << 8U) | bytes[n];
+        }
         if (load) {
             if (single) {
                 const float f = std::bit_cast<float>(static_cast<std::uint32_t>(raw));
@@ -282,7 +311,11 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
                 static_cast<float>(std::bit_cast<double>(state.fpr[d.rt])));
             else raw = state.fpr[d.rt];
             for (std::size_t n = 0; n < width; ++n)
-                memory[offset + n] = static_cast<std::uint8_t>(raw >> ((width - 1U - n) * 8U));
+                bytes[n] = static_cast<std::uint8_t>(raw >> ((width - 1U - n) * 8U));
+            if (!write_memory(address, std::span<const std::uint8_t>(bytes.data(), width))) {
+                if (fault_address) *fault_address = address;
+                return StepResult::MemoryFault;
+            }
         }
         if (update) state.gpr[d.ra] = address;
         break;
