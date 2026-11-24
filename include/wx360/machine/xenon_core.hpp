@@ -4,7 +4,10 @@
 #include "wx360/memory/physical_memory.hpp"
 #include "wx360/memory/address_space.hpp"
 #include "wx360/kernel/kernel_runtime.hpp"
-#include "wx360/xex/xex_image_loader.hpp"\n#include "wx360/audio/audio_engine.hpp"\n#include "wx360/input/controller_state.hpp"\n#include "wx360/gpu/xenos_command_processor.hpp"
+#include "wx360/xex/xex_image_loader.hpp"
+#include "wx360/audio/audio_engine.hpp"
+#include "wx360/input/controller_state.hpp"
+#include "wx360/gpu/xenos_command_processor.hpp"
 
 namespace wx360::machine {
 
@@ -23,6 +26,9 @@ enum class LaunchResult : std::uint8_t { Started, EntryPointNotExecutable };
 struct XenonCore {
     cpu::XenonThreadState state{};
     kernel::KernelRuntime* kernel_runtime{nullptr};
+    gpu::XenosCommandProcessor gpu{};
+    input::ControllerState controller{};
+    audio::AudioEngine audio{};
     memory::AddressSpace address_space{};
     bool mmu_enabled{false};
 
