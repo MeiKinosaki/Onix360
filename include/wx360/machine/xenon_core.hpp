@@ -2,6 +2,7 @@
 
 #include "wx360/cpu/powerpc_interpreter.hpp"
 #include "wx360/memory/physical_memory.hpp"
+#include "wx360/memory/address_space.hpp"
 #include "wx360/xex/xex_image_loader.hpp"
 
 namespace wx360::machine {
@@ -20,6 +21,12 @@ enum class LaunchResult : std::uint8_t { Started, EntryPointNotExecutable };
 
 struct XenonCore {
     cpu::XenonThreadState state{};
+    memory::AddressSpace address_space{};
+
+    [[nodiscard]] memory::MemoryResult map_guest_page(std::uint64_t virtual_address,
+        std::uint64_t physical_address, std::uint8_t permissions) noexcept {
+        return address_space.map_page(virtual_address, physical_address, permissions);
+    }
 
     // Only the loader-minted validation token can start execution.
     [[nodiscard]] LaunchResult start_xex(
@@ -33,7 +40,14 @@ struct XenonCore {
 
     [[nodiscard]] RunResult step(memory::PhysicalMemory& ram) noexcept {
         std::uint32_t instruction = 0;
-        const auto fetch = ram.fetch_u32(state.pc, instruction);
+        const auto translated = address_space.translate(state.pc, memory::Access::Execute, ram);
+        if (translated.result == memory::MemoryResult::Unmapped ||
+            translated.result == memory::MemoryResult::PermissionDenied ||
+            translated.result == memory::MemoryResult::OutOfRange) {
+            state.raise_exception(0x400U, state.pc);
+            return RunResult::ExceptionTaken;
+        }
+        const auto fetch = ram.fetch_u32(translated.physical_address, instruction);
         if (fetch == memory::MemoryResult::AlignmentFault) {
             state.raise_exception(0x600U, state.pc);
             return RunResult::ExceptionTaken;
