@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
-#include <cstdint>\n#include <cstdlib>
+#include <cstdint>
+#include <cstdlib>
 
 namespace wx360::input {
 enum ControllerButton : std::uint16_t {
