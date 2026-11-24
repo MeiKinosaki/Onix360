@@ -153,5 +153,29 @@ int main(){
        table.libraries[0].import_thunks[0]!=0x82001000){
         std::cerr<<"XEX import library parser failed\n";return EXIT_FAILURE;
     }
+    const auto original_library_count=table.libraries.size();
+    auto malformed_imports=imports;
+    be16(malformed_imports,24+0x24,1);
+    if (wx360::xex::parse_import_table(malformed_imports,0,table)!=
+            wx360::xex::ImportTableError::InvalidLibrary ||
+        table.libraries.size()!=original_library_count ||
+        table.libraries[0].name!="xboxkrnl") {
+        std::cerr<<"Malformed import library changed previously parsed output\\n";
+        return EXIT_FAILURE;
+    }
+    malformed_imports=imports;
+    be32(malformed_imports,4,4);
+    if (wx360::xex::parse_import_table(malformed_imports,0,table)!=
+        wx360::xex::ImportTableError::InvalidSize) {
+        std::cerr<<"Truncated import string table was not rejected\\n";
+        return EXIT_FAILURE;
+    }
+    malformed_imports=imports;
+    be32(malformed_imports,24,0xFFFFFFFF);
+    if (wx360::xex::parse_import_table(malformed_imports,0,table)!=
+        wx360::xex::ImportTableError::InvalidLibrary) {
+        std::cerr<<"Out-of-range import library record was not rejected\\n";
+        return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
 }
