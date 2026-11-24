@@ -559,15 +559,17 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         case 23: case 55: case 87: case 119:
         case 279: case 311: case 343: case 375:
         case 151: case 183: case 215: case 247:
-        case 407: case 439: case 534: case 662: { // Indexed integer loads/stores.
+        case 407: case 439: case 534: case 662:
+        case 790: case 918: { // Indexed integer loads/stores.
             const bool store = d.xo == 151 || d.xo == 183 || d.xo == 215 ||
-                               d.xo == 247 || d.xo == 407 || d.xo == 439 || d.xo == 662;
+                               d.xo == 247 || d.xo == 407 || d.xo == 439 || d.xo == 662 || d.xo == 918;
             const bool byte_access = d.xo == 87 || d.xo == 119 ||
                                      d.xo == 215 || d.xo == 247;
             const bool half_access = d.xo == 279 || d.xo == 311 ||
-                                     d.xo == 343 || d.xo == 375 ||
-                                     d.xo == 407 || d.xo == 439;
-            const bool reversed = d.xo == 534 || d.xo == 662;
+                                     d.xo == 343 || d.xo == 375 || d.xo == 790 ||
+                                     d.xo == 407 || d.xo == 439 || d.xo == 918;
+            const bool reversed = d.xo == 534 || d.xo == 662 ||
+                                  d.xo == 790 || d.xo == 918;
             const bool update = d.xo == 55 || d.xo == 119 || d.xo == 183 ||
                                 d.xo == 247 || d.xo == 311 || d.xo == 375 ||
                                 d.xo == 439;
