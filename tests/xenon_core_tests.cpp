@@ -34,6 +34,19 @@ int main() {
           core.state.exception_pending && core.state.exception_vector == 0x400,
           "instruction-storage exception saves PC and selects vector 0x400");
 
+    // The machine core owns the staged GPU, controller and audio queue.
+    machine::XenonCore subsystem_core;
+    check(subsystem_core.gpu.configure_framebuffer(4, 4),
+          "machine-owned Xenos framebuffer configures");
+    subsystem_core.gpu.framebuffer();
+    subsystem_core.controller.buttons = input::A;
+    check(subsystem_core.controller.pressed(input::A),
+          "machine-owned controller state is accessible");
+    check(subsystem_core.audio.submit_pcm16({100, -100}),
+          "machine-owned PCM queue accepts a stereo frame");
+    check(subsystem_core.audio.frames() == 1,
+          "machine-owned PCM queue tracks submitted frame count");
+
     // XEX launch authorization is covered by xex_synthetic_boot_tests,
     // which obtains the non-forgeable token from XexImageLoader. This unit
     // test intentionally exercises CPU/memory behavior only.
