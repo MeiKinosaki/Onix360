@@ -115,7 +115,7 @@ O interpretador inicial contém suporte experimental para:
 - Teste de integração sintético XEX2: cria um arquivo XEX2 sem criptografia/compactação, valida cabeçalho e file-format info, inspeciona entry point, entrega o PE já transformado ao mapeador, inicia o XenonCore e executa a primeira instrução (`addi r3,r0,42`), verificando `r3 = 42` e avanço do PC.
 - Esse teste comprova o caminho sintético sem transformações nem imports reais; não comprova descriptografia retail/devkit aplicada a um executável real, relocations/imports de kernel, autenticação RSA ou execução de jogos comerciais. O fluxo Normal agora possui uma função integrada para unwrap da session key, AES-CBC e LZX, mas a cadeia ponta a ponta em uma imagem XEX real ainda precisa de validação.
 
-## XEX2 Normal — enquadramento e IV
+## Engenharia reversa de imports XEX\n\n- Notas comparativas baseadas nos loaders Xenia/ReXGlue e em um parser independente: `docs/xex-import-reverse-engineering.md`.\n- O parser separa value slots de thunks executáveis e os agrupa por ordinal. A implementação atual ainda não reescreve o código de thunk para dispatch do kernel; portanto, não equivale à resolução completa de imports de um XEX real.\n\n## XEX2 Normal — enquadramento e IV
 
 - Referência de implementação Xenia consultada: o payload XEX2 Normal é descriptografado com AES-CBC usando chaining value inicial de 16 bytes zerados. Foi adicionada a API `aes128_xex_cbc_decrypt` e o XEX loader agora oferece uma entrada que usa esse IV, sem exigir que o chamador o adivinhe.
 - O cabeçalho de formato agora lê `window_size` e o primeiro descritor de bloco Normal.
