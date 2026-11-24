@@ -43,7 +43,7 @@ public:
             framebuffer_.clear(packet.payload[0]);
             return true;
         }
-        if (packet.opcode == wx360_present_opcode && packet.payload.empty()) return framebuffer_.present();
+        if (packet.opcode == wx360_present_opcode && packet.payload.size() == 1U && packet.payload[0] == 0U) return framebuffer_.present();
         if (packet.opcode != wx360_draw_triangle_opcode || packet.payload.size() != 7U) return false;
         const auto& p = packet.payload;
         return framebuffer_.draw_triangle(
