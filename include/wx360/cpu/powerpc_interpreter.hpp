@@ -201,6 +201,45 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         if (update) { update_base = true; updated_address = address; }
         break;
     }
+    case 46: case 47: { // lmw/stmw: transfer GPR[RT..31] as big-endian words.
+        const std::uint64_t base = d.ra == 0 ? 0U : state.gpr[d.ra];
+        const std::uint64_t address = base +
+            static_cast<std::uint64_t>(static_cast<std::int64_t>(d.immediate));
+        const std::size_t count = static_cast<std::size_t>(32U - d.rt) * 4U;
+        if ((address & 3U) != 0U) {
+            if (fault_address) *fault_address = address;
+            return StepResult::AlignmentFault;
+        }
+        std::array<std::uint8_t, 128> bytes{};
+        if (d.primary_opcode == 46U) {
+            // Stage the complete transfer before changing any guest register.
+            if (!read_memory(address, std::span<std::uint8_t>(bytes.data(), count))) {
+                if (fault_address) *fault_address = address;
+                return StepResult::MemoryFault;
+            }
+            for (unsigned reg = d.rt; reg < 32U; ++reg) {
+                const std::size_t offset = static_cast<std::size_t>(reg - d.rt) * 4U;
+                state.gpr[reg] = (static_cast<std::uint32_t>(bytes[offset]) << 24U) |
+                    (static_cast<std::uint32_t>(bytes[offset + 1U]) << 16U) |
+                    (static_cast<std::uint32_t>(bytes[offset + 2U]) << 8U) |
+                    bytes[offset + 3U];
+            }
+        } else {
+            for (unsigned reg = d.rt; reg < 32U; ++reg) {
+                const std::size_t offset = static_cast<std::size_t>(reg - d.rt) * 4U;
+                const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[reg]);
+                bytes[offset] = static_cast<std::uint8_t>(value >> 24U);
+                bytes[offset + 1U] = static_cast<std::uint8_t>(value >> 16U);
+                bytes[offset + 2U] = static_cast<std::uint8_t>(value >> 8U);
+                bytes[offset + 3U] = static_cast<std::uint8_t>(value);
+            }
+            if (!write_memory(address, std::span<const std::uint8_t>(bytes.data(), count))) {
+                if (fault_address) *fault_address = address;
+                return StepResult::MemoryFault;
+            }
+        }
+        break;
+    }
     case 8: { // subfic: RT = SIMM - RA; XER[CA] indicates no borrow
         const std::uint64_t lhs = static_cast<std::uint64_t>(static_cast<std::int64_t>(d.immediate));
         const std::uint64_t rhs = state.gpr[d.ra];
