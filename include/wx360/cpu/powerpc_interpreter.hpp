@@ -106,7 +106,8 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             } else {
                 const std::uint64_t first = address & ~std::uint64_t{31};
                 const std::uint64_t last = (address + span) & ~std::uint64_t{31};
-                if (first <= state.reservation_address && state.reservation_address <= last)
+                const std::uint64_t reserved_granule = state.reservation_address & ~std::uint64_t{31};
+                if (first <= reserved_granule && reserved_granule <= last)
                     state.reservation_valid = false;
             }
         }
@@ -526,7 +527,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
                      (static_cast<std::uint32_t>(bytes[2]) << 8U) | bytes[3];
             writes_result = true;
             state.reservation_valid = true;
-            state.reservation_address = address & ~std::uint64_t{31};
+            state.reservation_address = address;
             break;
         }
         case 150: { // stwcx.: conditional word store; Rc must be set.
@@ -538,7 +539,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
                 return StepResult::AlignmentFault;
             }
             const bool success = state.reservation_valid &&
-                state.reservation_address == (address & ~std::uint64_t{31});
+                state.reservation_address == address;
             state.reservation_valid = false;
             if (success) {
                 const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[d.rt]);
