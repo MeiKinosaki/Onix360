@@ -30,6 +30,7 @@ public:
         std::uint16_t service_id, std::uint32_t guest_address,
         memory::PhysicalMemory& ram) {
         if (service_id > 0x7FFFU || guest_address == 0 ||
+            imports_.has_export(library, ordinal) ||
             ram.check_access(guest_address, 12, memory::Access::Write) != memory::MemoryResult::Ok)
             return false;
         const std::uint32_t words[3] = {
