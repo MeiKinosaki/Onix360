@@ -38,7 +38,7 @@ int main() {
 
     kernel::XexImportResolver resolver;
     const bool function_added = resolver.register_export(
-        {"xboxkrnl.exe", 0x123, 0x82001000, kernel::ImportKind::Function});
+        {"xboxkrnl.exe", 0x123, 0x220, kernel::ImportKind::Function});
     const bool variable_added = resolver.register_export(
         {"xboxkrnl.exe", 0x124, 0x82002000, kernel::ImportKind::Variable});
     const std::array imports{
@@ -54,11 +54,11 @@ int main() {
                bytes[at+3] == static_cast<std::uint8_t>(v);
     };
     check(function_added && variable_added && resolved == kernel::ImportResolveError::None &&
-          be(0x200,0x82001000) && be(0x204,0x82002000),
+          be(0x200,0x220) && be(0x204,0x3000),
           "typed kernel function/variable import resolution");
 
     const std::array invalid{
-        kernel::XexImport{"xboxkrnl.exe",0x124,0x208,kernel::ImportKind::Function}
+        kernel::XexImport{"xboxkrnl.exe",0x124,0x228,kernel::ImportKind::Function,0x208}
     };
     check(resolver.resolve(invalid,ram) == kernel::ImportResolveError::KindMismatch &&
           bytes[0x208] == 0, "reject mismatched import type without patching");
