@@ -38,7 +38,9 @@ std::vector<std::uint8_t> make_synthetic_xbox_pe() {
     put32(image, section + 8, 0x100); put32(image, section + 12, 0x1000);
     put32(image, section + 16, 0x200); put32(image, section + 20, static_cast<std::uint32_t>(raw));
     put32(image, section + 36, 0x60000020);
-    image[raw] = 0x38; image[raw + 1] = 0x60; image[raw + 2] = 0x00; image[raw + 3] = 0x2A;
+    // Synthetic PPC payload: addi r3,0,42; addi r4,0,7.
+    put_be32(image, raw, 0x3860002AU);
+    put_be32(image, raw + 4U, 0x38800007U);
     return image;
 }
 std::vector<std::uint8_t> make_synthetic_xex2(const std::vector<std::uint8_t>& pe) {
