@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <array>
+#include <bit>
 
 int main() {
     using namespace wx360::gpu;
