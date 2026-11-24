@@ -249,6 +249,47 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
     }
     case 31:
         switch (d.xo) {
+        case 19: // mfcr: RT = CR
+            result = state.cr;
+            writes_result = true;
+            break;
+        case 144: { // mtcrf: copy selected CR fields from RS
+            const unsigned field_mask = (instruction >> 12U) & 0xFFU;
+            const std::uint32_t source = static_cast<std::uint32_t>(state.gpr[d.rt]);
+            for (unsigned field = 0; field < 8; ++field) {
+                if ((field_mask & (1U << (7U - field))) != 0) {
+                    const unsigned shift = 28U - field * 4U;
+                    state.set_condition_field(field, static_cast<std::uint8_t>((source >> shift) & 0xFU));
+                }
+            }
+            break;
+        }
+        case 339: { // mfspr: supported Xenon-visible SPRs
+            const unsigned spr = (((instruction >> 16U) & 0x1FU) << 5U) |
+                                 ((instruction >> 11U) & 0x1FU);
+            switch (spr) {
+            case 1: result = state.xer; break; // XER
+            case 8: result = state.lr; break;  // LR
+            case 9: result = state.ctr; break; // CTR
+            default: return StepResult::UnsupportedInstruction;
+            }
+            writes_result = true;
+            break;
+        }
+        case 467: { // mtspr: supported Xenon-visible SPRs
+            const unsigned spr = (((instruction >> 16U) & 0x1FU) << 5U) |
+                                 ((instruction >> 11U) & 0x1FU);
+            const std::uint64_t source = state.gpr[d.rt];
+            switch (spr) {
+            case 1: state.xer = source; break; // XER
+            case 8: state.lr = source; break;  // LR
+            case 9: state.ctr = source; break; // CTR
+            default: return StepResult::UnsupportedInstruction;
+            }
+            break;
+        }
+    case 31:
+        switch (d.xo) {
         case 0: { // cmp / cmpd / cmpw
             const unsigned bf = (instruction >> 23U) & 7U;
             const bool is_64 = ((instruction >> 21U) & 1U) != 0;
