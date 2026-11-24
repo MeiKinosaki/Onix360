@@ -402,7 +402,54 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
     }
     case 31:
         switch (d.xo) {
-        case 20: case 23: case 55: case 87: case 119:
+        case 20: { // lwarx: load word and establish a reservation.
+            const std::uint64_t address = (d.ra == 0 ? 0U : state.gpr[d.ra]) +
+                                          state.gpr[d.rb];
+            if ((address & 3U) != 0U) {
+                if (fault_address) *fault_address = address;
+                return StepResult::AlignmentFault;
+            }
+            std::array<std::uint8_t, 4> bytes{};
+            if (!read_memory(address, bytes)) {
+                if (fault_address) *fault_address = address;
+                return StepResult::MemoryFault;
+            }
+            result = (static_cast<std::uint32_t>(bytes[0]) << 24U) |
+                     (static_cast<std::uint32_t>(bytes[1]) << 16U) |
+                     (static_cast<std::uint32_t>(bytes[2]) << 8U) | bytes[3];
+            writes_result = true;
+            state.reservation_valid = true;
+            state.reservation_address = address & ~std::uint64_t{31};
+            break;
+        }
+        case 150: { // stwcx.: conditional word store; Rc must be set.
+            if (!d.record) return StepResult::UnsupportedInstruction;
+            const std::uint64_t address = (d.ra == 0 ? 0U : state.gpr[d.ra]) +
+                                          state.gpr[d.rb];
+            if ((address & 3U) != 0U) {
+                if (fault_address) *fault_address = address;
+                return StepResult::AlignmentFault;
+            }
+            const bool success = state.reservation_valid &&
+                state.reservation_address == (address & ~std::uint64_t{31});
+            state.reservation_valid = false;
+            if (success) {
+                const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[d.rt]);
+                const std::array<std::uint8_t, 4> bytes{
+                    static_cast<std::uint8_t>(value >> 24U),
+                    static_cast<std::uint8_t>(value >> 16U),
+                    static_cast<std::uint8_t>(value >> 8U),
+                    static_cast<std::uint8_t>(value)};
+                if (!write_memory(address, bytes)) {
+                    if (fault_address) *fault_address = address;
+                    return StepResult::MemoryFault;
+                }
+            }
+            state.set_condition_field(0, static_cast<std::uint8_t>(
+                (success ? 0x2U : 0U) | ((state.xer >> 31U) & 1U)));
+            break;
+        }
+        case 23: case 55: case 87: case 119:
         case 279: case 311: case 343: case 375:
         case 151: case 183: case 215: case 247:
         case 407: case 439: case 534: case 662: { // Indexed integer loads/stores.
