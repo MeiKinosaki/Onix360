@@ -124,6 +124,11 @@ int main() {
         std::cerr << "First Xenon instruction did not execute from synthetic XEX2\n";
         return EXIT_FAILURE;
     }
-    std::cout << "WX360 synthetic XEX2-to-first-Xenon-instruction test passed\n";
+    if (core.step(ram) != machine::RunResult::Executed ||
+        core.state.gpr[4] != 7 || core.state.pc != validated->entry_point() + 8) {
+        std::cerr << "Second Xenon instruction did not execute from synthetic XEX2\n";
+        return EXIT_FAILURE;
+    }
+    std::cout << "WX360 synthetic XEX2-to-two-Xenon-instructions test passed\n";
     return EXIT_SUCCESS;
 }
