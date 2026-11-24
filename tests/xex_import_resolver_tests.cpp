@@ -55,6 +55,15 @@ int main() {
     const std::array missing{
         XexImport{"xam.xex", 0x999, 0x22C, ImportKind::Function, 0x20C}
     };
+    const std::array batch_with_late_failure{
+        XexImport{"xboxkrnl.exe", 0x123, 0x240, ImportKind::Function, 0x214},
+        XexImport{"xam.xex", 0x999, 0x24C, ImportKind::Function, 0x218}
+    };
+    if (resolver.resolve(batch_with_late_failure, ram) != ImportResolveError::MissingExport ||
+        bytes[0x214] != 0 || bytes[0x218] != 0) {
+        std::cerr << "Late missing export caused partial import patching\\n";
+        return EXIT_FAILURE;
+    }
     if (resolver.resolve(missing, ram) != ImportResolveError::MissingExport ||
         bytes[0x20C] != 0) {
         std::cerr << "Unknown import was not rejected without patching\n";
