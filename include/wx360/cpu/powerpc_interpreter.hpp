@@ -328,6 +328,23 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         break;
     }
     case 19: {
+        if (d.xo == 528U) { // bcctr: conditional branch to CTR (CTR is not decremented).
+            const unsigned bo = (instruction >> 21U) & 0x1FU;
+            const unsigned bi = (instruction >> 16U) & 0x1FU;
+            // The architecture requires BO[2] = 1 for BCCTR; CTR is the target.
+            if ((bo & 0x04U) == 0) return StepResult::UnsupportedInstruction;
+            bool condition_ok = (bo & 0x10U) != 0;
+            if (!condition_ok) {
+                const unsigned cr_bit = (state.cr >> (31U - bi)) & 1U;
+                condition_ok = cr_bit == ((bo >> 3U) & 1U);
+            }
+            if (condition_ok) {
+                branch_target = state.ctr & ~std::uint64_t{3};
+                branch_taken = true;
+            }
+            if ((instruction & 1U) != 0) state.lr = state.pc + 4U;
+            break;
+        }
         if (d.xo == 16U) { // bclr: conditional branch to LR.
             const unsigned bo = (instruction >> 21U) & 0x1FU;
             const unsigned bi = (instruction >> 16U) & 0x1FU;
