@@ -797,8 +797,8 @@ int main() {
     s.ctr = 2;
     const std::uint32_t bclr_ctr = (19U << 26U) | (16U << 21U) |
         (16U << 1U);
-    check(execute(s, bclr_ctr) == StepResult::Executed && s.pc == 0x5304U &&
-          s.ctr == 1U, "BCLR decrements CTR when BO requests count test");
+    check(execute(s, bclr_ctr) == StepResult::Executed && s.pc == 0x5670U &&
+          s.ctr == 1U, "BCLR decrements CTR and branches when count test passes");
 
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
