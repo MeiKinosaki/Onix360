@@ -39,7 +39,9 @@ enum class ImportResolveError : std::uint8_t {
 class XexImportResolver {
 public:
     [[nodiscard]] bool register_export(KernelExport item) {
-        if (item.guest_address == 0) return false;
+        if (item.library.empty() || item.guest_address == 0 ||
+            (item.kind != ImportKind::Function && item.kind != ImportKind::Variable))
+            return false;
         const auto key = make_key(item.library, item.ordinal);
         return exports_.emplace(key, ExportTarget{item.guest_address, item.kind}).second;
     }
@@ -55,6 +57,9 @@ public:
         // partial patching when a later ordinal or thunk is invalid.
         for (std::size_t i = 0; i < imports.size(); ++i) {
             const auto& item = imports[i];
+            if (item.library.empty() ||
+                (item.kind != ImportKind::Function && item.kind != ImportKind::Variable))
+                return ImportResolveError::MissingExport;
             const auto found = exports_.find(make_key(item.library, item.ordinal));
             if (found == exports_.end()) return ImportResolveError::MissingExport;
             if (found->second.kind != item.kind) return ImportResolveError::KindMismatch;
