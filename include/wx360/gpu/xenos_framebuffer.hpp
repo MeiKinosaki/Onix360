@@ -38,12 +38,12 @@ public:
             std::fabs(x2) > 1000000.0F || std::fabs(y2) > 1000000.0F) return false;
         const float area = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0);
         if (area == 0.0F) return false;
-        const int min_x = std::max(0, static_cast<int>(std::floor(std::min({x0,x1,x2}))));
-        const int min_y = std::max(0, static_cast<int>(std::floor(std::min({y0,y1,y2}))));
-        const int max_x = std::min(static_cast<int>(width_) - 1,
-                                   static_cast<int>(std::ceil(std::max({x0,x1,x2}))));
-        const int max_y = std::min(static_cast<int>(height_) - 1,
-                                   static_cast<int>(std::ceil(std::max({y0,y1,y2}))));
+        const int min_x = (std::max)(0, static_cast<int>(std::floor((std::min)({x0,x1,x2}))));
+        const int min_y = (std::max)(0, static_cast<int>(std::floor((std::min)({y0,y1,y2}))));
+        const int max_x = (std::min)(static_cast<int>(width_) - 1,
+                                   static_cast<int>(std::ceil((std::max)({x0,x1,x2}))));
+        const int max_y = (std::min)(static_cast<int>(height_) - 1,
+                                   static_cast<int>(std::ceil((std::max)({y0,y1,y2}))));
         if (min_x > max_x || min_y > max_y) return true;
         const float inverse_area = 1.0F / area;
         for (int y = min_y; y <= max_y; ++y) {
