@@ -82,5 +82,20 @@ int main() {
           "PM4 software triangle reaches framebuffer");
     draw_packet.payload = std::span<const std::uint32_t>(tri.data(), 6);
     check(!draw.execute_packet(draw_packet), "rejects malformed software draw packet");
+    XenosCommandProcessor stream_gpu;
+    check(stream_gpu.configure_framebuffer(8, 8), "configures stream framebuffer");
+    const std::array<std::uint32_t, 4> clear_present{
+        (3U << 30U) | (0xF1U << 8U), 0xFF123456U,
+        (3U << 30U) | (0xF2U << 8U), 0U
+    };
+    check(stream_gpu.execute_stream(clear_present), "executes clear and present stream");
+    check(stream_gpu.framebuffer().pixels()[0] == 0xFF123456U &&
+          stream_gpu.framebuffer().front_buffer()[0] == 0xFF123456U &&
+          stream_gpu.framebuffer().present_count() == 1U,
+          "clear and present update front buffer");
+    const std::array<std::uint32_t, 2> unknown_stream{
+        (3U << 30U) | (0xE1U << 8U), 0U
+    };
+    check(!stream_gpu.execute_stream(unknown_stream), "rejects unknown PM4 command");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
