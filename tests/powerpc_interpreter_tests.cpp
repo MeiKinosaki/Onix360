@@ -612,7 +612,6 @@ int main() {
           "MFSPR rejects unsupported SPR without fabricating a value");
     check(s.pc == unsupported_spr_pc, "unsupported MFSPR leaves PC unchanged");
 
-    if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     std::array<std::uint8_t, 16> indexed_ram{
         0x12,0x34,0x56,0x78, 0,0,0,0, 0,0,0,0, 0,0,0,0
     };
@@ -727,5 +726,6 @@ int main() {
           "ordinary store executes while reservation is active");
     check(!s.reservation_valid, "overlapping ordinary store invalidates reservation");
 
+    if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
