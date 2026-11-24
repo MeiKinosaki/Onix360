@@ -14,6 +14,14 @@ int main() {
  check(mmu.translate_range(0x1FFC,8,Access::Read,ram).result==MemoryResult::Unmapped,"rejects access crossing guest page");
  check(mmu.translate_range(0x1234,0,Access::Read,ram).result==MemoryResult::OutOfRange,"rejects empty access range");
  check(mmu.translate(0x2234,Access::Read,ram).result==MemoryResult::Unmapped,"unmapped page faults");
+ check(mmu.map_page(0x2000,0x6000,3)==MemoryResult::Ok,"maps adjacent TLB page");
+ auto crossing=mmu.translate_range(0x1FF8,16,Access::Read,ram);
+ check(crossing.result==MemoryResult::Ok && crossing.physical_address==0x5FF8,
+       "translates contiguous access across adjacent TLB pages");
+ check(mmu.map_page(0x3000,0x9000,3)==MemoryResult::Ok,"maps noncontiguous TLB page");
+ check(mmu.translate_range(0x2FF8,16,Access::Read,ram).result==MemoryResult::Unmapped,
+       "rejects cross-page host span when physical pages are noncontiguous");
+
  check(mmu.map_page(0x2001,0x6000,3)==MemoryResult::AlignmentFault,"rejects unaligned map");
  check(mmu.map_bat(0,0x80000,0x40000,128U*1024U,3)==MemoryResult::Ok,
        "maps aligned BAT-style block");
