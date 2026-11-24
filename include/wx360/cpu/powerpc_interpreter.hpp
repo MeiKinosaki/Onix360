@@ -88,12 +88,23 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         return true;
     };
     const auto write_memory = [&](std::uint64_t address, std::span<const std::uint8_t> input) noexcept {
-        if (bus && bus->write) return bus->write(bus->context, address, input);
-        if (address > memory.size() || input.size() > memory.size() - static_cast<std::size_t>(address))
-            return false;
-        for (std::size_t i = 0; i < input.size(); ++i)
-            memory[static_cast<std::size_t>(address) + i] = input[i];
-        return true;
+        bool written = false;
+        if (bus && bus->write) {
+            written = bus->write(bus->context, address, input);
+        } else {
+            if (address > memory.size() || input.size() > memory.size() - static_cast<std::size_t>(address))
+                return false;
+            for (std::size_t i = 0; i < input.size(); ++i)
+                memory[static_cast<std::size_t>(address) + i] = input[i];
+            written = true;
+        }
+        if (written && state.reservation_valid && !input.empty()) {
+            const std::uint64_t first = address & ~std::uint64_t{31};
+            const std::uint64_t last = (address + input.size() - 1U) & ~std::uint64_t{31};
+            if (first <= state.reservation_address && state.reservation_address <= last)
+                state.reservation_valid = false;
+        }
+        return written;
     };
     std::uint64_t result = 0;
     bool writes_result = false;
