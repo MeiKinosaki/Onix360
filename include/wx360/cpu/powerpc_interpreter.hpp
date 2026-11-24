@@ -411,6 +411,51 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         state.fpr[d.rt] = std::bit_cast<std::uint64_t>(value);
         break;
     }
+    case 4: { // VMX/AltiVec three-register arithmetic subset.
+        const unsigned vd = d.rt, va = d.ra, vb = d.rb;
+        auto& out = state.vr[vd];
+        const auto& a = state.vr[va];
+        const auto& b = state.vr[vb];
+        const unsigned xo = d.xo;
+        if (xo == 0U || xo == 1024U) { // vaddubm / vsububm
+            for (unsigned lane = 0; lane < 4; ++lane) {
+                std::uint32_t value = 0;
+                for (unsigned byte = 0; byte < 4; ++byte) {
+                    const unsigned shift = 24U - byte * 8U;
+                    const unsigned x = (a.lane[lane] >> shift) & 0xFFU;
+                    const unsigned y = (b.lane[lane] >> shift) & 0xFFU;
+                    const unsigned z = xo == 0U ? x + y : x - y;
+                    value |= (z & 0xFFU) << shift;
+                }
+                out.lane[lane] = value;
+            }
+        } else if (xo == 64U || xo == 1088U) { // vadduhm / vsubuhm
+            for (unsigned lane = 0; lane < 4; ++lane) {
+                const std::uint32_t x = a.lane[lane], y = b.lane[lane];
+                const std::uint32_t hi = xo == 64U
+                    ? (((x >> 16U) + (y >> 16U)) & 0xFFFFU)
+                    : (((x >> 16U) - (y >> 16U)) & 0xFFFFU);
+                const std::uint32_t lo = xo == 64U
+                    ? (((x & 0xFFFFU) + (y & 0xFFFFU)) & 0xFFFFU)
+                    : (((x & 0xFFFFU) - (y & 0xFFFFU)) & 0xFFFFU);
+                out.lane[lane] = (hi << 16U) | lo;
+            }
+        } else if (xo == 128U || xo == 1152U) { // vadduwm / vsubuwm
+            for (unsigned lane = 0; lane < 4; ++lane)
+                out.lane[lane] = xo == 128U ? a.lane[lane] + b.lane[lane]
+                                            : a.lane[lane] - b.lane[lane];
+        } else if (xo == 10U || xo == 74U) { // vaddfp / vsubfp
+            for (unsigned lane = 0; lane < 4; ++lane) {
+                const float x = std::bit_cast<float>(a.lane[lane]);
+                const float y = std::bit_cast<float>(b.lane[lane]);
+                out.lane[lane] = std::bit_cast<std::uint32_t>(
+                    xo == 10U ? x + y : x - y);
+            }
+        } else {
+            return StepResult::UnsupportedInstruction;
+        }
+        break;
+    }
     case 31:
         switch (d.xo) {
         case 20: { // lwarx: load word and establish a reservation.
