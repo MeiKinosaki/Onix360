@@ -452,6 +452,15 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
                 out.lane[lane] = std::bit_cast<std::uint32_t>(
                     xo == 10U ? x + y : x - y);
             }
+        } else if (xo == 1028U || xo == 1092U || xo == 1156U ||
+                   xo == 1220U || xo == 1284U) { // vand/vandc/vor/vxor/vnor
+            for (unsigned lane = 0; lane < 4; ++lane) {
+                if (xo == 1028U) out.lane[lane] = a.lane[lane] & b.lane[lane];
+                else if (xo == 1092U) out.lane[lane] = a.lane[lane] & ~b.lane[lane];
+                else if (xo == 1156U) out.lane[lane] = a.lane[lane] | b.lane[lane];
+                else if (xo == 1220U) out.lane[lane] = a.lane[lane] ^ b.lane[lane];
+                else out.lane[lane] = ~(a.lane[lane] | b.lane[lane]);
+            }
         } else {
             return StepResult::UnsupportedInstruction;
         }
