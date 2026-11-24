@@ -7,6 +7,7 @@
 #include "wx360/xex/xex_image_loader.hpp"
 #include "wx360/audio/audio_engine.hpp"
 #include "wx360/input/controller_state.hpp"
+#include "wx360/input/xinput_backend.hpp"
 #include "wx360/gpu/xenos_command_processor.hpp"
 
 namespace wx360::machine {
@@ -28,6 +29,11 @@ struct XenonCore {
     kernel::KernelRuntime* kernel_runtime{nullptr};
     gpu::XenosCommandProcessor gpu{};
     input::ControllerState controller{};
+    input::XInputBackend xinput{};
+
+    [[nodiscard]] bool poll_controller(unsigned user_index = 0) noexcept {
+        return xinput.poll(controller, user_index);
+    }
     audio::AudioEngine audio{};
     memory::AddressSpace address_space{};
     bool mmu_enabled{false};
