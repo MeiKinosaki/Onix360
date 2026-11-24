@@ -760,6 +760,13 @@ int main() {
           "failed STWCX does not modify memory and clears CR0 EQ");
     check(execute(s, indexed(7, 3, 5, 20), indexed_ram) == StepResult::Executed,
           "LWARX can establish a new reservation");
+    s.gpr[5] = 4; s.gpr[7] = 0xCAFEBABEU;
+    check(execute(s, indexed(7, 3, 5, 150, true), indexed_ram) == StepResult::Executed &&
+          s.condition_field(0) == 0 && indexed_ram[4] == 0,
+          "STWCX at a different word in the same reservation granule must fail");
+    s.gpr[5] = 0;
+    check(execute(s, indexed(7, 3, 5, 20), indexed_ram) == StepResult::Executed,
+          "LWARX restores reservation at exact word address");
     s.gpr[8] = 0xDEADBEEFU;
     check(execute(s, d_form(36, 8, 3, 4), indexed_ram) == StepResult::Executed,
           "ordinary store executes while reservation is active");
