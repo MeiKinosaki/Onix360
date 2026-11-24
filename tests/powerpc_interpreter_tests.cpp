@@ -863,7 +863,7 @@ int main() {
           s.gpr[6] == 5U,
           "DIVWU performs unsigned word division");
     s.reset(0x6040);
-    check(execute(s, x_form(6, 3, 5, 491, true)) == StepResult::UnsupportedInstruction,
+    check(execute(s, (x_form(6, 3, 5, 491) | (1U << 10U))) == StepResult::UnsupportedInstruction,
           "DIVW rejects OE variant until overflow semantics are implemented");
 
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
