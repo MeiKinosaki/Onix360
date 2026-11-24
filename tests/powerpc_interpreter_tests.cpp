@@ -641,5 +641,39 @@ int main() {
     check(execute(s, d_form(46, 30, 0, 0), short_multiple_ram) == StepResult::MemoryFault,
           "LMW reports incomplete memory range");
 
+    // Indexed loads/stores: XO 23 is LWZX; XO 20 is LWARX.
+    std::array<std::uint8_t, 16> indexed_ram{
+        0x12,0x34,0x56,0x78, 0,0,0,0, 0,0,0,0, 0,0,0,0
+    };
+    const auto indexed = [](unsigned rt, unsigned ra, unsigned rb, unsigned xo, bool rc = false) {
+        return (31U << 26U) | (rt << 21U) | (ra << 16U) |
+               (rb << 11U) | (xo << 1U) | (rc ? 1U : 0U);
+    };
+    s.reset(0x3000);
+    s.gpr[3] = 0; s.gpr[5] = 0;
+    check(execute(s, indexed(6, 3, 5, 23), indexed_ram) == StepResult::Executed &&
+          s.gpr[6] == 0x12345678U, "LWZX reads indexed word");
+    check(execute(s, indexed(7, 3, 5, 20), indexed_ram) == StepResult::Executed &&
+          s.gpr[7] == 0x12345678U && s.reservation_valid,
+          "LWARX loads word and establishes reservation");
+    s.gpr[7] = 0xA1B2C3D4U;
+    check(execute(s, indexed(7, 3, 5, 150, true), indexed_ram) == StepResult::Executed,
+          "STWCX executes with Rc set");
+    check(indexed_ram[0] == 0xA1 && indexed_ram[1] == 0xB2 &&
+          indexed_ram[2] == 0xC3 && indexed_ram[3] == 0xD4 &&
+          s.condition_field(0) == 0x2 && !s.reservation_valid,
+          "STWCX stores when reservation matches and sets CR0 EQ");
+    s.gpr[7] = 0x55667788U;
+    check(execute(s, indexed(7, 3, 5, 150, true), indexed_ram) == StepResult::Executed,
+          "STWCX without reservation completes as failed conditional store");
+    check(indexed_ram[0] == 0xA1 && s.condition_field(0) == 0,
+          "failed STWCX does not modify memory and clears CR0 EQ");
+    check(execute(s, indexed(7, 3, 5, 20), indexed_ram) == StepResult::Executed,
+          "LWARX can establish a new reservation");
+    s.gpr[8] = 0xDEADBEEFU;
+    check(execute(s, d_form(36, 8, 3, 4), indexed_ram) == StepResult::Executed,
+          "ordinary store executes while reservation is active");
+    check(!s.reservation_valid, "overlapping ordinary store invalidates reservation");
+
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
