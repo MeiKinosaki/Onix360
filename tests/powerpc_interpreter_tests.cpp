@@ -774,6 +774,32 @@ int main() {
           "ordinary store executes while reservation is active");
     check(!s.reservation_valid, "overlapping ordinary store invalidates reservation");
 
+    // XL-form BCLR: branch through LR, with BO/BI condition handling.
+    s.reset(0x5000);
+    s.lr = 0x2347;
+    const std::uint32_t bclr = (19U << 26U) | (20U << 21U) | (16U << 1U);
+    check(execute(s, bclr) == StepResult::Executed && s.pc == 0x2344U,
+          "BCLR branches to aligned link-register target");
+    s.reset(0x5100);
+    s.lr = 0x3450;
+    s.set_condition_field(0, 0x2U); // EQ=1
+    const std::uint32_t bclr_if_eq = (19U << 26U) | (12U << 21U) |
+        (2U << 16U) | (16U << 1U);
+    check(execute(s, bclr_if_eq) == StepResult::Executed && s.pc == 0x3450U,
+          "BCLR honors selected CR condition bit");
+    s.reset(0x5200);
+    s.lr = 0x4560;
+    s.set_condition_field(0, 0x4U); // EQ=0
+    check(execute(s, bclr_if_eq) == StepResult::Executed && s.pc == 0x5204U,
+          "BCLR falls through when CR condition is false");
+    s.reset(0x5300);
+    s.lr = 0x5670;
+    s.ctr = 2;
+    const std::uint32_t bclr_ctr = (19U << 26U) | (16U << 21U) |
+        (16U << 1U);
+    check(execute(s, bclr_ctr) == StepResult::Executed && s.pc == 0x5304U &&
+          s.ctr == 1U, "BCLR decrements CTR when BO requests count test");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
