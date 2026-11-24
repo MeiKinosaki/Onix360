@@ -38,9 +38,11 @@ std::vector<std::uint8_t> make_synthetic_xbox_pe() {
     put32(image, section + 8, 0x100); put32(image, section + 12, 0x1000);
     put32(image, section + 16, 0x200); put32(image, section + 20, static_cast<std::uint32_t>(raw));
     put32(image, section + 36, 0x60000020);
-    // Synthetic PPC payload: addi r3,0,42; addi r4,0,7.
+    // Synthetic PPC payload: ADDI r3,0,42; ADDI r4,0,7; STW r3,0x20(0); LWZ r5,0x20(0).
     put_be32(image, raw, 0x3860002AU);
     put_be32(image, raw + 4U, 0x38800007U);
+    put_be32(image, raw + 8U, 0x90600020U);
+    put_be32(image, raw + 12U, 0x80A00020U);
     return image;
 }
 std::vector<std::uint8_t> make_synthetic_xex2(const std::vector<std::uint8_t>& pe) {
@@ -129,6 +131,16 @@ int main() {
         std::cerr << "Second Xenon instruction did not execute from synthetic XEX2\n";
         return EXIT_FAILURE;
     }
-    std::cout << "WX360 synthetic XEX2-to-two-Xenon-instructions test passed\n";
+    if (core.step(ram) != machine::RunResult::Executed ||
+        core.state.pc != validated->entry_point() + 12) {
+        std::cerr << "STW did not execute from synthetic XEX2\n";
+        return EXIT_FAILURE;
+    }
+    if (core.step(ram) != machine::RunResult::Executed ||
+        core.state.gpr[5] != 42 || core.state.pc != validated->entry_point() + 16) {
+        std::cerr << "LWZ did not read back synthetic XEX2 guest memory\n";
+        return EXIT_FAILURE;
+    }
+    std::cout << "WX360 synthetic XEX2-to-four-Xenon-instructions test passed\n";
     return EXIT_SUCCESS;
 }
