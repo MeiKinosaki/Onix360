@@ -314,6 +314,16 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         case 136: value = -std::fabs(a); break; // fnabs
         default: return StepResult::UnsupportedInstruction;
         }
+        // Sticky FPSCR summary and primary exception classes.
+        if (std::isnan(value) && !std::isnan(a) && !std::isnan(b))
+            state.fpscr |= 0xA0000000U; // FX | VX
+        if (std::isinf(value) && std::isfinite(a) && std::isfinite(b))
+            state.fpscr |= 0x90000000U; // FX | OX
+        if (value == 0.0 && a != 0.0 && b != 0.0 &&
+            std::isfinite(a) && std::isfinite(b))
+            state.fpscr |= 0x88000000U; // FX | UX
+        if (fp_xo == 18U && b == 0.0 && a != 0.0)
+            state.fpscr |= 0x84000000U; // FX | ZX
         state.fpr[d.rt] = std::bit_cast<std::uint64_t>(value);
         break;
     }
