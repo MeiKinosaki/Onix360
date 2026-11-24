@@ -22,6 +22,9 @@ struct XexImport {
     std::uint16_t ordinal{};
     std::uint64_t thunk_address{};
     ImportKind kind{ImportKind::Function};
+    // Address of the 32-bit XEX metadata record; never a patch destination.
+    std::uint64_t value_address{};
+    std::uint8_t library_index{};
 };
 
 struct KernelExport {
