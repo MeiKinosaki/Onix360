@@ -53,8 +53,8 @@ public:
         for (auto& e : entries_) if (e.valid && e.vpn == vpn) e.valid = false;
     }
     void flush() noexcept {
+        // A TLB invalidation must not erase persistent BAT register mappings.
         for (auto& e : entries_) e.valid = false;
-        for (auto& bat : bats_) bat.valid = false;
         replacement_ = 0;
     }
     [[nodiscard]] Translation translate(std::uint64_t va, Access access,
