@@ -71,6 +71,7 @@ int main() {
     virtual_core.state.reset(0x1100);
     check(virtual_core.map_guest_page(0x1000, 0x0000,
           static_cast<std::uint8_t>(memory::Access::Read) |
+          static_cast<std::uint8_t>(memory::Access::Write) |
           static_cast<std::uint8_t>(memory::Access::Execute)) == memory::MemoryResult::Ok,
           "map guest virtual page to physical page");
     check(virtual_core.step(virtual_ram) == machine::RunResult::Executed,
