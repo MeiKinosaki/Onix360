@@ -63,6 +63,21 @@ int main() {
           data_core.state.dar == 0x101,
           "data alignment exception saves effective address in DAR");
 
+    // Exercise guest virtual instruction fetch through the page translator.
+    memory::PhysicalMemory virtual_ram(0x4000);
+    check(virtual_ram.write(0x100, addi) == memory::MemoryResult::Ok,
+          "place instruction at translated physical address");
+    machine::XenonCore virtual_core;
+    virtual_core.state.reset(0x1100);
+    check(virtual_core.map_guest_page(0x1000, 0x0000,
+          static_cast<std::uint8_t>(memory::Access::Read) |
+          static_cast<std::uint8_t>(memory::Access::Execute)) == memory::MemoryResult::Ok,
+          "map guest virtual page to physical page");
+    check(virtual_core.step(virtual_ram) == machine::RunResult::Executed,
+          "fetches instruction through virtual address translation");
+    check(virtual_core.state.gpr[3] == 42 && virtual_core.state.pc == 0x1104,
+          "translated fetch preserves virtual PC progression");
+
     if (failures == 0) std::cout << "WX360 Xenon core integration tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
