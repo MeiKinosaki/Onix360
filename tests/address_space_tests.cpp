@@ -30,6 +30,9 @@ int main() {
        "BAT-style block translation preserves offset");
  check(mmu.translate(0x81234,Access::Execute,ram).result==MemoryResult::PermissionDenied,
        "BAT-style block enforces permissions");
+ mmu.flush();
+ check(mmu.translate(0x81234,Access::Read,ram).result==MemoryResult::Ok,
+       "TLB flush preserves persistent BAT-style block mapping");
  check(mmu.map_bat(1,0x81000,0x41000,128U*1024U,3)==MemoryResult::AlignmentFault,
        "BAT-style block rejects misaligned bases");
  check(mmu.map_bat(8,0x80000,0x40000,128U*1024U,3)==MemoryResult::AlignmentFault,
