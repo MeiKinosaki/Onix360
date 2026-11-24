@@ -34,6 +34,35 @@ struct XenonCore {
     }
 
     // Only the loader-minted validation token can start execution.
+    // Explicit guest data accessors share the same translator as instruction fetch.
+    // The current interpreter still needs a memory-bus callback before all load/store
+    // opcodes can use these accessors transparently.
+    [[nodiscard]] memory::MemoryResult read_guest(
+        memory::PhysicalMemory& ram, std::uint64_t guest_address,
+        std::span<std::uint8_t> output) const noexcept {
+        std::uint64_t physical_address = guest_address;
+        if (mmu_enabled) {
+            const auto translated = address_space.translate_range(
+                guest_address, output.size(), memory::Access::Read, ram);
+            if (translated.result != memory::MemoryResult::Ok) return translated.result;
+            physical_address = translated.physical_address;
+        }
+        return ram.read(physical_address, output, memory::Access::Read);
+    }
+
+    [[nodiscard]] memory::MemoryResult write_guest(
+        memory::PhysicalMemory& ram, std::uint64_t guest_address,
+        std::span<const std::uint8_t> input) const noexcept {
+        std::uint64_t physical_address = guest_address;
+        if (mmu_enabled) {
+            const auto translated = address_space.translate_range(
+                guest_address, input.size(), memory::Access::Write, ram);
+            if (translated.result != memory::MemoryResult::Ok) return translated.result;
+            physical_address = translated.physical_address;
+        }
+        return ram.write(physical_address, input);
+    }
+
     [[nodiscard]] LaunchResult start_xex(
         const xex::ValidatedXexImage& image, memory::PhysicalMemory& ram) noexcept {
         std::uint32_t first_instruction = 0;
