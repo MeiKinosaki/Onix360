@@ -676,6 +676,31 @@ int main() {
           s.vr[3].lane[0] == (0xFF01FE02U ^ 0x01020304U), "VMX VXOR executes");
     check(execute(s, vx_form(3, 1, 2, 1156)) == StepResult::Executed &&
           s.vr[3].lane[0] == (0xFF01FE02U | 0x01020304U), "VMX VOR executes");
+    std::array<std::uint8_t, 32> vector_ram{
+        0x01,0x23,0x45,0x67, 0x89,0xAB,0xCD,0xEF,
+        0x10,0x32,0x54,0x76, 0x98,0xBA,0xDC,0xFE,
+        0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
+    };
+    s.gpr[5] = 3;
+    check(execute(s, indexed(10, 0, 5, 103), vector_ram) == StepResult::Executed &&
+          s.vr[10].lane == std::array<std::uint32_t,4>{
+              0x01234567U,0x89ABCDEFU,0x10325476U,0x98BADCFEU},
+          "LVX loads aligned 128-bit vector in big-endian lane order");
+    s.vr[11].lane = {0x11223344U,0x55667788U,0x99AABBCCU,0xDDEEFF00U};
+    s.gpr[5] = 19;
+    check(execute(s, indexed(11, 0, 5, 231), vector_ram) == StepResult::Executed,
+          "STVX stores aligned 128-bit vector");
+    check(vector_ram[16] == 0x11 && vector_ram[19] == 0x44 &&
+          vector_ram[20] == 0x55 && vector_ram[23] == 0x88 &&
+          vector_ram[24] == 0x99 && vector_ram[27] == 0xCC &&
+          vector_ram[28] == 0xDD && vector_ram[31] == 0x00,
+          "STVX writes four big-endian vector lanes");
+    check(execute(s, indexed(12, 0, 5, 359), vector_ram) == StepResult::Executed &&
+          s.vr[12].lane == s.vr[11].lane, "LVXL loads vector from aligned block");
+    s.gpr[5] = 32;
+    check(execute(s, indexed(12, 0, 5, 103), vector_ram) == StepResult::MemoryFault,
+          "LVX reports vector read beyond memory");
+
 
     // LMW/STMW: complete big-endian register-window transfers.
     std::array<std::uint8_t, 16> multiple_ram{
