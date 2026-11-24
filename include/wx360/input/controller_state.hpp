@@ -31,7 +31,8 @@ struct ControllerState {
         const int magnitude = std::abs(raw);
         if (magnitude <= bounded_deadzone) return 0.0F;
         const float range = 32767.0F - static_cast<float>(bounded_deadzone);
-        const float scaled = (static_cast<float>(magnitude - bounded_deadzone) / range);
+        const float scaled = std::clamp(
+            static_cast<float>(magnitude - bounded_deadzone) / range, 0.0F, 1.0F);
         return raw < 0 ? -scaled : scaled;
     }
 
