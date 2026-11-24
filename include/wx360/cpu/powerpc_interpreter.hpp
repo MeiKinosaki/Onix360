@@ -2,6 +2,8 @@
 
 #include "wx360/cpu/xenon_state.hpp"
 
+#include <bit>
+#include <cmath>
 #include <cstdint>
 #include <span>
 
@@ -245,6 +247,24 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         state.msr = state.srr1;
         state.clear_exception();
         branch_taken = true;
+        break;
+    }
+    case 63: { // Double-precision floating-point arithmetic subset.
+        const double a = std::bit_cast<double>(state.fpr[d.ra]);
+        const double b = std::bit_cast<double>(state.fpr[d.rb]);
+        double value = 0.0;
+        switch (d.xo) {
+        case 18: value = a / b; break; // fdiv
+        case 20: value = a - b; break; // fsub
+        case 21: value = a + b; break; // fadd
+        case 25: { // fmul uses FRC in bits 6..10.
+            const unsigned frc = (instruction >> 6U) & 0x1FU;
+            value = a * std::bit_cast<double>(state.fpr[frc]);
+            break;
+        }
+        default: return StepResult::UnsupportedInstruction;
+        }
+        state.fpr[d.rt] = std::bit_cast<std::uint64_t>(value);
         break;
     }
     case 31:
