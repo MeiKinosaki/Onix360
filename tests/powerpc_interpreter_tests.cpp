@@ -613,5 +613,33 @@ int main() {
     check(s.pc == unsupported_spr_pc, "unsupported MFSPR leaves PC unchanged");
 
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
+    // LMW/STMW: complete big-endian register-window transfers.
+    std::array<std::uint8_t, 16> multiple_ram{
+        0x11,0x22,0x33,0x44, 0x55,0x66,0x77,0x88,
+        0x99,0xAA,0xBB,0xCC, 0xDD,0xEE,0xF0,0x01
+    };
+    s.reset(0x2000);
+    check(execute(s, d_form(46, 28, 0, 0), multiple_ram) == StepResult::Executed,
+          "LMW loads GPR28 through GPR31");
+    check(s.gpr[28] == 0x11223344U && s.gpr[29] == 0x55667788U &&
+          s.gpr[30] == 0x99AABBCCU && s.gpr[31] == 0xDDEEF001U,
+          "LMW loads all registers in big-endian order");
+    s.gpr[28] = 0x01020304U; s.gpr[29] = 0x11223344U;
+    s.gpr[30] = 0x55667788U; s.gpr[31] = 0x99AABBCCU;
+    check(execute(s, d_form(47, 28, 0, 0), multiple_ram) == StepResult::Executed,
+          "STMW stores GPR28 through GPR31");
+    check(multiple_ram[0] == 0x01 && multiple_ram[3] == 0x04 &&
+          multiple_ram[4] == 0x11 && multiple_ram[7] == 0x44 &&
+          multiple_ram[8] == 0x55 && multiple_ram[11] == 0x88 &&
+          multiple_ram[12] == 0x99 && multiple_ram[15] == 0xCC,
+          "STMW writes all registers in big-endian order");
+    const auto multiple_fault_pc = s.pc;
+    check(execute(s, d_form(46, 28, 0, 1), multiple_ram) == StepResult::AlignmentFault,
+          "LMW rejects unaligned address");
+    check(s.pc == multiple_fault_pc, "unaligned LMW leaves PC unchanged");
+    std::array<std::uint8_t, 8> short_multiple_ram{};
+    check(execute(s, d_form(46, 30, 0, 0), short_multiple_ram) == StepResult::MemoryFault,
+          "LMW reports incomplete memory range");
+
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
