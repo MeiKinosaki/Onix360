@@ -893,9 +893,10 @@ int main() {
     s.reset(0x6080);
     s.gpr[3] = UINT64_MAX;
     s.gpr[5] = 1U;
+    s.xer = xer_ov | xer_so;
     check(execute(s, x_form(6, 3, 5, 266) | (1U << 10U)) == StepResult::Executed &&
-          s.gpr[6] == 0U && (s.xer & (xer_ov | xer_so)) == (xer_ov | xer_so),
-          "ADD with OE reports positive signed overflow");
+          s.gpr[6] == 0U && (s.xer & xer_ov) == 0 && (s.xer & xer_so) != 0,
+          "ADD with OE does not report overflow for negative one plus one");
     s.reset(0x6090);
     s.gpr[3] = 0x7FFFFFFFFFFFFFFFULL;
     s.gpr[5] = 1U;
@@ -907,7 +908,7 @@ int main() {
     s.gpr[3] = 0x8000000000000000ULL;
     s.gpr[5] = 1U;
     check(execute(s, x_form(6, 3, 5, 40) | (1U << 10U)) == StepResult::Executed &&
-          s.gpr[6] == 0x7FFFFFFFFFFFFFFFULL &&
+          s.gpr[6] == 0x8000000000000001ULL &&
           (s.xer & (xer_ov | xer_so)) == (xer_ov | xer_so),
           "SUBF with OE reports signed subtraction overflow");
     s.reset(0x60B0);
