@@ -693,7 +693,7 @@ int main() {
     check(execute(s, vx_form(3, 1, 2, 130)) == StepResult::Executed &&
           s.vr[3].lane[1] == 0x7FFFFFFFU &&
           s.vr[3].lane[2] == 0U, "VMX VMINUW compares 32-bit lanes as unsigned");
-    check(execute(s, vx_form(3, 1, 2, 642)) == StepResult::Executed &&
+    check(execute(s, vx_form(3, 1, 2, 386)) == StepResult::Executed &&
           s.vr[3].lane[0] == 0xFF0180FEU &&
           s.vr[3].lane[1] == 0x80000001U &&
           s.vr[3].lane[3] == 0x80000000U, "VMX VMINSW compares 32-bit lanes as signed");
