@@ -6,8 +6,8 @@
 #include <vector>
 
 namespace wx360::audio {
-// Bounded host-side PCM16 stereo queue. This is a staging interface only:
-// XMA decoding and native audio-device playback are not implemented.
+// Bounded host-side PCM16 stereo queue with optional Windows device playback.
+// Xbox 360 XMA decoding and mixing are not implemented.
 class AudioEngine {
 public:
     explicit AudioEngine(std::size_t max_frames = 16384) : max_frames_(max_frames) {}
