@@ -23,6 +23,14 @@ int main() {
  check(std::bit_cast<float>(vm.lane[0])==3.75F && std::bit_cast<float>(vm.lane[2])==-5.0F,"VMX vector float multiply");
  auto m=vmx::max_s32(s.vr[0],s.vr[1]);
  check(m.lane[0]==4U && m.lane[1]==3U,"signed vector maximum");
+ auto min_signed_words=vmx::min_s32(s.vr[0],s.vr[1]);
+ check(min_signed_words.lane[0]==1U && min_signed_words.lane[1]==2U &&
+       min_signed_words.lane[2]==0xFFFFFFFFU && min_signed_words.lane[3]==2U,
+       "signed vector word minimum");
+ auto min_unsigned_words=vmx::min_u32(s.vr[0],s.vr[1]);
+ check(min_unsigned_words.lane[0]==1U && min_unsigned_words.lane[1]==2U &&
+       min_unsigned_words.lane[2]==1U && min_unsigned_words.lane[3]==2U,
+       "unsigned vector word minimum");
  auto ac=vmx::bit_andc(s.vr[0],s.vr[1]);
  check(ac.lane[0]==1U && ac.lane[1]==0U,"VMX AND-complement");
  auto no=vmx::bit_nor(s.vr[0],s.vr[1]);
