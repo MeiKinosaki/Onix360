@@ -890,6 +890,33 @@ int main() {
     check(execute(s, x_form(6, 3, 5, 491) | (1U << 10U)) == StepResult::Executed &&
           (s.xer & (xer_ov | xer_so)) == (xer_ov | xer_so),
           "DIVW with OE reports signed minimum divided by negative one");
+    s.reset(0x6080);
+    s.gpr[3] = UINT64_MAX;
+    s.gpr[5] = 1U;
+    check(execute(s, x_form(6, 3, 5, 266) | (1U << 10U)) == StepResult::Executed &&
+          s.gpr[6] == 0U && (s.xer & (xer_ov | xer_so)) == (xer_ov | xer_so),
+          "ADD with OE reports positive signed overflow");
+    s.reset(0x6090);
+    s.gpr[3] = 0x7FFFFFFFFFFFFFFFULL;
+    s.gpr[5] = 1U;
+    check(execute(s, x_form(6, 3, 5, 266) | (1U << 10U)) == StepResult::Executed &&
+          s.gpr[6] == 0x8000000000000000ULL &&
+          (s.xer & (xer_ov | xer_so)) == (xer_ov | xer_so),
+          "ADD with OE reports maximum positive plus one");
+    s.reset(0x60A0);
+    s.gpr[3] = 0x8000000000000000ULL;
+    s.gpr[5] = 1U;
+    check(execute(s, x_form(6, 3, 5, 40) | (1U << 10U)) == StepResult::Executed &&
+          s.gpr[6] == 0x7FFFFFFFFFFFFFFFULL &&
+          (s.xer & (xer_ov | xer_so)) == (xer_ov | xer_so),
+          "SUBF with OE reports signed subtraction overflow");
+    s.reset(0x60B0);
+    s.gpr[3] = 123U;
+    s.gpr[5] = 0U;
+    check(execute(s, x_form(6, 3, 5, 459) | (1U << 10U)) == StepResult::Executed &&
+          (s.xer & (xer_ov | xer_so)) == (xer_ov | xer_so),
+          "DIVWU with OE reports division by zero");
+
 
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
