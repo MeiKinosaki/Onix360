@@ -1,4 +1,5 @@
 #pragma once
+#include "wx360/audio/windows_pcm_output.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -28,6 +29,17 @@ public:
         pending_.erase(pending_.begin(),
                        pending_.begin() + static_cast<std::ptrdiff_t>(samples));
     }
+    // Plays the queued block through the host device. Failed playback keeps
+    // the samples queued so the caller can retry or inspect the error.
+    [[nodiscard]] bool play_pending(std::uint32_t sample_rate = 48000U) noexcept {
+        if (pending_.empty() || !output_.play(pending_, sample_rate)) return false;
+        pending_.clear();
+        return true;
+    }
+    [[nodiscard]] std::uint32_t last_output_error() const noexcept {
+        return output_.last_error();
+    }
+
     void reset() noexcept { pending_.clear(); }
     [[nodiscard]] const std::vector<std::int16_t>& pending() const noexcept { return pending_; }
     [[nodiscard]] std::size_t frames() const noexcept { return pending_.size() / 2U; }
@@ -35,5 +47,6 @@ public:
 private:
     std::size_t max_frames_;
     std::vector<std::int16_t> pending_;
+    WindowsPcmOutput output_{};
 };
 }
