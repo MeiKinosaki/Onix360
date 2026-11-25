@@ -57,7 +57,7 @@ int main() {
        "VMX signed byte saturating add clamps to signed 8-bit range");
  auto signed_sub_sat=vmx::sub_sat_s8(s.vr[8],s.vr[9]);
  check(signed_sub_sat.lane[0]==0x7E80FF03U &&
-       signed_sub_sat.lane[1]==0x817F8002U,
+       signed_sub_sat.lane[1]==0x81807F02U,
        "VMX signed byte saturating subtract clamps to signed 8-bit range");
  auto signed_max=vmx::max_s8(s.vr[8],s.vr[9]);
  check(signed_max.lane[0]==0x7F01FF01U &&
