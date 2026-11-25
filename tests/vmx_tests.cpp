@@ -63,6 +63,14 @@ int main() {
  check(signed_max.lane[0]==0x7F01FF01U &&
        signed_max.lane[1]==0xFF017F01U,
        "VMX signed byte maximum compares signed lanes independently");
+ auto signed_min=vmx::min_s8(s.vr[8],s.vr[9]);
+ check(signed_min.lane[0]==0x7F80FEFEU &&
+       signed_min.lane[1]==0x80807F01U,
+       "VMX signed byte minimum compares signed lanes independently");
+ auto unsigned_min=vmx::min_u8(s.vr[8],s.vr[9]);
+ check(unsigned_min.lane[0]==0x0101FE01U &&
+       unsigned_min.lane[1]==0x80017F01U,
+       "VMX unsigned byte minimum compares unsigned lanes independently");
 
 
 
