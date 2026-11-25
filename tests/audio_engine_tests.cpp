@@ -13,6 +13,11 @@ int main() {
     if (audio.submit_pcm16({5, -5})) return EXIT_FAILURE;
     audio.consume_frames(2);
     if (audio.frames() != 2 || audio.pending()[0] != 3) return EXIT_FAILURE;
+    // Rejected device formats must not discard queued PCM.
+    if (!audio.submit_pcm16({7, -7})) return EXIT_FAILURE;
+    if (audio.play_pending(0U)) return EXIT_FAILURE;
+    if (audio.frames() != 1 || audio.pending()[0] != 7) return EXIT_FAILURE;
+    if (audio.last_output_error() == 0U) return EXIT_FAILURE;
     audio.consume_frames(99);
     if (audio.frames() != 0) return EXIT_FAILURE;
     audio.reset();
