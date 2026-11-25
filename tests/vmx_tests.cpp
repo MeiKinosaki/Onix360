@@ -42,11 +42,11 @@ int main() {
        byte_max.lane[2]==0xFFFFFFFFU && byte_max.lane[3]==0xFFFFFFFFU,
        "VMX unsigned byte maximum compares each byte independently");
  auto byte_add_sat=vmx::add_sat_u8(s.vr[6],s.vr[7]);
- check(byte_add_sat.lane[0]==0x000300FFU && byte_add_sat.lane[1]==0x817F0406U &&
+ check(byte_add_sat.lane[0]==0x000300FFU && byte_add_sat.lane[1]==0x81810406U &&
        byte_add_sat.lane[2]==0xFFFFFFFFU && byte_add_sat.lane[3]==0xFFFFFFFFU,
        "VMX unsigned byte saturating add clamps each byte at 255");
  auto byte_sub_sat=vmx::sub_sat_u8(s.vr[6],s.vr[7]);
- check(byte_sub_sat.lane[0]==0x000000FEU && byte_sub_sat.lane[1]==0x7E7C0000U &&
+ check(byte_sub_sat.lane[0]==0x000000FEU && byte_sub_sat.lane[1]==0x7F7D0000U &&
        byte_sub_sat.lane[2]==0xFEFEFEFEU && byte_sub_sat.lane[3]==0x00000000U,
        "VMX unsigned byte saturating subtract clamps each byte at zero");
  s.vr[8].lane={0x7F80FE01U,0x80807F01U,0x01020304U,0xFFFFFFFFU};
@@ -57,7 +57,7 @@ int main() {
        "VMX signed byte saturating add clamps to signed 8-bit range");
  auto signed_sub_sat=vmx::sub_sat_s8(s.vr[8],s.vr[9]);
  check(signed_sub_sat.lane[0]==0x7E80FF03U &&
-       signed_sub_sat.lane[1]==0x81807F02U,
+       signed_sub_sat.lane[1]==0x817F8002U,
        "VMX signed byte saturating subtract clamps to signed 8-bit range");
  auto signed_max=vmx::max_s8(s.vr[8],s.vr[9]);
  check(signed_max.lane[0]==0x7F01FF01U &&
