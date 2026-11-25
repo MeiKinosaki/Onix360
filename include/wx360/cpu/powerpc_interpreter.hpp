@@ -968,29 +968,53 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             record_32bit = true;
             break;
         }
-        case 459: case 971: { // divwu (OE=0): unsigned word division; zero divisor result is undefined
-            if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
+        case 459: case 971: { // divwu: unsigned word division; OE reports divide-by-zero.
             const auto dividend = static_cast<std::uint32_t>(state.gpr[d.ra]);
             const auto divisor = static_cast<std::uint32_t>(state.gpr[d.rb]);
-            const std::uint32_t quotient = divisor == 0U ? 0U : dividend / divisor;
+            const bool overflow = divisor == 0U;
+            const std::uint32_t quotient = overflow ? 0U : dividend / divisor;
+            if (d.xo == 971U) {
+                constexpr std::uint64_t xer_ov = std::uint64_t{1} << 30U;
+                constexpr std::uint64_t xer_so = std::uint64_t{1} << 31U;
+                state.xer = overflow ? (state.xer | xer_ov | xer_so)
+                                     : (state.xer & ~xer_ov);
+            }
             result = quotient;
             destination = d.rt;
             writes_result = true;
             record_32bit = true;
             break;
         }
-        case 266: // add (OE=0 only)
-            if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
-            result = state.gpr[d.ra] + state.gpr[d.rb];
+        case 266: case 778: { // add: OE updates XER[OV,SO] using signed 64-bit overflow.
+            const std::uint64_t lhs = state.gpr[d.ra];
+            const std::uint64_t rhs = state.gpr[d.rb];
+            result = lhs + rhs;
+            if (d.xo == 778U) {
+                constexpr std::uint64_t xer_ov = std::uint64_t{1} << 30U;
+                constexpr std::uint64_t xer_so = std::uint64_t{1} << 31U;
+                const bool overflow = ((~(lhs ^ rhs) & (lhs ^ result)) >> 63U) != 0;
+                state.xer = overflow ? (state.xer | xer_ov | xer_so)
+                                     : (state.xer & ~xer_ov);
+            }
             destination = d.rt;
             writes_result = true;
             break;
-        case 40: // subf (OE=0 only)
-            if ((instruction & (1U << 10U)) != 0) return StepResult::UnsupportedInstruction;
-            result = state.gpr[d.rb] - state.gpr[d.ra];
+        }
+        case 40: case 552: { // subf: RB - RA; OE updates signed 64-bit overflow.
+            const std::uint64_t lhs = state.gpr[d.rb];
+            const std::uint64_t rhs = state.gpr[d.ra];
+            result = lhs - rhs;
+            if (d.xo == 552U) {
+                constexpr std::uint64_t xer_ov = std::uint64_t{1} << 30U;
+                constexpr std::uint64_t xer_so = std::uint64_t{1} << 31U;
+                const bool overflow = (((lhs ^ rhs) & (lhs ^ result)) >> 63U) != 0;
+                state.xer = overflow ? (state.xer | xer_ov | xer_so)
+                                     : (state.xer & ~xer_ov);
+            }
             destination = d.rt;
             writes_result = true;
             break;
+        }
         case 316: // xor
             result = state.gpr[d.rt] ^ state.gpr[d.rb];
             destination = d.ra;
