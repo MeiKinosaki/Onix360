@@ -10,6 +10,12 @@
 #include "wx360/input/xinput_backend.hpp"
 #include "wx360/gpu/xenos_command_processor.hpp"
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <vector>
+
 namespace wx360::machine {
 
 enum class RunResult : std::uint8_t {
@@ -45,7 +51,7 @@ struct XenonCore {
         std::size_t dword_count) {
         constexpr std::size_t max_command_dwords = 1U << 20U;
         if (dword_count == 0 || dword_count > max_command_dwords ||
-            guest_address > UINT64_MAX - dword_count * 4U)
+            guest_address > std::numeric_limits<std::uint64_t>::max() - dword_count * 4U)
             return false;
         std::vector<std::uint32_t> commands;
         commands.reserve(dword_count);
