@@ -916,6 +916,27 @@ int main() {
     check(execute(s, x_form(6, 3, 5, 459) | (1U << 10U)) == StepResult::Executed &&
           (s.xer & (xer_ov | xer_so)) == (xer_ov | xer_so),
           "DIVWU with OE reports division by zero");
+    s.reset(0x60C0);
+    s.gpr[3] = 1U;
+    s.gpr[5] = 2U;
+    s.xer = xer_ov | xer_so;
+    check(execute(s, x_form(6, 3, 5, 266) | (1U << 10U)) == StepResult::Executed &&
+          (s.xer & xer_ov) == 0 && (s.xer & xer_so) != 0,
+          "ADD with OE clears OV on success and preserves sticky SO");
+    s.reset(0x60D0);
+    s.gpr[3] = 0x7FFFFFFFFFFFFFFFULL;
+    s.gpr[5] = 1U;
+    check(execute(s, x_form(6, 3, 5, 778, true)) == StepResult::Executed &&
+          s.condition_field(0) == 0x9U,
+          "ADD. with OE records negative result and sticky SO in CR0");
+    s.reset(0x60E0);
+    s.gpr[3] = 123U;
+    s.gpr[5] = 7U;
+    s.xer = xer_ov | xer_so;
+    check(execute(s, x_form(6, 3, 5, 459) | (1U << 10U)) == StepResult::Executed &&
+          (s.xer & xer_ov) == 0 && (s.xer & xer_so) != 0,
+          "DIVWU with OE clears OV on success and preserves sticky SO");
+
 
 
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
