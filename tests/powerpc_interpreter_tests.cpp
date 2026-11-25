@@ -684,6 +684,18 @@ int main() {
           s.vr[3].lane[0] == (0xFF01FE02U ^ 0x01020304U), "VMX VXOR executes");
     check(execute(s, vx_form(3, 1, 2, 1156)) == StepResult::Executed &&
           s.vr[3].lane[0] == (0xFF01FE02U | 0x01020304U), "VMX VOR executes");
+    s.vr[1].lane = {0xFF0180FEU, 0x80000001U, 0xFFFFFFFFU, 0x7FFFFFFFU};
+    s.vr[2].lane = {0x0102FF7FU, 0x7FFFFFFFU, 0x00000000U, 0x80000000U};
+    check(execute(s, vx_form(3, 1, 2, 514)) == StepResult::Executed &&
+          s.vr[3].lane[0] == 0x0101807FU, "VMX VMINUB compares each byte as unsigned");
+    check(execute(s, vx_form(3, 1, 2, 770)) == StepResult::Executed &&
+          s.vr[3].lane[0] == 0xFF01FF7FU, "VMX VMINSB compares each byte as signed");
+    check(execute(s, vx_form(3, 1, 2, 642)) == StepResult::Executed &&
+          s.vr[3].lane[1] == 0x7FFFFFFFU &&
+          s.vr[3].lane[2] == 0U, "VMX VMINUW compares 32-bit lanes as unsigned");
+    check(execute(s, vx_form(3, 1, 2, 898)) == StepResult::Executed &&
+          s.vr[3].lane[0] == 0x80000001U &&
+          s.vr[3].lane[3] == 0x80000000U, "VMX VMINSW compares 32-bit lanes as signed");
     std::array<std::uint8_t, 32> vector_ram{
         0x01,0x23,0x45,0x67, 0x89,0xAB,0xCD,0xEF,
         0x10,0x32,0x54,0x76, 0x98,0xBA,0xDC,0xFE,
