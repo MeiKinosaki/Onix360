@@ -32,6 +32,16 @@ int main() {
  auto bytes=vmx::add_u8(s.vr[4],s.vr[5]);
  check(bytes.lane[0]==0x00010001U && bytes.lane[1]==0x02030405U,
        "VMX unsigned byte addition wraps each byte lane");
+ s.vr[6].lane={0x000100FFU,0x807F0102U,0xFFFFFFFFU,0x00000000U};
+ s.vr[7].lane={0x00020001U,0x01020304U,0x01010101U,0xFFFFFFFFU};
+ auto byte_sub=vmx::sub_u8(s.vr[6],s.vr[7]);
+ check(byte_sub.lane[0]==0x00FF00FEU && byte_sub.lane[1]==0x7F7DFEFEU,
+       "VMX unsigned byte subtraction wraps independently per byte");
+ auto byte_max=vmx::max_u8(s.vr[6],s.vr[7]);
+ check(byte_max.lane[0]==0x000200FFU && byte_max.lane[1]==0x807F0304U &&
+       byte_max.lane[2]==0xFFFFFFFFU && byte_max.lane[3]==0xFFFFFFFFU,
+       "VMX unsigned byte maximum compares each byte independently");
+
  s.set_fpscr_exception(0x10U);
  check((s.fpscr&0x10U)!=0,"FPSCR exception flag can be set");
  s.clear_fpscr_exceptions();
