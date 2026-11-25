@@ -503,11 +503,11 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
                 out.lane[lane] = std::bit_cast<std::uint32_t>(
                     xo == 10U ? x + y : x - y);
             }
-        } else if (xo == 514U || xo == 642U || xo == 770U || xo == 898U) {
+        } else if (xo == 2U || xo == 130U || xo == 514U || xo == 642U) {
             // vminub, vminuw, vminsb and vminsw. Compare lanes at their
             // architectural element width; vector words are stored big-endian.
             for (unsigned lane = 0; lane < 4; ++lane) {
-                if (xo == 514U) { // unsigned byte minimum
+                if (xo == 2U) { // unsigned byte minimum
                     std::uint32_t value = 0;
                     for (unsigned byte = 0; byte < 4; ++byte) {
                         const unsigned shift = 24U - byte * 8U;
@@ -516,7 +516,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
                         value |= (x < y ? x : y) << shift;
                     }
                     out.lane[lane] = value;
-                } else if (xo == 770U) { // signed byte minimum
+                } else if (xo == 514U) { // signed byte minimum
                     std::uint32_t value = 0;
                     for (unsigned byte = 0; byte < 4; ++byte) {
                         const unsigned shift = 24U - byte * 8U;
@@ -529,7 +529,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
                             std::bit_cast<std::uint8_t>(minimum)) << shift;
                     }
                     out.lane[lane] = value;
-                } else if (xo == 642U) { // unsigned word minimum
+                } else if (xo == 130U) { // unsigned word minimum
                     out.lane[lane] = a.lane[lane] < b.lane[lane]
                         ? a.lane[lane] : b.lane[lane];
                 } else { // signed word minimum
