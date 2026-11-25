@@ -11,7 +11,7 @@
 #include <string_view>
 
 namespace {
-constexpr std::string_view kVersion = "0.6b";
+constexpr std::string_view kVersion = "0.7b";
 bool has_sse2() noexcept {
 #if defined(_M_X64) || defined(__x86_64__)
     return true;
