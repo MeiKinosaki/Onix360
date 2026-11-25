@@ -34,6 +34,43 @@ struct XenonCore {
     [[nodiscard]] bool poll_controller(unsigned user_index = 0) noexcept {
         return xinput.poll(controller, user_index);
     }
+
+    // Explicit subsystem bridges used by the machine scheduler and tests.
+    void attach_kernel_runtime(kernel::KernelRuntime& runtime) noexcept {
+        kernel_runtime = &runtime;
+    }
+
+    [[nodiscard]] bool execute_gpu_command_buffer(
+        memory::PhysicalMemory& ram, std::uint64_t guest_address,
+        std::size_t dword_count) {
+        constexpr std::size_t max_command_dwords = 1U << 20U;
+        if (dword_count == 0 || dword_count > max_command_dwords ||
+            guest_address > UINT64_MAX - dword_count * 4U)
+            return false;
+        std::vector<std::uint32_t> commands;
+        commands.reserve(dword_count);
+        std::array<std::uint8_t, 4> bytes{};
+        for (std::size_t i = 0; i < dword_count; ++i) {
+            if (read_guest(ram, guest_address + i * 4U, bytes) != memory::MemoryResult::Ok)
+                return false;
+            commands.push_back((static_cast<std::uint32_t>(bytes[0]) << 24U) |
+                (static_cast<std::uint32_t>(bytes[1]) << 16U) |
+                (static_cast<std::uint32_t>(bytes[2]) << 8U) |
+                static_cast<std::uint32_t>(bytes[3]));
+        }
+        return gpu.execute_stream(commands);
+    }
+
+    [[nodiscard]] bool submit_audio_pcm16(
+        const std::vector<std::int16_t>& interleaved_stereo) {
+        return audio.submit_pcm16(interleaved_stereo);
+    }
+    [[nodiscard]] std::size_t pending_audio_frames() const noexcept {
+        return audio.frames();
+    }
+    [[nodiscard]] bool play_audio_pending(std::uint32_t sample_rate = 48000U) noexcept {
+        return audio.play_pending(sample_rate);
+    }
     audio::AudioEngine audio{};
     memory::AddressSpace address_space{};
     bool mmu_enabled{false};
