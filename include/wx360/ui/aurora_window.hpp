@@ -265,7 +265,7 @@ private:
    draw_text(dc, 252, 300, L"Perfil de memoria, renderer grafico e configuracoes por jogo ainda pendentes.", RGB(190, 205, 220));
    draw_text(dc, 252, 340, L"Meta: PCs Windows 10/11 com ate 4 GB RAM (sem garantia de jogos completos).", RGB(140, 165, 188));
   }
-  draw_text(dc, 252, r.bottom - 38, L"WX360 v0.6b | CPU Xenon em desenvolvimento | ESC para sair", RGB(110, 135, 158));
+  draw_text(dc, 252, r.bottom - 38, L"WX360 v0.7b | CPU Xenon em desenvolvimento | ESC para sair", RGB(110, 135, 158));
   SelectObject(dc, old);
   DeleteObject(title);
   DeleteObject(normal);
