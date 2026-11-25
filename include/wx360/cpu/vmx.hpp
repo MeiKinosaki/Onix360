@@ -76,6 +76,22 @@ using Vector = XenonThreadState::VectorRegister;
   r.lane[lane] |= static_cast<std::uint32_t>(static_cast<std::uint8_t>(maximum))<<shift;
  } return r;
 }
+[[nodiscard]] inline Vector min_s8(const Vector& a,const Vector& b) noexcept {
+ Vector r{}; for(unsigned i=0;i<16;++i) {
+  const unsigned shift=(i%4U)*8U, lane=i/4U;
+  const auto x=static_cast<std::int8_t>((a.lane[lane]>>shift)&0xFFU);
+  const auto y=static_cast<std::int8_t>((b.lane[lane]>>shift)&0xFFU);
+  const auto minimum=x<y?x:y;
+  r.lane[lane] |= static_cast<std::uint32_t>(static_cast<std::uint8_t>(minimum))<<shift;
+ } return r;
+}
+[[nodiscard]] inline Vector min_u8(const Vector& a,const Vector& b) noexcept {
+ Vector r{}; for(unsigned i=0;i<16;++i) {
+  const unsigned shift=(i%4U)*8U, lane=i/4U;
+  const auto x=(a.lane[lane]>>shift)&0xFFU, y=(b.lane[lane]>>shift)&0xFFU;
+  r.lane[lane] |= (x<y?x:y)<<shift;
+ } return r;
+}
 [[nodiscard]] inline Vector max_u8(const Vector& a,const Vector& b) noexcept {
  Vector r{}; for(unsigned i=0;i<16;++i) {
   const unsigned shift=(i%4U)*8U, lane=i/4U;
