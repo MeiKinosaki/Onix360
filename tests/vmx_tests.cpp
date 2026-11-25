@@ -41,6 +41,15 @@ int main() {
  check(byte_max.lane[0]==0x000200FFU && byte_max.lane[1]==0x807F0304U &&
        byte_max.lane[2]==0xFFFFFFFFU && byte_max.lane[3]==0xFFFFFFFFU,
        "VMX unsigned byte maximum compares each byte independently");
+ auto byte_add_sat=vmx::add_sat_u8(s.vr[6],s.vr[7]);
+ check(byte_add_sat.lane[0]==0x000300FFU && byte_add_sat.lane[1]==0x817F0406U &&
+       byte_add_sat.lane[2]==0xFFFFFFFFU && byte_add_sat.lane[3]==0xFFFFFFFFU,
+       "VMX unsigned byte saturating add clamps each byte at 255");
+ auto byte_sub_sat=vmx::sub_sat_u8(s.vr[6],s.vr[7]);
+ check(byte_sub_sat.lane[0]==0x000000FEU && byte_sub_sat.lane[1]==0x7E7C0000U &&
+       byte_sub_sat.lane[2]==0xFEFEFEFEU && byte_sub_sat.lane[3]==0x00000000U,
+       "VMX unsigned byte saturating subtract clamps each byte at zero");
+
 
  s.set_fpscr_exception(0x10U);
  check((s.fpscr&0x10U)!=0,"FPSCR exception flag can be set");
