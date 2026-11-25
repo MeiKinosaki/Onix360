@@ -503,7 +503,7 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
                 out.lane[lane] = std::bit_cast<std::uint32_t>(
                     xo == 10U ? x + y : x - y);
             }
-        } else if (xo == 2U || xo == 130U || xo == 258U || xo == 386U) {
+        } else if (xo == 2U || xo == 130U || xo == 258U || xo == 642U) {
             // vminub, vminuw, vminsb and vminsw. Compare lanes at their
             // architectural element width; vector words are stored big-endian.
             for (unsigned lane = 0; lane < 4; ++lane) {
