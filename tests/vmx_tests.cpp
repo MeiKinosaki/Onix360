@@ -52,16 +52,16 @@ int main() {
  s.vr[8].lane={0x7F80FE01U,0x80807F01U,0x01020304U,0xFFFFFFFFU};
  s.vr[9].lane={0x0101FFFEU,0xFF0181FFU,0x01010101U,0x00000001U};
  auto signed_add_sat=vmx::add_sat_s8(s.vr[8],s.vr[9]);
- check(signed_add_sat.lane[0]==0x7F80FF00U &&
-       signed_add_sat.lane[1]==0x81800000U,
+ check(signed_add_sat.lane[0]==0x7F81FDFFU &&
+       signed_add_sat.lane[1]==0x80810000U,
        "VMX signed byte saturating add clamps to signed 8-bit range");
  auto signed_sub_sat=vmx::sub_sat_s8(s.vr[8],s.vr[9]);
- check(signed_sub_sat.lane[0]==0x7E80FFFFU &&
-       signed_sub_sat.lane[1]==0x81807E02U,
+ check(signed_sub_sat.lane[0]==0x7E80FF03U &&
+       signed_sub_sat.lane[1]==0x81807F02U,
        "VMX signed byte saturating subtract clamps to signed 8-bit range");
  auto signed_max=vmx::max_s8(s.vr[8],s.vr[9]);
- check(signed_max.lane[0]==0x7F80FE01U &&
-       signed_max.lane[1]==0x80807F01U,
+ check(signed_max.lane[0]==0x7F01FF01U &&
+       signed_max.lane[1]==0xFF017F01U,
        "VMX signed byte maximum compares signed lanes independently");
 
 
