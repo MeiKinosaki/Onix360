@@ -5,6 +5,9 @@
 #include <iostream>
 
 namespace {
+void kernel_test_service(wx360::cpu::XenonThreadState& state) noexcept {
+    state.gpr[3] = 0xBEEFU;
+}
 int failures = 0;
 void check(bool value, const char* message) {
     if (!value) { std::cerr << "FAIL: " << message << '\n'; ++failures; }
@@ -228,6 +231,52 @@ int main() {
           memory::MemoryResult::Ok, "guest write translation remains available");
     check(virtual_core.read_guest(virtual_ram, 0x2120, guest_read) ==
           memory::MemoryResult::Unmapped, "guest data access faults on unmapped page");
+
+
+    // Kernel SC dispatch is connected to the machine's CPU execution path.
+    kernel::KernelRuntime runtime;
+    check(runtime.register_service(0x42U, &kernel_test_service),
+          "register host-backed kernel service");
+    machine::XenonCore integrated_core;
+    integrated_core.attach_kernel_runtime(runtime);
+    integrated_core.state.reset(0x300);
+    integrated_core.state.gpr[0] = 0x42U;
+    const std::array<std::uint8_t, 4> sc_instruction{0x44, 0x00, 0x00, 0x02};
+    check(data_ram.write(0x300, sc_instruction) == memory::MemoryResult::Ok,
+          "write system-call instruction for integrated kernel path");
+    check(integrated_core.step(data_ram) == machine::RunResult::Executed &&
+          integrated_core.state.gpr[3] == 0xBEEFU &&
+          integrated_core.state.pc == 0x304,
+          "CPU system call dispatches through attached kernel runtime");
+
+    // Guest big-endian PM4 command buffer flows through guest memory into GPU.
+    check(integrated_core.gpu.configure_framebuffer(4, 4),
+          "configure integrated GPU framebuffer");
+    const std::uint32_t clear_header = (3U << 30U) |
+        (static_cast<std::uint32_t>(gpu::XenosCommandProcessor::wx360_clear_opcode) << 8U);
+    const std::uint32_t present_header = (3U << 30U) |
+        (static_cast<std::uint32_t>(gpu::XenosCommandProcessor::wx360_present_opcode) << 8U);
+    const std::array<std::uint32_t, 4> gpu_words{
+        clear_header, 0xFF123456U, present_header, 0U};
+    std::array<std::uint8_t, 16> gpu_bytes{};
+    for (std::size_t i = 0; i < gpu_words.size(); ++i) {
+        gpu_bytes[i * 4U] = static_cast<std::uint8_t>(gpu_words[i] >> 24U);
+        gpu_bytes[i * 4U + 1U] = static_cast<std::uint8_t>(gpu_words[i] >> 16U);
+        gpu_bytes[i * 4U + 2U] = static_cast<std::uint8_t>(gpu_words[i] >> 8U);
+        gpu_bytes[i * 4U + 3U] = static_cast<std::uint8_t>(gpu_words[i]);
+    }
+    check(data_ram.write(0x800, gpu_bytes) == memory::MemoryResult::Ok,
+          "write guest PM4 command buffer");
+    check(integrated_core.execute_gpu_command_buffer(data_ram, 0x800, gpu_words.size()),
+          "machine reads and submits guest PM4 command buffer");
+    check(integrated_core.gpu.framebuffer().front_buffer().size() == 16U &&
+          integrated_core.gpu.framebuffer().front_buffer()[0] == 0xFF123456U,
+          "GPU command buffer clears and presents framebuffer");
+
+    // CPU machine owns the audio producer queue; device output remains explicit.
+    check(integrated_core.submit_audio_pcm16({321, -321, 123, -123}) &&
+          integrated_core.pending_audio_frames() == 2U,
+          "machine routes stereo PCM samples into attached audio engine");
 
     if (failures == 0) std::cout << "WX360 Xenon core integration tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
