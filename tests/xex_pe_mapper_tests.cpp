@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <cstdint>
+#include <array>
 #include <iostream>
 #include <vector>
 
@@ -52,6 +53,26 @@ int main() {
     if (ram.write(0x3000, std::span<const std::uint8_t>(pe.data(), 1)) !=
         wx360::memory::MemoryResult::PermissionDenied) {
         std::cerr << "Mapped code section should not be writable\n";
+        return EXIT_FAILURE;
+    }
+    // A denied destination page must be detected before the mapper writes
+    // even the first writable page of the image.
+    wx360::memory::PhysicalMemory protected_ram(0x10000);
+    const std::array<std::uint8_t, 4> sentinel{{0xA1, 0xB2, 0xC3, 0xD4}};
+    if (protected_ram.write(0x2000, sentinel) != wx360::memory::MemoryResult::Ok ||
+        protected_ram.set_page_permissions(0x3000, wx360::memory::PhysicalMemory::page_size,
+            static_cast<std::uint8_t>(wx360::memory::Access::Read)) !=
+                wx360::memory::MemoryResult::Ok) {
+        std::cerr << "Could not prepare protected PE destination fixture\\n";
+        return EXIT_FAILURE;
+    }
+    const auto rejected = wx360::xex::XexPeMapper::map(
+        pe, protected_ram, 0x2000, 0x82000000);
+    std::array<std::uint8_t, 4> unchanged{};
+    if (rejected ||
+        protected_ram.read(0x2000, unchanged) != wx360::memory::MemoryResult::Ok ||
+        unchanged != sentinel) {
+        std::cerr << "PE mapper partially modified memory after permission preflight failure\\n";
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
