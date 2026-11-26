@@ -39,8 +39,12 @@ int main(int argc, char** argv) {
     }
 
     if (image.header.has_import_libraries) {
-        std::cerr << "This XEX imports kernel libraries. The current WX360 loader "
-                     "does not yet resolve real xboxkrnl/xam imports; launch refused.\n";
+        std::cout << "Import libraries parsed: " << image.imports.libraries.size() << "\\n";
+        for (const auto& library : image.imports.libraries)
+            std::cout << "  " << library.name << ": " << library.import_count
+                      << " import records\\n";
+        std::cerr << "Import metadata parsed, but no version-matched real kernel/XAM "
+                     "export registry is attached; launch refused safely.\\n";
         return 4;
     }
     if (image.format.compression == xex::XexCompression::Basic) {
