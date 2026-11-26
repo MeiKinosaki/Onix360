@@ -36,5 +36,24 @@ int main() {
         std::cerr << "XEX launch plan inspection failed\n";
         return EXIT_FAILURE;
     }
+    // An XEX that declares imports must not be treated as validated unless
+    // both the kernel export registry and guest MMU are supplied. The early
+    // rejection must leave caller RAM and mappings untouched.
+    wx360::memory::PhysicalMemory guarded_ram(0x4000);
+    const std::array<std::uint8_t, 4> guard{{0x11, 0x22, 0x33, 0x44}};
+    if (guarded_ram.write(0x1000, guard) != wx360::memory::MemoryResult::Ok)
+        return EXIT_FAILURE;
+    wx360::memory::AddressSpace guarded_as;
+    wx360::xex::FullXexImage import_image{};
+    import_image.header.has_import_libraries = true;
+    const auto rejected_import_image = wx360::xex::XexImageLoader::load_validated(
+        import_image, guarded_ram, 0x1000, 0x82000000);
+    std::array<std::uint8_t, 4> after_guard{};
+    if (rejected_import_image ||
+        guarded_ram.read(0x1000, after_guard) != wx360::memory::MemoryResult::Ok ||
+        after_guard != guard || guarded_as.page_count() != 0) {
+        std::cerr << "XEX loader accepted unresolved imports or mutated guest state\\n";
+        return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
 }
