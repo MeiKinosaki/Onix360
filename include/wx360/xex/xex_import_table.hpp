@@ -107,8 +107,9 @@ struct ImportTable {
             const auto type = static_cast<std::uint8_t>(value >> 24U);
             const auto ordinal = static_cast<std::uint16_t>(value);
             if (type == 0U) {
-                if (pending_function_descriptor)
-                    return ImportTableError::InvalidThunkRecord;
+                // Each type-0 record starts a new descriptor; only a
+                // following type-1 record can turn the immediately previous
+                // descriptor into a function import.
                 pending_function_descriptor = decoded.size();
                 decoded.push_back({library_name, ordinal, 0,
                     kernel::ImportKind::Variable, address});
