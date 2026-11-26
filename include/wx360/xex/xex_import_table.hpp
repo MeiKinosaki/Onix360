@@ -2,6 +2,7 @@
 #include "wx360/xex/xex_header.hpp"
 #include "wx360/kernel/xex_import_resolver.hpp"
 #include "wx360/memory/physical_memory.hpp"
+#include "wx360/memory/address_space.hpp"
 #include <array>
 #include <map>
 #include <optional>
@@ -130,6 +131,57 @@ struct ImportTable {
         }
         // A type-0 record without a matching function thunk is a variable
         // import, and therefore remains a valid standalone descriptor.
+    }
+    output = std::move(decoded);
+    return ImportTableError::Ok;
+}
+
+// Decode import records from guest virtual addresses. The import-library
+// table stores Xenon VAs; reading them as physical offsets bypasses the MMU
+// and is incorrect once the image is mapped at a non-identity address.
+[[nodiscard]] inline ImportTableError decode_import_records_virtual(
+    const ImportTable& table, const memory::AddressSpace& address_space,
+    const memory::PhysicalMemory& guest_memory,
+    std::vector<kernel::XexImport>& output) {
+    std::vector<kernel::XexImport> decoded;
+    for (const auto& library : table.libraries) {
+        std::string library_name = library.name;
+        if (library_name == "xboxkrnl") library_name = "xboxkrnl.exe";
+        else if (library_name == "xam") library_name = "xam.xex";
+        std::optional<std::size_t> pending_function_descriptor;
+        for (const auto address : library.import_thunks) {
+            if ((address & 3U) != 0)
+                return ImportTableError::InvalidThunkAddress;
+            const auto translated = address_space.translate_range(
+                address, 4, memory::Access::Read, guest_memory);
+            if (translated.result != memory::MemoryResult::Ok)
+                return ImportTableError::InvalidThunkAddress;
+            std::array<std::uint8_t, 4> bytes{};
+            if (guest_memory.read(translated.physical_address, bytes) !=
+                memory::MemoryResult::Ok)
+                return ImportTableError::InvalidThunkAddress;
+            const std::uint32_t value = (std::uint32_t(bytes[0]) << 24U) |
+                (std::uint32_t(bytes[1]) << 16U) |
+                (std::uint32_t(bytes[2]) << 8U) | bytes[3];
+            const auto type = static_cast<std::uint8_t>(value >> 24U);
+            const auto ordinal = static_cast<std::uint16_t>(value);
+            if (type == 0U) {
+                pending_function_descriptor = decoded.size();
+                decoded.push_back({library_name, ordinal, 0,
+                    kernel::ImportKind::Variable, address});
+            } else if (type == 1U) {
+                if (!pending_function_descriptor)
+                    return ImportTableError::InvalidThunkRecord;
+                auto& item = decoded[*pending_function_descriptor];
+                if (item.ordinal != ordinal)
+                    return ImportTableError::InvalidThunkRecord;
+                item.kind = kernel::ImportKind::Function;
+                item.thunk_address = address;
+                pending_function_descriptor.reset();
+            } else {
+                return ImportTableError::InvalidThunkRecord;
+            }
+        }
     }
     output = std::move(decoded);
     return ImportTableError::Ok;
