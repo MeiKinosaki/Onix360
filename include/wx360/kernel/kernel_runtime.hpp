@@ -77,6 +77,34 @@ public:
         return true;
     }
 
+    // Resolve guest-virtual XEX imports as one transaction. Validate every
+    // registered service and executable thunk mapping before the resolver
+    // writes any guest bytes; stage dispatch entries before committing patches.
+    [[nodiscard]] ImportResolveError resolve_imports_virtual(
+        std::span<const XexImport> imports,
+        const memory::AddressSpace& address_space,
+        memory::PhysicalMemory& ram) {
+        auto staged_thunks = thunk_services_;
+        for (const auto& item : imports) {
+            if (item.kind != ImportKind::Function) continue;
+            const auto service = export_services_.find(
+                make_export_key(item.library, item.ordinal));
+            if (service == export_services_.end())
+                return ImportResolveError::MissingExport;
+            const auto executable = address_space.translate_range(
+                item.thunk_address, 16, memory::Access::Execute, ram);
+            if (executable.result != memory::MemoryResult::Ok)
+                return ImportResolveError::TranslationFailed;
+            const auto key = static_cast<std::uint32_t>(item.thunk_address);
+            if (!staged_thunks.emplace(key, service->second).second)
+                return ImportResolveError::DuplicateThunk;
+        }
+        const auto result = imports_.resolve_virtual(imports, address_space, ram);
+        if (result != ImportResolveError::None) return result;
+        thunk_services_.swap(staged_thunks);
+        return ImportResolveError::None;
+    }
+
     [[nodiscard]] ImportResolveError resolve_imports(
         std::span<const XexImport> imports, memory::PhysicalMemory& ram) {
         // Do not patch guest code unless every function import has a real
