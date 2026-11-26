@@ -50,6 +50,28 @@ int main() {
           batch_core.state.pc == 0x108,
           "run loop resumes at the next guest instruction");
 
+    // A bounded batch must stop at the first guest exception and report
+    // the reason without counting the faulting instruction as executed.
+    memory::PhysicalMemory fault_batch_ram(0x4000);
+    const std::array<std::uint8_t, 12> fault_batch_code{
+        0x38, 0x60, 0x00, 0x01, // addi r3,r0,1
+        0x38, 0x80, 0x00, 0x02, // addi r4,r0,2
+        0xFF, 0xFF, 0xFF, 0xFF  // unsupported instruction encoding
+    };
+    check(fault_batch_ram.write(0x100, fault_batch_code) == memory::MemoryResult::Ok,
+          "place valid instructions followed by unsupported instruction");
+    machine::XenonCore fault_batch_core;
+    fault_batch_core.state.reset(0x100);
+    const auto fault_batch = fault_batch_core.run(fault_batch_ram, 5);
+    check(fault_batch.instructions_executed == 2 &&
+          !fault_batch.instruction_limit_reached &&
+          fault_batch.stop_reason == machine::RunResult::ExceptionTaken,
+          "run loop stops and reports the first guest exception");
+    check(fault_batch_core.state.gpr[3] == 1 && fault_batch_core.state.gpr[4] == 2 &&
+          fault_batch_core.state.pc == 0x700 &&
+          fault_batch_core.state.srr0 == 0x108,
+          "faulting instruction is not counted and exception state is preserved");
+
     check(ram.set_page_permissions(0x100, memory::PhysicalMemory::page_size,
           static_cast<std::uint8_t>(memory::Access::Read)) == memory::MemoryResult::Ok,
           "remove execute permission from code page");
