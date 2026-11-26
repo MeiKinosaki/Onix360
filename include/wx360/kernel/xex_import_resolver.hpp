@@ -124,12 +124,15 @@ public:
                 }
                 if (!append_patch(item.thunk_address, thunk_code, patches))
                     return ImportResolveError::DuplicateThunk;
-                const auto slot = encode_be32(static_cast<std::uint32_t>(item.thunk_address));
+                // Type-0 function descriptor is metadata, not an IAT
+                // pointer. The reverse-engineered XEX loader marks it with
+                // 0xDEADC0DE; the type-1 record is the callable thunk.
+                const auto descriptor = encode_be32(0xDEADC0DEU);
                 if (item.value_address == 0 ||
-                    guest_memory.check_access(item.value_address, slot.size(),
+                    guest_memory.check_access(item.value_address, descriptor.size(),
                         memory::Access::Write) != memory::MemoryResult::Ok)
                     return ImportResolveError::InvalidThunk;
-                if (!append_patch(item.value_address, slot, patches))
+                if (!append_patch(item.value_address, descriptor, patches))
                     return ImportResolveError::DuplicateThunk;
             } else {
                 const auto slot = encode_be32(found->second.guest_address);
