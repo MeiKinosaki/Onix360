@@ -283,8 +283,11 @@ int main(){
     // The import directory stores guest virtual addresses. Verify the
     // decoder reads them through the MMU rather than treating them as RAM offsets.
     wx360::memory::AddressSpace import_address_space;
-    if (import_address_space.map_page(0x82000000, 0x00000100, 7) !=
-        wx360::memory::MemoryResult::Ok) {
+    // map_page requires page-aligned physical addresses. The import records
+    // live at physical offsets 0x80/0x84 in this fixture, within physical page 0.
+    if (resolved_guest.write(0x80, function_record) != wx360::memory::MemoryResult::Ok ||
+        import_address_space.map_page(0x82000000, 0x00000000, 7) !=
+            wx360::memory::MemoryResult::Ok) {
         std::cerr << "Could not map virtual import-record test page\\n";
         return EXIT_FAILURE;
     }
