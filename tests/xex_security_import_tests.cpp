@@ -2,6 +2,7 @@
 #include "wx360/xex/xex_security_info.hpp"
 #include "wx360/xex/xex_import_table.hpp"
 #include "wx360/kernel/kernel_runtime.hpp"
+#include "wx360/kernel/xbox360_export_metadata.hpp"
 #include <array>
 #include <cstdint>
 #include <cstdlib>
@@ -372,6 +373,18 @@ int main(){
         atomic_guest.read(0x100, unchanged_thunk) != wx360::memory::MemoryResult::Ok ||
         unchanged_value != sentinel || unchanged_thunk != sentinel) {
         std::cerr << "Failed virtual import resolution partially patched guest memory\\n";
+        return EXIT_FAILURE;
+    }
+    // Cross-check the metadata-only export subset against its public source
+    // table transcription. Metadata must never imply a callable service.
+    const auto* dbg = wx360::kernel::find_export_metadata("xboxkrnl.exe", 0x0003);
+    const auto* xam_socket = wx360::kernel::find_export_metadata("xam.xex", 0x0003);
+    const auto* unknown = wx360::kernel::find_export_metadata("xboxkrnl.exe", 0xFFFF);
+    if (!dbg || dbg->name != "DbgPrint" ||
+        dbg->kind != wx360::kernel::ExportMetadataKind::Function ||
+        !xam_socket || xam_socket->name != "NetDll_socket" ||
+        unknown != nullptr) {
+        std::cerr << "Source-verified export metadata lookup failed\\n";
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
