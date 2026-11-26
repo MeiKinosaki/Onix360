@@ -114,5 +114,38 @@ int main() {
         std::cerr << "Empty import library was not rejected atomically\n";
         return EXIT_FAILURE;
     }
+    // Exercise the same resolver through guest virtual addresses rather
+    // than bypassing the Xenon address space with physical offsets.
+    wx360::memory::AddressSpace address_space;
+    if (address_space.map_page(0x10000, 0x1000, 7) !=
+        wx360::memory::MemoryResult::Ok) {
+        std::cerr << "Could not install guest import test mapping\\n";
+        return EXIT_FAILURE;
+    }
+    const std::array virtual_imports{
+        XexImport{"xboxkrnl.exe", 0x123, 0x10220, ImportKind::Function, 0x10200}
+    };
+    if (resolver.resolve_virtual(virtual_imports, address_space, ram) !=
+        ImportResolveError::None) {
+        std::cerr << "Virtual XEX import did not resolve through the guest MMU\\n";
+        return EXIT_FAILURE;
+    }
+    if (!is_be_address(0x1200, 0xDEADC0DE) ||
+        !is_be_address(0x1220, 0x44000042U) ||
+        !is_be_address(0x1224, 0x4E800020U)) {
+        std::cerr << "Virtual import patches did not reach translated physical memory\\n";
+        return EXIT_FAILURE;
+    }
+
+    const std::array virtual_late_failure{
+        XexImport{"xboxkrnl.exe", 0x123, 0x10240, ImportKind::Function, 0x10260},
+        XexImport{"xboxkrnl.exe", 0x123, 0x30000, ImportKind::Function, 0x10280}
+    };
+    if (resolver.resolve_virtual(virtual_late_failure, address_space, ram) !=
+            ImportResolveError::TranslationFailed ||
+        bytes[0x1240] != 0 || bytes[0x1260] != 0) {
+        std::cerr << "Unmapped later import caused a partial virtual patch\\n";
+        return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
 }
