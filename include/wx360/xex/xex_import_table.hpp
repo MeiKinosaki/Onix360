@@ -77,9 +77,11 @@ struct ImportTable {
     return ImportTableError::Ok;
 }
 
-// XEX import records are paired by ordinal: type 0 is the value slot;
-// type 1 is the executable thunk. Function value slots receive the thunk
-// address; variable value slots receive the resolved guest variable address.
+// XEX import records are consumed in order: type 0 is a variable/function
+// descriptor; an immediately following type-1 record with the same ordinal
+// turns that descriptor into a function import and identifies its code thunk.
+// Function descriptors receive the loader marker; variable descriptors receive
+// the resolved guest variable address.
 [[nodiscard]] inline ImportTableError decode_import_records(
     const ImportTable& table, const memory::PhysicalMemory& guest_memory,
     std::vector<kernel::XexImport>& output) {
