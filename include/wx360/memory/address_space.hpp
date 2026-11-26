@@ -30,7 +30,8 @@ public:
         for (auto& e : entries_) if (e.vpn == vpn) {
             e = {vpn, pa / page_size, permissions}; return MemoryResult::Ok;
         }
-        entries_.push_back({vpn, pa / page_size, permissions});
+        try { entries_.push_back({vpn, pa / page_size, permissions}); }
+        catch (...) { return MemoryResult::OutOfRange; }
         return MemoryResult::Ok;
     }
 
@@ -44,6 +45,8 @@ public:
             if ((mapping.permissions & 7U) == 0 || (mapping.permissions & ~7U) != 0)
                 return MemoryResult::PermissionDenied;
         }
+        try { entries_.reserve(entries_.size() + mappings.size()); }
+        catch (...) { return MemoryResult::OutOfRange; }
         for (const auto& mapping : mappings) {
             const auto result = map_page(mapping.virtual_address,
                 mapping.physical_address, mapping.permissions);
