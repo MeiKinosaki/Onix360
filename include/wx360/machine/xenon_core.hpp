@@ -206,6 +206,33 @@ struct XenonCore {
         }
         return RunResult::UnsupportedInstruction;
     }
+    struct RunBatchResult {
+        std::size_t instructions_executed{0};
+        RunResult stop_reason{RunResult::Executed};
+        bool instruction_limit_reached{false};
+    };
+
+    // Bounded guest execution loop. It stops immediately on a fault or
+    // unsupported instruction and never spins without an instruction budget.
+    [[nodiscard]] RunBatchResult run(
+        memory::PhysicalMemory& ram, std::size_t instruction_budget) noexcept {
+        RunBatchResult batch{};
+        if (instruction_budget == 0) {
+            batch.instruction_limit_reached = true;
+            return batch;
+        }
+        while (batch.instructions_executed < instruction_budget) {
+            const RunResult result = step(ram);
+            if (result != RunResult::Executed) {
+                batch.stop_reason = result;
+                return batch;
+            }
+            ++batch.instructions_executed;
+        }
+        batch.instruction_limit_reached = true;
+        return batch;
+    }
+
 };
 
 } // namespace wx360::machine
