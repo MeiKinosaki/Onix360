@@ -2,6 +2,7 @@
 #include "wx360/cpu/xenon_state.hpp"
 #include "wx360/kernel/xex_import_resolver.hpp"
 #include "wx360/memory/physical_memory.hpp"
+#include "wx360/memory/address_space.hpp"
 #include <array>
 #include <cstdint>
 #include <map>
