@@ -6,6 +6,7 @@
 #include "wx360/crypto/aes128.hpp"
 #include "wx360/xex/xex_pe_mapper.hpp"
 #include "wx360/kernel/xex_import_resolver.hpp"
+#include "wx360/kernel/kernel_runtime.hpp"
 #include "wx360/compression/lzx_decoder.hpp"
 #include <bit>
 
@@ -139,8 +140,11 @@ public:
         memory::PhysicalMemory& guest_memory,
         std::uint64_t physical_base,
         std::uint32_t guest_image_base,
-        crypto::XexKeySet key_set = crypto::XexKeySet::Retail) {
-        if (image.header.has_import_libraries ||
+        crypto::XexKeySet key_set = crypto::XexKeySet::Retail,
+        kernel::KernelRuntime* kernel_runtime = nullptr,
+        memory::AddressSpace* guest_address_space = nullptr) {
+        if ((image.header.has_import_libraries &&
+             (!kernel_runtime || !guest_address_space)) ||
             image.security.image_size != image.format.image_size ||
             image.header.entry_point == 0)
             return std::nullopt;
@@ -174,6 +178,70 @@ public:
             transformed, guest_memory, physical_base, guest_image_base,
             image.header.entry_point);
         if (!mapped) return std::nullopt;
+
+        // Stage the image's virtual mappings in a private AddressSpace copy.
+        // The caller-visible MMU is committed only after imports resolve.
+        if (image.header.has_import_libraries) {
+            memory::AddressSpace staged_address_space;
+            try {
+                staged_address_space = *guest_address_space;
+            } catch (...) {
+                return std::nullopt;
+            }
+            if (staged_address_space.map_pages(mapped.page_mappings) !=
+                memory::MemoryResult::Ok)
+                return std::nullopt;
+
+            std::vector<kernel::XexImport> decoded_imports;
+            if (decode_import_records_virtual(image.imports, staged_address_space,
+                    guest_memory, decoded_imports) != ImportTableError::Ok)
+                return std::nullopt;
+
+            // Keep PE permissions intact except while the import transaction
+            // writes its descriptor and function-thunk patches.
+            std::vector<std::pair<std::uint64_t, std::uint8_t>> restore;
+            const auto grant_write = [&](std::uint64_t va, std::size_t length) -> bool {
+                const auto translated = staged_address_space.translate_range(
+                    va, length, memory::Access::Read, guest_memory);
+                if (translated.result != memory::MemoryResult::Ok) return false;
+                const auto first = translated.physical_address / memory::PhysicalMemory::page_size;
+                const auto last = (translated.physical_address + length - 1U) /
+                                  memory::PhysicalMemory::page_size;
+                for (auto page = first; page <= last; ++page) {
+                    const auto pa = page * memory::PhysicalMemory::page_size;
+                    const auto prior = guest_memory.page_permissions(pa);
+                    if (!prior) return false;
+                    if (std::none_of(restore.begin(), restore.end(),
+                        [&](const auto& entry) { return entry.first == pa; }))
+                        restore.emplace_back(pa, *prior);
+                    if ((*prior & static_cast<std::uint8_t>(memory::Access::Write)) == 0 &&
+                        guest_memory.set_page_permissions(pa, memory::PhysicalMemory::page_size,
+                            static_cast<std::uint8_t>(*prior |
+                                static_cast<std::uint8_t>(memory::Access::Write))) !=
+                            memory::MemoryResult::Ok)
+                        return false;
+                }
+                return true;
+            };
+            bool ready = true;
+            for (const auto& item : decoded_imports) {
+                if (item.kind == kernel::ImportKind::Function &&
+                    !grant_write(item.thunk_address, 16)) { ready = false; break; }
+                if (!grant_write(item.value_address, 4)) { ready = false; break; }
+            }
+            const auto resolved = ready
+                ? kernel_runtime->resolve_imports_virtual(decoded_imports,
+                    staged_address_space, guest_memory)
+                : kernel::ImportResolveError::TranslationFailed;
+            bool restored = true;
+            for (auto it = restore.rbegin(); it != restore.rend(); ++it)
+                if (guest_memory.set_page_permissions(it->first,
+                    memory::PhysicalMemory::page_size, it->second) != memory::MemoryResult::Ok)
+                    restored = false;
+            if (resolved != kernel::ImportResolveError::None || !restored)
+                return std::nullopt;
+            *guest_address_space = std::move(staged_address_space);
+        }
         return ValidatedXexImage(mapped.mapped_entry,
                                  static_cast<std::uint64_t>(mapped.image_base) + mapped.entry_rva,
                                  mapped.page_mappings);
