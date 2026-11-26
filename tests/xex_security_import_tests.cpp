@@ -199,6 +199,30 @@ int main(){
         std::cerr << "XEX import thunk records were not decoded correctly\\n";
         return EXIT_FAILURE;
     }
+    // A function thunk may follow other value slots in the same library;
+    // pair records by ordinal rather than assuming adjacent directory entries.
+    const std::array<std::uint8_t, 12> interleaved_records{
+        0x00,0x00,0x01,0x23, // value slot for function 0x123
+        0x00,0x00,0x01,0x24, // value slot for variable 0x124
+        0x01,0x00,0x01,0x23  // function thunk for 0x123
+    };
+    if (guest.write(0x120, interleaved_records) != wx360::memory::MemoryResult::Ok)
+        return EXIT_FAILURE;
+    table.libraries[0].import_thunks = {0x120, 0x124, 0x128};
+    if (wx360::xex::decode_import_records(table, guest, decoded_imports) !=
+            wx360::xex::ImportTableError::Ok ||
+        decoded_imports.size() != 2 ||
+        decoded_imports[0].ordinal != 0x123 ||
+        decoded_imports[0].kind != wx360::kernel::ImportKind::Function ||
+        decoded_imports[0].value_address != 0x120 ||
+        decoded_imports[0].thunk_address != 0x128 ||
+        decoded_imports[1].ordinal != 0x124 ||
+        decoded_imports[1].kind != wx360::kernel::ImportKind::Variable ||
+        decoded_imports[1].value_address != 0x124) {
+        std::cerr << "Interleaved XEX import records were not paired by ordinal\\n";
+        return EXIT_FAILURE;
+    }
+    table.libraries[0].import_thunks = {0x100, 0x104};
     const auto previous_decoded_count = decoded_imports.size();
     table.libraries[0].import_thunks = {0x108};
     const std::array<std::uint8_t, 4> invalid_type{0x02, 0x00, 0x00, 0x01};
