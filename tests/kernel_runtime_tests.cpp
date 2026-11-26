@@ -28,6 +28,10 @@ int main() {
        &service_increment,ram),"rejects duplicate service without advertising export");
  check(!runtime.emit_trampoline("xboxkrnl.exe",44,8,0x280,ram),
        "failed combined registration leaves no export behind");
+ check(!runtime.register_function_export("xboxkrnl.exe",42,9,0x280,
+       &service_increment,ram),"rolls back handler when export registration fails");
+ check(runtime.register_service(9,&service_increment),
+       "failed export registration leaves service identifier reusable");
  check(!runtime.emit_trampoline("XBOXKRNL.EXE",42,7,0x300,ram),"rejects duplicate export before writing trampoline");
  std::array<std::uint8_t,12> untouched{};
  check(ram.read(0x300,untouched)==memory::MemoryResult::Ok &&
