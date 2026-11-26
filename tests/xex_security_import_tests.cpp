@@ -398,7 +398,8 @@ int main(){
         return EXIT_FAILURE;
     }
     wx360::cpu::XenonThreadState known_export_state{};
-    known_export_state.gpr[3] = 0x360U;
+    known_export_state.gpr[0] = 0x41U; // service ID is dispatched from r0
+    known_export_state.gpr[3] = 0;
     if (!known_export_runtime.dispatch(known_export_state) ||
         known_export_state.gpr[3] != 0x360U ||
         known_export_runtime.register_known_function_export(
