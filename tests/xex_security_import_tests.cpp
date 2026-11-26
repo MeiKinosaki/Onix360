@@ -1,12 +1,17 @@
 #include "wx360/crypto/sha1.hpp"
 #include "wx360/xex/xex_security_info.hpp"
 #include "wx360/xex/xex_import_table.hpp"
+#include "wx360/kernel/kernel_runtime.hpp"
 #include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <string_view>
 #include <vector>
+
+static void test_kernel_service(wx360::cpu::XenonThreadState& state) noexcept {
+    state.gpr[3] = 0x360U;
+}
 
 static void be16(std::vector<std::uint8_t>& b,std::size_t p,std::uint16_t v){b[p]=v>>8;b[p+1]=v;}
 static void be32(std::vector<std::uint8_t>& b,std::size_t p,std::uint32_t v){b[p]=v>>24;b[p+1]=v>>16;b[p+2]=v>>8;b[p+3]=v;}
@@ -301,6 +306,59 @@ int main(){
         virtual_decoded[0].thunk_address != 0x82000084 ||
         virtual_decoded[0].ordinal != 0x123) {
         std::cerr << "Virtual XEX import records were not decoded through the MMU\\n";
+        return EXIT_FAILURE;
+    }
+    // Exercise the actual KernelRuntime virtual-import path: registered
+    // export, MMU permission checks, patching and thunk-to-service dispatch.
+    wx360::memory::PhysicalMemory runtime_guest(0x2000);
+    wx360::memory::AddressSpace runtime_as;
+    if (runtime_as.map_page(0x82000000, 0x00000000, 7) !=
+        wx360::memory::MemoryResult::Ok) {
+        std::cerr << "Could not map KernelRuntime import test page\\n";
+        return EXIT_FAILURE;
+    }
+    wx360::kernel::KernelRuntime runtime;
+    if (!runtime.register_function_export("xboxkrnl.exe", 0x123, 7,
+            0x300, &test_kernel_service, runtime_guest)) {
+        std::cerr << "Could not register KernelRuntime test export\\n";
+        return EXIT_FAILURE;
+    }
+    const std::array<wx360::kernel::XexImport, 1> runtime_imports{{
+        {"xboxkrnl.exe", 0x123, wx360::kernel::ImportKind::Function,
+         0x82000080, 0x82000100}
+    }};
+    if (runtime.resolve_imports_virtual(runtime_imports, runtime_as, runtime_guest) !=
+        wx360::kernel::ImportResolveError::None) {
+        std::cerr << "KernelRuntime virtual import resolution failed\\n";
+        return EXIT_FAILURE;
+    }
+    wx360::cpu::XenonThreadState dispatched{};
+    if (!runtime.dispatch_import_thunk(0x82000100, dispatched) ||
+        dispatched.gpr[3] != 0x360U) {
+        std::cerr << "Resolved virtual import did not dispatch its registered service\\n";
+        return EXIT_FAILURE;
+    }
+
+    // Missing exports must fail before changing either guest import patch.
+    wx360::memory::PhysicalMemory atomic_guest(0x2000);
+    wx360::memory::AddressSpace atomic_as;
+    if (atomic_as.map_page(0x82000000, 0x00000000, 7) !=
+        wx360::memory::MemoryResult::Ok) return EXIT_FAILURE;
+    const std::array<std::uint8_t, 4> sentinel{{0xAA,0xBB,0xCC,0xDD}};
+    if (atomic_guest.write(0x80, sentinel) != wx360::memory::MemoryResult::Ok ||
+        atomic_guest.write(0x100, sentinel) != wx360::memory::MemoryResult::Ok)
+        return EXIT_FAILURE;
+    wx360::kernel::KernelRuntime missing_runtime;
+    if (missing_runtime.resolve_imports_virtual(runtime_imports, atomic_as, atomic_guest) !=
+            wx360::kernel::ImportResolveError::MissingExport) {
+        std::cerr << "Unknown virtual import was not rejected\\n";
+        return EXIT_FAILURE;
+    }
+    std::array<std::uint8_t, 4> unchanged_value{}, unchanged_thunk{};
+    if (atomic_guest.read(0x80, unchanged_value) != wx360::memory::MemoryResult::Ok ||
+        atomic_guest.read(0x100, unchanged_thunk) != wx360::memory::MemoryResult::Ok ||
+        unchanged_value != sentinel || unchanged_thunk != sentinel) {
+        std::cerr << "Failed virtual import resolution partially patched guest memory\\n";
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
