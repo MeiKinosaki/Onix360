@@ -125,12 +125,20 @@ public:
                 if (!append_patch(item.thunk_address, thunk_code, patches))
                     return ImportResolveError::DuplicateThunk;
                 const auto slot = encode_be32(static_cast<std::uint32_t>(item.thunk_address));
-                if (!append_patch(item.value_address, slot, patches))
+                if (item.value_address == 0 ||
+                    guest_memory.check_access(item.value_address, slot.size(),
+                        memory::Access::Write) != memory::MemoryResult::Ok)
                     return ImportResolveError::InvalidThunk;
+                if (!append_patch(item.value_address, slot, patches))
+                    return ImportResolveError::DuplicateThunk;
             } else {
                 const auto slot = encode_be32(found->second.guest_address);
-                if (!append_patch(item.value_address, slot, patches))
+                if (item.value_address == 0 ||
+                    guest_memory.check_access(item.value_address, slot.size(),
+                        memory::Access::Write) != memory::MemoryResult::Ok)
                     return ImportResolveError::InvalidThunk;
+                if (!append_patch(item.value_address, slot, patches))
+                    return ImportResolveError::DuplicateThunk;
             }
         }
 
