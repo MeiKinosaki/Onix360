@@ -109,12 +109,15 @@ public:
                         memory::MemoryResult::Ok)
                     return ImportResolveError::InvalidThunk;
 
-                const auto target = found->second.guest_address;
+                // Match Xenia's reverse-engineered kernel import thunk:
+                // sc with LEV=2, blr, nop, nop. The runtime dispatches this
+                // special call by the guest thunk PC, not by an invented
+                // direct branch to a host address.
                 const std::array<std::uint32_t, 4> code{
-                    0x3D800000U | (target >> 16U), // lis r12, target@h
-                    0x618C0000U | (target & 0xFFFFU), // ori r12,r12,target@l
-                    0x7D8903A6U, // mtctr r12
-                    0x4E800420U  // bctr
+                    0x44000042U, // sc 2 (WX360 kernel-import dispatch)
+                    0x4E800020U, // blr
+                    0x60000000U, // nop
+                    0x60000000U  // nop
                 };
                 std::array<std::uint8_t, 16> thunk_code{};
                 for (std::size_t word = 0; word < code.size(); ++word) {
