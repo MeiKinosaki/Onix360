@@ -283,19 +283,19 @@ int main(){
     // The import directory stores guest virtual addresses. Verify the
     // decoder reads them through the MMU rather than treating them as RAM offsets.
     wx360::memory::AddressSpace import_address_space;
-    if (import_address_space.map_page(0x82000000, 0x00000000, 7) !=
+    if (import_address_space.map_page(0x82000000, 0x00000100, 7) !=
         wx360::memory::MemoryResult::Ok) {
         std::cerr << "Could not map virtual import-record test page\\n";
         return EXIT_FAILURE;
     }
-    end_to_end_table.libraries[0].import_thunks = {0x82000180, 0x82000184};
+    end_to_end_table.libraries[0].import_thunks = {0x82000080, 0x82000084};
     std::vector<wx360::kernel::XexImport> virtual_decoded;
     if (wx360::xex::decode_import_records_virtual(
             end_to_end_table, import_address_space, resolved_guest, virtual_decoded) !=
             wx360::xex::ImportTableError::Ok ||
         virtual_decoded.size() != 1 ||
-        virtual_decoded[0].value_address != 0x82000180 ||
-        virtual_decoded[0].thunk_address != 0x82000184 ||
+        virtual_decoded[0].value_address != 0x82000080 ||
+        virtual_decoded[0].thunk_address != 0x82000084 ||
         virtual_decoded[0].ordinal != 0x123) {
         std::cerr << "Virtual XEX import records were not decoded through the MMU\\n";
         return EXIT_FAILURE;
