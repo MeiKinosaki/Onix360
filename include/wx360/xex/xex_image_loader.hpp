@@ -53,9 +53,12 @@ class XexImageLoader;
 class ValidatedXexImage {
 public:
     [[nodiscard]] std::uint64_t entry_point() const noexcept { return mapped_entry_point_; }
+    [[nodiscard]] std::uint64_t guest_entry_point() const noexcept { return guest_entry_point_; }
 private:
-    explicit ValidatedXexImage(std::uint64_t entry) : mapped_entry_point_(entry) {}
+    explicit ValidatedXexImage(std::uint64_t entry, std::uint64_t guest_entry)
+        : mapped_entry_point_(entry), guest_entry_point_(guest_entry) {}
     std::uint64_t mapped_entry_point_{};
+    std::uint64_t guest_entry_point_{};
     friend class XexImageLoader;
 };
 
@@ -162,7 +165,8 @@ public:
             transformed, guest_memory, physical_base, guest_image_base,
             image.header.entry_point);
         if (!mapped) return std::nullopt;
-        return ValidatedXexImage(mapped.mapped_entry);
+        return ValidatedXexImage(mapped.mapped_entry,
+                                 static_cast<std::uint64_t>(mapped.image_base) + mapped.entry_rva);
     }
 
     [[nodiscard]] static crypto::AesResult decrypt_normal_payload(
