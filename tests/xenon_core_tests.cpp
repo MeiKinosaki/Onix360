@@ -286,13 +286,21 @@ int main() {
     integrated_core.attach_kernel_runtime(runtime);
     integrated_core.state.reset(0x300);
     integrated_core.state.gpr[0] = 0x42U;
-    const std::array<std::uint8_t, 4> sc_instruction{0x44, 0x00, 0x00, 0x02};
-    check(data_ram.write(0x300, sc_instruction) == memory::MemoryResult::Ok,
-          "write system-call instruction for integrated kernel path");
-    check(integrated_core.step(data_ram) == machine::RunResult::Executed &&
-          integrated_core.state.gpr[3] == 0xBEEFU &&
-          integrated_core.state.pc == 0x304,
-          "CPU system call dispatches through attached kernel runtime");
+    const std::array<std::uint8_t, 8> sc_then_addi{
+        0x44, 0x00, 0x00, 0x02, // sc: dispatch service 0x42
+        0x38, 0x83, 0x00, 0x01  // addi r4,r3,1 consumes service result
+    };
+    check(data_ram.write(0x300, sc_then_addi) == memory::MemoryResult::Ok,
+          "write system call and dependent instruction for integrated kernel path");
+    const auto kernel_batch = integrated_core.run(data_ram, 2);
+    check(kernel_batch.instructions_executed == 2 &&
+          kernel_batch.instruction_limit_reached &&
+          kernel_batch.stop_reason == machine::RunResult::Executed,
+          "bounded CPU run loop executes system call and resumes guest code");
+    check(integrated_core.state.gpr[3] == 0xBEEFU &&
+          integrated_core.state.gpr[4] == 0xBEF0U &&
+          integrated_core.state.pc == 0x308,
+          "guest instruction consumes register result returned by kernel service");
 
     // Guest big-endian PM4 command buffer flows through guest memory into GPU.
     check(integrated_core.gpu.configure_framebuffer(4, 4),
