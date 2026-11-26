@@ -37,11 +37,11 @@ int main() {
  check(ram.read(0x300,untouched)==memory::MemoryResult::Ok &&
        std::all_of(untouched.begin(),untouched.end(),[](std::uint8_t b){return b==0;}),
        "duplicate trampoline rejection leaves guest memory unchanged");
- const std::array<kernel::XexImport,1> imports{{{"xboxkrnl.exe",42,0x200,kernel::ImportKind::Function,0x1000}}};
+ const std::array<kernel::XexImport,1> imports{{{"xboxkrnl.exe",42,0x1200,kernel::ImportKind::Function,0x1000}}};
  check(runtime.resolve_imports(imports,ram)==kernel::ImportResolveError::None,"resolves function import to trampoline");
  std::array<std::uint8_t,4> thunk{};
  check(ram.read(0x1000,thunk)==memory::MemoryResult::Ok &&
-       thunk[0]==0 && thunk[1]==0 && thunk[2]==2 && thunk[3]==0,
+       thunk[0]==0 && thunk[1]==0 && thunk[2]==0x12 && thunk[3]==0,
        "writes trampoline address into import thunk");
  machine::XenonCore core;
  core.kernel_runtime=&runtime;
