@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -49,6 +50,12 @@ public:
         for (std::size_t page = first; page <= last; ++page)
             page_permissions_[page] = permissions & 0x7U;
         return MemoryResult::Ok;
+    }
+
+    [[nodiscard]] std::optional<std::uint8_t> page_permissions(
+        std::uint64_t address) const noexcept {
+        if (address >= bytes_.size()) return std::nullopt;
+        return page_permissions_[static_cast<std::size_t>(address) / page_size];
     }
 
     [[nodiscard]] MemoryResult check_access(
