@@ -2,6 +2,7 @@
 
 #include "wx360/xex/xex_header.hpp"
 #include "wx360/xex/xex_security_info.hpp"
+#include "wx360/xex/xex_import_table.hpp"
 #include "wx360/crypto/aes128.hpp"
 #include "wx360/xex/xex_pe_mapper.hpp"
 #include "wx360/kernel/xex_import_resolver.hpp"
@@ -30,6 +31,7 @@ enum class LoadError : std::uint8_t {
     PeMappingFailed,
     SecurityInfoInvalid,
     FileFormatInfoInvalid,
+    ImportTableInvalid,
 };
 
 struct LaunchPlan {
@@ -44,6 +46,7 @@ struct FullXexImage {
     Header header{};
     SecurityInfo security{};
     FileFormatInfo format{};
+    ImportTable imports{};
 };
 
 class XexImageLoader;
@@ -263,6 +266,10 @@ public:
             return LoadError::FileFormatInfoInvalid;
         if (parsed.security.image_size != parsed.format.image_size)
             return LoadError::SecurityInfoInvalid;
+        if (parsed.header.has_import_libraries &&
+            parse_import_table(parsed.bytes, parsed.header, parsed.imports) !=
+                ImportTableError::Ok)
+            return LoadError::ImportTableInvalid;
         output = std::move(parsed);
         return LoadError::None;
     }
