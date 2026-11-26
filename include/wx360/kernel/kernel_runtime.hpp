@@ -26,6 +26,23 @@ public:
         it->second(state);
         return true;
     }
+    // Register a host implementation and its guest-callable export as one
+    // operation. If trampoline creation fails, roll back the service entry so
+    // the runtime cannot advertise an export that has no dispatch target.
+    [[nodiscard]] bool register_function_export(
+        std::string library, std::uint16_t ordinal, std::uint16_t service_id,
+        std::uint32_t guest_address, Handler handler,
+        memory::PhysicalMemory& ram) {
+        if (!handler || service_id > 0x7FFFU ||
+            !register_service(service_id, handler))
+            return false;
+        if (emit_trampoline(std::move(library), ordinal, service_id,
+                            guest_address, ram))
+            return true;
+        services_.erase(service_id);
+        return false;
+    }
+
     [[nodiscard]] bool emit_trampoline(std::string library, std::uint16_t ordinal,
         std::uint16_t service_id, std::uint32_t guest_address,
         memory::PhysicalMemory& ram) {
