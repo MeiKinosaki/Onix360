@@ -77,6 +77,12 @@ public:
             guest_image_base > std::numeric_limits<std::uint32_t>::max() - size_of_image)
             return fail(PeMapError::MemoryFailure);
 
+        // Preflight the entire physical destination before writing any image
+        // bytes. A denied page must not leave earlier pages partially mapped.
+        if (memory.check_access(physical_base, size_of_image,
+                                memory::Access::Write) != memory::MemoryResult::Ok)
+            return fail(PeMapError::MemoryFailure);
+
         std::vector<std::uint8_t> mapped(size_of_image, 0);
         std::copy_n(image.begin(), size_of_headers, mapped.begin());
         std::vector<std::uint8_t> page_access(
