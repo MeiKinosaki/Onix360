@@ -83,6 +83,12 @@ int main(int argc, char** argv) {
     kernel::KernelRuntime kernel;
     machine::XenonCore core;
     core.attach_kernel_runtime(kernel);
+    const auto map_result = core.map_validated_xex(*validated);
+    if (map_result != memory::MemoryResult::Ok) {
+        std::cerr << "Could not install validated XEX guest page mappings (code "
+                  << static_cast<unsigned>(map_result) << ").\\n";
+        return 9;
+    }
     if (core.start_xex(*validated, ram) != machine::LaunchResult::Started) {
         std::cerr << "Entry point is not executable; launch refused.\n";
         return 9;
