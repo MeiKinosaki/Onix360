@@ -26,8 +26,8 @@ int main() {
        &service_increment,ram),"registers handler and guest export atomically");
  check(!runtime.register_function_export("xboxkrnl.exe",44,7,0x280,
        &service_increment,ram),"rejects duplicate service without advertising export");
- check(!runtime.emit_trampoline("xboxkrnl.exe",44,8,0x280,ram),
-       "failed combined registration leaves no export behind");
+ check(runtime.emit_trampoline("xboxkrnl.exe",44,9,0x280,ram),
+       "failed combined registration leaves ordinal available for a later export");
  check(!runtime.register_function_export("xboxkrnl.exe",42,9,0x280,
        &service_increment,ram),"rolls back handler when export registration fails");
  check(runtime.register_service(9,&service_increment),
