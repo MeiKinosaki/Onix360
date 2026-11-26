@@ -198,7 +198,15 @@ struct XenonCore {
             state.raise_exception(0x400U, state.pc);
             return RunResult::ExceptionTaken;
         }
-        if (instruction == 0x44000002U) { // sc: host kernel dispatch bridge
+        if (instruction == 0x44000042U) { // sc 2: XEX kernel import thunk
+            if (kernel_runtime && kernel_runtime->dispatch_import_thunk(state.pc, state)) {
+                state.pc += 4U;
+                return RunResult::Executed;
+            }
+            state.raise_exception(0xC00U);
+            return RunResult::ExceptionTaken;
+        }
+        if (instruction == 0x44000002U) { // sc 0: explicit development service
             if (kernel_runtime && kernel_runtime->dispatch(state)) {
                 state.pc += 4U;
                 return RunResult::Executed;
