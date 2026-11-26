@@ -121,6 +121,17 @@ struct XenonCore {
             ram.write(translated.physical_address, input) == memory::MemoryResult::Ok;
     }
 
+    // Install all PE section mappings emitted by the validated XEX loader.
+    // This enables the software guest MMU before the first guest instruction.
+    [[nodiscard]] memory::MemoryResult map_validated_xex(
+        const xex::ValidatedXexImage& image) noexcept {
+        const auto mappings = image.page_mappings();
+        if (mappings.empty()) return memory::MemoryResult::Unmapped;
+        const auto result = address_space.map_pages(mappings);
+        if (result == memory::MemoryResult::Ok) mmu_enabled = true;
+        return result;
+    }
+
     // Only the loader-minted validation token can start execution.
     // Explicit guest data accessors share the same translator as instruction fetch.
     [[nodiscard]] memory::MemoryResult read_guest(
