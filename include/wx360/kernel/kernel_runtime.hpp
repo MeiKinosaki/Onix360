@@ -1,6 +1,7 @@
 #pragma once
 #include "wx360/cpu/xenon_state.hpp"
 #include "wx360/kernel/xex_import_resolver.hpp"
+#include "wx360/kernel/xbox360_export_metadata.hpp"
 #include "wx360/memory/physical_memory.hpp"
 #include "wx360/memory/address_space.hpp"
 #include <array>
@@ -46,6 +47,21 @@ public:
         }
         services_.erase(service_id);
         return false;
+    }
+
+    // Bind a caller-supplied, implemented host handler to an ordinal from
+    // the source-verified metadata subset. Metadata alone never creates a
+    // callable export; the handler and guest trampoline are both required.
+    [[nodiscard]] bool register_known_function_export(
+        std::string_view library, std::uint16_t ordinal,
+        std::uint16_t service_id, std::uint32_t guest_address,
+        Handler handler, memory::PhysicalMemory& ram) {
+        const auto* metadata = find_export_metadata(library, ordinal);
+        if (!metadata || metadata->kind != ExportMetadataKind::Function ||
+            !handler)
+            return false;
+        return register_function_export(std::string(metadata->library), ordinal,
+            service_id, guest_address, handler, ram);
     }
 
     [[nodiscard]] bool emit_trampoline(std::string library, std::uint16_t ordinal,
