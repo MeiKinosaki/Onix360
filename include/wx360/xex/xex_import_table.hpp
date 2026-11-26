@@ -4,6 +4,7 @@
 #include "wx360/memory/physical_memory.hpp"
 #include <array>
 #include <map>
+#include <optional>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -87,9 +88,11 @@ struct ImportTable {
         std::string library_name = library.name;
         if (library_name == "xboxkrnl") library_name = "xboxkrnl.exe";
         else if (library_name == "xam") library_name = "xam.xex";
-        // Import-directory addresses need not be adjacent ordinal pairs.
-        std::map<std::uint16_t, std::size_t> value_slots;
-        std::map<std::uint16_t, bool> function_thunks;
+        // XEX records are consumed in sequence: a type-0 value
+        // descriptor for a function is immediately followed by its type-1
+        // executable thunk with the same ordinal. This matches the loader
+        // behavior documented by Xenia's SetupLibraryImports.
+        std::optional<std::size_t> pending_function_descriptor;
         for (const auto address : library.import_thunks) {
             if ((address & 3U) != 0 ||
                 guest_memory.check_access(address, 4, memory::Access::Read) !=
@@ -104,23 +107,26 @@ struct ImportTable {
             const auto type = static_cast<std::uint8_t>(value >> 24U);
             const auto ordinal = static_cast<std::uint16_t>(value);
             if (type == 0U) {
-                if (value_slots.contains(ordinal))
+                if (pending_function_descriptor)
                     return ImportTableError::InvalidThunkRecord;
-                value_slots.emplace(ordinal, decoded.size());
+                pending_function_descriptor = decoded.size();
                 decoded.push_back({library_name, ordinal, 0,
                     kernel::ImportKind::Variable, address});
             } else if (type == 1U) {
-                const auto slot = value_slots.find(ordinal);
-                if (slot == value_slots.end() || function_thunks[ordinal])
+                if (!pending_function_descriptor)
                     return ImportTableError::InvalidThunkRecord;
-                auto& item = decoded[slot->second];
+                auto& item = decoded[*pending_function_descriptor];
+                if (item.ordinal != ordinal)
+                    return ImportTableError::InvalidThunkRecord;
                 item.kind = kernel::ImportKind::Function;
                 item.thunk_address = address;
-                function_thunks[ordinal] = true;
+                pending_function_descriptor.reset();
             } else {
                 return ImportTableError::InvalidThunkRecord;
             }
         }
+        // A type-0 record without a matching function thunk is a variable
+        // import, and therefore remains a valid standalone descriptor.
     }
     output = std::move(decoded);
     return ImportTableError::Ok;
