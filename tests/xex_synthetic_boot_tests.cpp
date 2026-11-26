@@ -12,6 +12,9 @@
 #include <vector>
 
 namespace {
+void synthetic_kernel_service(wx360::cpu::XenonThreadState& state) noexcept {
+    state.gpr[3] = 0xBEEFU;
+}
 void put16(std::vector<std::uint8_t>& b, std::size_t o, std::uint16_t v) {
     b[o] = static_cast<std::uint8_t>(v); b[o + 1] = static_cast<std::uint8_t>(v >> 8);
 }
@@ -44,6 +47,8 @@ std::vector<std::uint8_t> make_synthetic_xbox_pe() {
     put_be32(image, raw + 4U, 0x38800007U);
     put_be32(image, raw + 8U, 0x90600020U);
     put_be32(image, raw + 12U, 0x80A00020U);
+    put_be32(image, raw + 16U, 0x38000042U); // li r0, 0x42
+    put_be32(image, raw + 20U, 0x44000002U); // sc -> host-backed test service
     return image;
 }
 std::vector<std::uint8_t> make_synthetic_xex2(const std::vector<std::uint8_t>& pe) {
@@ -142,7 +147,11 @@ int main() {
     }
     // Launch the same validated image through its guest virtual entry.
     // The PE code page is physically at 0x3000 and mapped at 0x82001000.
+    kernel::KernelRuntime synthetic_kernel;
+    if (!synthetic_kernel.register_service(0x42, &synthetic_kernel_service))
+        return EXIT_FAILURE;
     machine::XenonCore mmu_core;
+    mmu_core.attach_kernel_runtime(synthetic_kernel);
     if (mmu_core.map_validated_xex(*validated) != memory::MemoryResult::Ok ||
         mmu_core.map_guest_page(0x00000000, 0x6000, 7) != memory::MemoryResult::Ok ||
         mmu_core.start_xex(*validated, ram) != machine::LaunchResult::Started ||
@@ -155,6 +164,13 @@ int main() {
         mmu_core.state.gpr[3] != 42 || mmu_core.state.gpr[4] != 7 ||
         mmu_core.state.gpr[5] != 42 || mmu_core.state.pc != 0x82001010) {
         std::cerr << "MMU-backed XEX code/data execution failed\\n";
+        return EXIT_FAILURE;
+    }
+    const auto kernel_batch = mmu_core.run(ram, 2);
+    if (kernel_batch.instructions_executed != 2 ||
+        mmu_core.state.gpr[3] != 0xBEEFU ||
+        mmu_core.state.pc != 0x82001018) {
+        std::cerr << "XEX guest system-call dispatch failed\\n";
         return EXIT_FAILURE;
     }
     // Verify guest data translation independently across the same address space.
