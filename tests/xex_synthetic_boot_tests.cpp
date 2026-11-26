@@ -139,6 +139,23 @@ int main() {
         std::cerr << "Resumed Xenon batch did not complete synthetic XEX payload\\n";
         return EXIT_FAILURE;
     }
+    // Launch the same validated image through its guest virtual entry.
+    // The PE code page is physically at 0x3000 and mapped at 0x82001000.
+    machine::XenonCore mmu_core;
+    if (mmu_core.map_guest_page(0x82001000, physical_base + 0x1000, 7) !=
+            memory::MemoryResult::Ok ||
+        mmu_core.start_xex(*validated, ram) != machine::LaunchResult::Started ||
+        mmu_core.state.pc != validated->guest_entry_point()) {
+        std::cerr << "MMU-backed XEX entry validation failed\\n";
+        return EXIT_FAILURE;
+    }
+    const auto mmu_batch = mmu_core.run(ram, 2);
+    if (mmu_batch.instructions_executed != 2 || core.state.gpr[3] != 42 ||
+        mmu_core.state.gpr[3] != 42 || mmu_core.state.gpr[4] != 7 ||
+        mmu_core.state.pc != 0x82001008) {
+        std::cerr << "MMU-backed XEX execution failed\\n";
+        return EXIT_FAILURE;
+    }
     std::cout << "WX360 synthetic XEX2-to-bounded-Xenon-batches test passed\n";
     return EXIT_SUCCESS;
 }
