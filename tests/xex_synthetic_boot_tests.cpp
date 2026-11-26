@@ -121,26 +121,24 @@ int main() {
         std::cerr << "XenonCore rejected the loader-validated synthetic XEX2\n";
         return EXIT_FAILURE;
     }
-    if (core.step(ram) != machine::RunResult::Executed ||
-        core.state.gpr[3] != 42 || core.state.pc != validated->entry_point() + 4) {
-        std::cerr << "First Xenon instruction did not execute from synthetic XEX2\n";
+    const auto first_batch = core.run(ram, 2);
+    if (first_batch.instructions_executed != 2 ||
+        !first_batch.instruction_limit_reached ||
+        first_batch.stop_reason != machine::RunResult::Executed ||
+        core.state.gpr[3] != 42 || core.state.gpr[4] != 7 ||
+        core.state.pc != validated->entry_point() + 8) {
+        std::cerr << "Bounded Xenon batch did not execute first two XEX instructions\\n";
         return EXIT_FAILURE;
     }
-    if (core.step(ram) != machine::RunResult::Executed ||
-        core.state.gpr[4] != 7 || core.state.pc != validated->entry_point() + 8) {
-        std::cerr << "Second Xenon instruction did not execute from synthetic XEX2\n";
+    const auto resumed_batch = core.run(ram, 2);
+    if (resumed_batch.instructions_executed != 2 ||
+        !resumed_batch.instruction_limit_reached ||
+        resumed_batch.stop_reason != machine::RunResult::Executed ||
+        core.state.gpr[5] != 42 ||
+        core.state.pc != validated->entry_point() + 16) {
+        std::cerr << "Resumed Xenon batch did not complete synthetic XEX payload\\n";
         return EXIT_FAILURE;
     }
-    if (core.step(ram) != machine::RunResult::Executed ||
-        core.state.pc != validated->entry_point() + 12) {
-        std::cerr << "STW did not execute from synthetic XEX2\n";
-        return EXIT_FAILURE;
-    }
-    if (core.step(ram) != machine::RunResult::Executed ||
-        core.state.gpr[5] != 42 || core.state.pc != validated->entry_point() + 16) {
-        std::cerr << "LWZ did not read back synthetic XEX2 guest memory\n";
-        return EXIT_FAILURE;
-    }
-    std::cout << "WX360 synthetic XEX2-to-four-Xenon-instructions test passed\n";
+    std::cout << "WX360 synthetic XEX2-to-bounded-Xenon-batches test passed\n";
     return EXIT_SUCCESS;
 }
