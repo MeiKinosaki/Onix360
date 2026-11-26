@@ -53,7 +53,7 @@ struct FullXexImage {
 class XexImageLoader;
 
 // Constructible only by the production loader after metadata, page hashes,
-// transforms and PE mapping have succeeded. There are no caller-set success flags.
+// transforms, PE mapping and required import resolution have succeeded.
 class ValidatedXexImage {
 public:
     [[nodiscard]] std::uint64_t entry_point() const noexcept { return mapped_entry_point_; }
