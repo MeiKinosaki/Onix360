@@ -27,6 +27,29 @@ int main() {
     check(core.state.gpr[3] == 42 && core.state.pc == 0x104,
           "core updates GPR and PC after instruction execution");
 
+    // The scheduler-facing run loop must honor its instruction budget.
+    memory::PhysicalMemory batch_ram(0x4000);
+    const std::array<std::uint8_t, 4> addi_r3_1{0x38, 0x60, 0x00, 0x01};
+    const std::array<std::uint8_t, 4> addi_r4_2{0x38, 0x80, 0x00, 0x02};
+    check(batch_ram.write(0x100, addi_r3_1) == memory::MemoryResult::Ok &&
+          batch_ram.write(0x104, addi_r4_2) == memory::MemoryResult::Ok,
+          "place two instructions for bounded execution");
+    machine::XenonCore batch_core;
+    batch_core.state.reset(0x100);
+    const auto one_step = batch_core.run(batch_ram, 1);
+    check(one_step.instructions_executed == 1 && one_step.instruction_limit_reached &&
+          batch_core.state.gpr[3] == 1 && batch_core.state.gpr[4] == 0 &&
+          batch_core.state.pc == 0x104,
+          "run loop executes exactly the requested instruction budget");
+    const auto zero_steps = batch_core.run(batch_ram, 0);
+    check(zero_steps.instructions_executed == 0 && zero_steps.instruction_limit_reached &&
+          batch_core.state.pc == 0x104,
+          "zero instruction budget does not advance guest state");
+    const auto next_step = batch_core.run(batch_ram, 1);
+    check(next_step.instructions_executed == 1 && batch_core.state.gpr[4] == 2 &&
+          batch_core.state.pc == 0x108,
+          "run loop resumes at the next guest instruction");
+
     check(ram.set_page_permissions(0x100, memory::PhysicalMemory::page_size,
           static_cast<std::uint8_t>(memory::Access::Read)) == memory::MemoryResult::Ok,
           "remove execute permission from code page");
