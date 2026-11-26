@@ -1,9 +1,11 @@
 #pragma once
 
 #include "wx360/memory/physical_memory.hpp"
+#include "wx360/memory/address_space.hpp"
 
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <vector>
 
@@ -21,6 +23,7 @@ struct PeMapResult {
     std::uint32_t image_size{};
     std::uint32_t entry_rva{};
     std::uint64_t mapped_entry{};
+    std::vector<memory::AddressSpace::PageMapping> page_mappings{};
     [[nodiscard]] explicit operator bool() const noexcept {
         return error == PeMapError::None;
     }
@@ -70,7 +73,8 @@ public:
         if (section_count == 0 || section_count > 96 ||
             !range(image.size(), section_table, section_bytes))
             return fail(PeMapError::InvalidSectionTable);
-        if (physical_base > memory.size() || size_of_image > memory.size() - physical_base)
+        if (physical_base > memory.size() || size_of_image > memory.size() - physical_base ||
+            guest_image_base > std::numeric_limits<std::uint32_t>::max() - size_of_image)
             return fail(PeMapError::MemoryFailure);
 
         std::vector<std::uint8_t> mapped(size_of_image, 0);
@@ -163,6 +167,15 @@ public:
         result.image_size = size_of_image;
         result.entry_rva = selected_entry_rva;
         result.mapped_entry = physical_base + selected_entry_rva;
+        result.page_mappings.reserve(page_access.size());
+        for (std::size_t page = 0; page < page_access.size(); ++page) {
+            if (page_access[page] == 0) continue;
+            const auto offset = page * memory::PhysicalMemory::page_size;
+            result.page_mappings.push_back({
+                static_cast<std::uint64_t>(guest_image_base) + offset,
+                physical_base + offset,
+                page_access[page]});
+        }
         return result;
     }
 
