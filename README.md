@@ -256,6 +256,20 @@ O alvo recomendado no Windows é x86-64 (x64), que fornece SSE2 como baseline. A
 - [ ] GPU Xenos, áudio, kernel/HAL, exceções/interrupções e execução multicore.
 - [ ] Execução de jogos.
 
+## Diagnóstico de execução XEX (experimental)
+
+O alvo `WX360-XEX-Probe` aceita o caminho de um XEX fornecido pelo usuário, lê os metadados XEX2, tenta validar hashes/transformações suportadas, mapeia o PE, inicia o XenonCore e executa um lote limitado de até 100.000 instruções. O relatório mostra PC, registrador r3, RAM alocada, motivo de parada e contador de apresentações do framebuffer.
+
+Uso:
+
+```text
+WX360-XEX-Probe caminho/para/homebrew.xex
+```
+
+**Limites e segurança:** a ferramenta recusa XEX que declare import libraries, pois ainda não há catálogo real de exports xboxkrnl/xam nem resolução completa de thunks. XEX Basic também não está conectado ao caminho de lançamento. A assinatura RSA não é verificada. O kernel ligado é apenas um dispatcher host-backed sem serviços Xbox reais. A GPU é um framebuffer/decoder experimental; não executa shaders Xenos nativos. O contador de presents é diagnóstico do modelo local, não prova que o XEX submeteu comandos gráficos. Um término com instruções executadas só prova que o subconjunto interpretado avançou, não que o homebrew funcionou corretamente.
+
+O probe é uma ferramenta de diagnóstico para imagens compatíveis com o subconjunto atual; não é ainda um launcher geral de homebrew comercial ou independente. Nenhum XEX homebrew real foi validado nesta etapa.
+
 ## Plano de versões
 
 | Versão | Marco |
