@@ -56,6 +56,11 @@ add_executable(wx360_test_runner tools/wx360_test_runner.cpp)
 set_target_properties(wx360_test_runner PROPERTIES OUTPUT_NAME "WX360-Test")
 target_link_libraries(wx360_test_runner PRIVATE wx360_cpu)
 
+# Bounded diagnostic launcher for user-supplied XEX homebrew images.
+add_executable(wx360_xex_probe tools/wx360_xex_probe.cpp)
+set_target_properties(wx360_xex_probe PROPERTIES OUTPUT_NAME "WX360-XEX-Probe")
+target_link_libraries(wx360_xex_probe PRIVATE wx360_cpu)
+
 include(CTest)
 if(BUILD_TESTING)
   add_executable(wx360_aes128_tests tests/aes128_tests.cpp)
