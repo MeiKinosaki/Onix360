@@ -324,12 +324,25 @@ int main(){
         return EXIT_FAILURE;
     }
     const std::array<wx360::kernel::XexImport, 1> runtime_imports{{
-        {"xboxkrnl.exe", 0x123, wx360::kernel::ImportKind::Function,
-         0x82000080, 0x82000100}
+        {"xboxkrnl.exe", 0x123, 0x82000100,
+         wx360::kernel::ImportKind::Function, 0x82000080}
     }};
     if (runtime.resolve_imports_virtual(runtime_imports, runtime_as, runtime_guest) !=
         wx360::kernel::ImportResolveError::None) {
         std::cerr << "KernelRuntime virtual import resolution failed\\n";
+        return EXIT_FAILURE;
+    }
+    const std::array<std::uint8_t, 16> expected_runtime_thunk{
+        0x44,0x00,0x00,0x42, // sc with LEV=2, as used by Xenia
+        0x4E,0x80,0x00,0x20, // blr
+        0x60,0x00,0x00,0x00, // nop
+        0x60,0x00,0x00,0x00  // nop
+    };
+    std::array<std::uint8_t, 16> actual_runtime_thunk{};
+    if (runtime_guest.read(0x100, actual_runtime_thunk) !=
+            wx360::memory::MemoryResult::Ok ||
+        actual_runtime_thunk != expected_runtime_thunk) {
+        std::cerr << "Kernel import thunk does not match Xenia LEV=2 sequence\\n";
         return EXIT_FAILURE;
     }
     wx360::cpu::XenonThreadState dispatched{};
