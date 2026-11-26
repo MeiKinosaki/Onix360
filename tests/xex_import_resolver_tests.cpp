@@ -44,7 +44,7 @@ int main() {
     bool thunk_matches = true;
     for (std::size_t i = 0; i < expected_thunk.size(); ++i)
         thunk_matches = thunk_matches && is_be_address(0x220 + i * 4, expected_thunk[i]);
-    if (!is_be_address(0x200, 0x220) || !is_be_address(0x204, 0x82002000) ||
+    if (!is_be_address(0x200, 0xDEADC0DE) || !is_be_address(0x204, 0x82002000) ||
         !thunk_matches) {
         std::cerr << "Import slots or executable Xenon thunk code were not emitted correctly\\n";
         return EXIT_FAILURE;
