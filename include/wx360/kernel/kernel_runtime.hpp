@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <map>
 #include <span>
+#include <string_view>
+#include <vector>
 #include <string>
 
 namespace wx360::kernel {
@@ -36,9 +38,11 @@ public:
         if (!handler || service_id > 0x7FFFU ||
             !register_service(service_id, handler))
             return false;
-        if (emit_trampoline(std::move(library), ordinal, service_id,
-                            guest_address, ram))
+        const auto key = make_export_key(library, ordinal);
+        if (emit_trampoline(library, ordinal, service_id, guest_address, ram)) {
+            export_services_.emplace(key, service_id);
             return true;
+        }
         services_.erase(service_id);
         return false;
     }
@@ -62,11 +66,56 @@ public:
         return imports_.register_export({std::move(library),ordinal,guest_address,
                                          ImportKind::Function});
     }
-    [[nodiscard]] ImportResolveError resolve_imports(std::span<const XexImport> imports,
-        memory::PhysicalMemory& ram) const { return imports_.resolve(imports,ram); }
+    [[nodiscard]] bool dispatch_import_thunk(
+        std::uint64_t guest_pc, cpu::XenonThreadState& state) const noexcept {
+        const auto thunk = thunk_services_.find(static_cast<std::uint32_t>(guest_pc));
+        if (thunk == thunk_services_.end()) return false;
+        const auto service = services_.find(thunk->second);
+        if (service == services_.end()) return false;
+        service->second(state);
+        return true;
+    }
+
+    [[nodiscard]] ImportResolveError resolve_imports(
+        std::span<const XexImport> imports, memory::PhysicalMemory& ram) {
+        // Do not patch guest code unless every function import has a real
+        // registered host implementation that can be dispatched by thunk PC.
+        for (const auto& item : imports) {
+            if (item.kind == ImportKind::Function &&
+                export_services_.find(make_export_key(item.library, item.ordinal)) ==
+                    export_services_.end())
+                return ImportResolveError::MissingExport;
+        }
+        const auto result = imports_.resolve(imports, ram);
+        if (result != ImportResolveError::None) return result;
+        for (const auto& item : imports) {
+            if (item.kind == ImportKind::Function) {
+                const auto service = export_services_.find(
+                    make_export_key(item.library, item.ordinal));
+                if (service != export_services_.end())
+                    thunk_services_[static_cast<std::uint32_t>(item.thunk_address)] =
+                        service->second;
+            }
+        }
+        return ImportResolveError::None;
+    }
 
 private:
+    [[nodiscard]] static std::string make_export_key(
+        std::string_view library, std::uint16_t ordinal) {
+        std::string key;
+        key.reserve(library.size() + 8);
+        for (const unsigned char ch : library)
+            key.push_back(static_cast<char>(ch >= 'A' && ch <= 'Z' ? ch + 32 : ch));
+        key.push_back('#');
+        key.push_back(static_cast<char>(ordinal >> 8));
+        key.push_back(static_cast<char>(ordinal));
+        return key;
+    }
+
     std::map<std::uint16_t,Handler> services_;
+    std::map<std::string,std::uint16_t> export_services_;
+    std::map<std::uint32_t,std::uint16_t> thunk_services_;
     XexImportResolver imports_;
 };
 } // namespace wx360::kernel
