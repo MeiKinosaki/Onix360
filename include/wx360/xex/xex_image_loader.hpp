@@ -54,11 +54,17 @@ class ValidatedXexImage {
 public:
     [[nodiscard]] std::uint64_t entry_point() const noexcept { return mapped_entry_point_; }
     [[nodiscard]] std::uint64_t guest_entry_point() const noexcept { return guest_entry_point_; }
+    [[nodiscard]] std::span<const memory::AddressSpace::PageMapping> page_mappings() const noexcept {
+        return page_mappings_;
+    }
 private:
-    explicit ValidatedXexImage(std::uint64_t entry, std::uint64_t guest_entry)
-        : mapped_entry_point_(entry), guest_entry_point_(guest_entry) {}
+    explicit ValidatedXexImage(std::uint64_t entry, std::uint64_t guest_entry,
+        std::vector<memory::AddressSpace::PageMapping> mappings)
+        : mapped_entry_point_(entry), guest_entry_point_(guest_entry),
+          page_mappings_(std::move(mappings)) {}
     std::uint64_t mapped_entry_point_{};
     std::uint64_t guest_entry_point_{};
+    std::vector<memory::AddressSpace::PageMapping> page_mappings_{};
     friend class XexImageLoader;
 };
 
@@ -166,7 +172,8 @@ public:
             image.header.entry_point);
         if (!mapped) return std::nullopt;
         return ValidatedXexImage(mapped.mapped_entry,
-                                 static_cast<std::uint64_t>(mapped.image_base) + mapped.entry_rva);
+                                 static_cast<std::uint64_t>(mapped.image_base) + mapped.entry_rva,
+                                 mapped.page_mappings);
     }
 
     [[nodiscard]] static crypto::AesResult decrypt_normal_payload(
