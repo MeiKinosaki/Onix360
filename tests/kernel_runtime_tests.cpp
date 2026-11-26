@@ -22,6 +22,12 @@ int main() {
  check(!runtime.emit_trampoline("xboxkrnl.exe",43,8,0,ram),"rejects null trampoline address");
  check(!runtime.emit_trampoline("xboxkrnl.exe",43,8,0x3FFC,ram),"rejects trampoline that exceeds guest RAM");
  check(runtime.emit_trampoline("xboxkrnl.exe",42,7,0x200,ram),"emits guest SC trampoline");
+ check(runtime.register_function_export("xboxkrnl.exe",43,8,0x240,
+       &service_increment,ram),"registers handler and guest export atomically");
+ check(!runtime.register_function_export("xboxkrnl.exe",44,7,0x280,
+       &service_increment,ram),"rejects duplicate service without advertising export");
+ check(!runtime.emit_trampoline("xboxkrnl.exe",44,8,0x280,ram),
+       "failed combined registration leaves no export behind");
  check(!runtime.emit_trampoline("XBOXKRNL.EXE",42,7,0x300,ram),"rejects duplicate export before writing trampoline");
  std::array<std::uint8_t,12> untouched{};
  check(ram.read(0x300,untouched)==memory::MemoryResult::Ok &&
