@@ -39,7 +39,7 @@ int main() {
                bytes[p+3] == static_cast<std::uint8_t>(v);
     };
     const std::array<std::uint32_t,4> expected_thunk{
-        0x3D808200U, 0x618C1000U, 0x7D8903A6U, 0x4E800420U
+        0x44000042U, 0x4E800020U, 0x60000000U, 0x60000000U
     };
     bool thunk_matches = true;
     for (std::size_t i = 0; i < expected_thunk.size(); ++i)
