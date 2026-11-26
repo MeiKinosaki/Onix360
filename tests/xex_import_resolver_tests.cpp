@@ -38,8 +38,15 @@ int main() {
                bytes[p+2] == static_cast<std::uint8_t>(v >> 8) &&
                bytes[p+3] == static_cast<std::uint8_t>(v);
     };
-    if (!is_be_address(0x200, 0x220) || !is_be_address(0x204, 0x82002000)) {
-        std::cerr << "Resolved guest addresses were not written in big-endian order\n";
+    const std::array<std::uint32_t,4> expected_thunk{
+        0x3D808200U, 0x618C1000U, 0x7D8903A6U, 0x4E800420U
+    };
+    bool thunk_matches = true;
+    for (std::size_t i = 0; i < expected_thunk.size(); ++i)
+        thunk_matches = thunk_matches && is_be_address(0x220 + i * 4, expected_thunk[i]);
+    if (!is_be_address(0x200, 0x220) || !is_be_address(0x204, 0x82002000) ||
+        !thunk_matches) {
+        std::cerr << "Import slots or executable Xenon thunk code were not emitted correctly\\n";
         return EXIT_FAILURE;
     }
 
