@@ -387,5 +387,28 @@ int main(){
         std::cerr << "Source-verified export metadata lookup failed\\n";
         return EXIT_FAILURE;
     }
+    // Metadata can only be bound to an explicitly supplied handler;
+    // unknown ordinals and variable exports cannot become fake functions.
+    wx360::memory::PhysicalMemory known_export_ram(0x2000);
+    wx360::kernel::KernelRuntime known_export_runtime;
+    if (!known_export_runtime.register_known_function_export(
+            "xboxkrnl.exe", 0x0003, 0x41, 0x400,
+            &test_kernel_service, known_export_ram)) {
+        std::cerr << "Could not bind implemented DbgPrint metadata to handler\\n";
+        return EXIT_FAILURE;
+    }
+    wx360::cpu::XenonThreadState known_export_state{};
+    known_export_state.gpr[3] = 0x360U;
+    if (!known_export_runtime.dispatch(known_export_state) ||
+        known_export_state.gpr[3] != 0x360U ||
+        known_export_runtime.register_known_function_export(
+            "xboxkrnl.exe", 0xFFFF, 0x42, 0x440,
+            &test_kernel_service, known_export_ram) ||
+        known_export_runtime.register_known_function_export(
+            "xboxkrnl.exe", 0x000C, 0x43, 0x480,
+            &test_kernel_service, known_export_ram)) {
+        std::cerr << "KernelRuntime accepted an unknown or non-function export\\n";
+        return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
 }
