@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <algorithm>
 #include <limits>
+#include <span>
+#include <vector>
 
 namespace wx360::memory {
 
@@ -18,16 +20,35 @@ public:
     static constexpr std::uint64_t minimum_bat_size = 128U * 1024U;
     static constexpr std::uint64_t maximum_bat_size = 256U * 1024U * 1024U;
     struct Translation { MemoryResult result{MemoryResult::Unmapped}; std::uint64_t physical_address{}; };
+    struct PageMapping { std::uint64_t virtual_address{}; std::uint64_t physical_address{}; std::uint8_t permissions{}; };
 
     [[nodiscard]] MemoryResult map_page(std::uint64_t va, std::uint64_t pa,
                                         std::uint8_t permissions) noexcept {
         if ((va & (page_size - 1U)) || (pa & (page_size - 1U))) return MemoryResult::AlignmentFault;
         if ((permissions & 7U) == 0 || (permissions & ~7U) != 0) return MemoryResult::PermissionDenied;
         const auto vpn = va / page_size;
-        for (auto& e : entries_) if (e.valid && e.vpn == vpn) {
-            e = {vpn, pa / page_size, permissions, true}; return MemoryResult::Ok;
+        for (auto& e : entries_) if (e.vpn == vpn) {
+            e = {vpn, pa / page_size, permissions}; return MemoryResult::Ok;
         }
-        entries_[replacement_++ % entries_.size()] = {vpn, pa / page_size, permissions, true};
+        entries_.push_back({vpn, pa / page_size, permissions});
+        return MemoryResult::Ok;
+    }
+
+    // Install a complete loader-produced page map atomically after validating
+    // every entry. This is a software page table, not the Xenon hardware TLB.
+    [[nodiscard]] MemoryResult map_pages(std::span<const PageMapping> mappings) noexcept {
+        for (const auto& mapping : mappings) {
+            if ((mapping.virtual_address & (page_size - 1U)) ||
+                (mapping.physical_address & (page_size - 1U)))
+                return MemoryResult::AlignmentFault;
+            if ((mapping.permissions & 7U) == 0 || (mapping.permissions & ~7U) != 0)
+                return MemoryResult::PermissionDenied;
+        }
+        for (const auto& mapping : mappings) {
+            const auto result = map_page(mapping.virtual_address,
+                mapping.physical_address, mapping.permissions);
+            if (result != MemoryResult::Ok) return result;
+        }
         return MemoryResult::Ok;
     }
     // BAT-style block windows. These explicit mappings model large,
@@ -50,12 +71,12 @@ public:
     void unmap_page(std::uint64_t va) noexcept {
         if (va & (page_size - 1U)) return;
         const auto vpn = va / page_size;
-        for (auto& e : entries_) if (e.valid && e.vpn == vpn) e.valid = false;
+        entries_.erase(std::remove_if(entries_.begin(), entries_.end(),
+            [vpn](const Entry& e) { return e.vpn == vpn; }), entries_.end());
     }
     void flush() noexcept {
         // A TLB invalidation must not erase persistent BAT register mappings.
-        for (auto& e : entries_) e.valid = false;
-        replacement_ = 0;
+        entries_.clear();
     }
     [[nodiscard]] Translation translate(std::uint64_t va, Access access,
                                         const PhysicalMemory& physical) const noexcept {
@@ -95,7 +116,7 @@ public:
             const auto vpn = current_va / page_size;
             const Entry* mapped = nullptr;
             for (const auto& e : entries_) {
-                if (e.valid && e.vpn == vpn) { mapped = &e; break; }
+                if (e.vpn == vpn) { mapped = &e; break; }
             }
             if (!mapped) return {MemoryResult::Unmapped, 0};
             if ((mapped->permissions & static_cast<std::uint8_t>(access)) == 0)
@@ -118,11 +139,10 @@ public:
         return {MemoryResult::Ok, first_physical};
     }
 private:
-    struct Entry { std::uint64_t vpn{}, ppn{}; std::uint8_t permissions{}; bool valid{}; };
+    struct Entry { std::uint64_t vpn{}, ppn{}; std::uint8_t permissions{}; };
     struct BatEntry { std::uint64_t virtual_base{}, physical_base{}, size{};
         std::uint8_t permissions{}; bool valid{}; };
-    std::array<Entry, tlb_entries> entries_{};
+    std::vector<Entry> entries_{};
     std::array<BatEntry, bat_entries> bats_{};
-    std::size_t replacement_{};
 };
 } // namespace wx360::memory
