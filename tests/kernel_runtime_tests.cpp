@@ -21,39 +21,41 @@ int main() {
  check(!runtime.dispatch(dispatch_state),"rejects unknown kernel service identifiers");
  check(!runtime.emit_trampoline("xboxkrnl.exe",43,8,0,ram),"rejects null trampoline address");
  check(!runtime.emit_trampoline("xboxkrnl.exe",43,8,0x3FFC,ram),"rejects trampoline that exceeds guest RAM");
- check(runtime.emit_trampoline("xboxkrnl.exe",42,7,0x200,ram),"emits guest SC trampoline");
- check(runtime.register_function_export("xboxkrnl.exe",43,8,0x240,
+ check(runtime.register_function_export("xboxkrnl.exe",42,8,0x200,
        &service_increment,ram),"registers handler and guest export atomically");
+ check(runtime.register_function_export("xboxkrnl.exe",43,9,0x240,
+       &service_increment,ram),"registers second handler and guest export atomically");
  check(!runtime.register_function_export("xboxkrnl.exe",44,7,0x280,
        &service_increment,ram),"rejects duplicate service without advertising export");
- check(runtime.emit_trampoline("xboxkrnl.exe",44,9,0x280,ram),
-       "failed combined registration leaves ordinal available for a later export");
- check(!runtime.register_function_export("xboxkrnl.exe",42,9,0x280,
-       &service_increment,ram),"rolls back handler when export registration fails");
- check(runtime.register_service(9,&service_increment),
-       "failed export registration leaves service identifier reusable");
+ check(runtime.emit_trampoline("xboxkrnl.exe",44,10,0x280,ram),
+       "allows independent development trampoline registration");
+ check(!runtime.register_function_export("xboxkrnl.exe",42,11,0x300,
+       &service_increment,ram),"rejects duplicate export before committing service");
  check(!runtime.emit_trampoline("XBOXKRNL.EXE",42,7,0x300,ram),"rejects duplicate export before writing trampoline");
  std::array<std::uint8_t,12> untouched{};
  check(ram.read(0x300,untouched)==memory::MemoryResult::Ok &&
        std::all_of(untouched.begin(),untouched.end(),[](std::uint8_t b){return b==0;}),
        "duplicate trampoline rejection leaves guest memory unchanged");
  const std::array<kernel::XexImport,1> imports{{{"xboxkrnl.exe",42,0x1200,kernel::ImportKind::Function,0x1000}}};
- check(runtime.resolve_imports(imports,ram)==kernel::ImportResolveError::None,"resolves function import to trampoline");
- std::array<std::uint8_t,4> thunk{};
- check(ram.read(0x1000,thunk)==memory::MemoryResult::Ok &&
-       thunk[0]==0 && thunk[1]==0 && thunk[2]==0x12 && thunk[3]==0,
-       "writes trampoline address into import thunk");
+ check(runtime.resolve_imports(imports,ram)==kernel::ImportResolveError::None,"resolves function import to registered handler");
+ std::array<std::uint8_t,4> descriptor{};
+ check(ram.read(0x1000,descriptor)==memory::MemoryResult::Ok &&
+       descriptor==std::array<std::uint8_t,4>{0xDE,0xAD,0xC0,0xDE},
+       "writes reverse-engineered function descriptor marker");
+ std::array<std::uint8_t,16> thunk{};
+ check(ram.read(0x1200,thunk)==memory::MemoryResult::Ok &&
+       thunk[0]==0x44 && thunk[1]==0 && thunk[2]==0 && thunk[3]==0x42 &&
+       thunk[4]==0x4E && thunk[5]==0x80 && thunk[6]==0 && thunk[7]==0x20,
+       "writes sc 2 kernel dispatch thunk followed by blr");
  machine::XenonCore core;
  core.kernel_runtime=&runtime;
- core.state.reset(0x200);
+ core.state.reset(0x1200);
  core.state.gpr[3]=10;
  core.state.lr=0x3000;
- check(core.step(ram)==machine::RunResult::Executed && core.state.gpr[0]==7,
-       "trampoline loads service identifier");
  check(core.step(ram)==machine::RunResult::Executed && core.state.gpr[3]==11 &&
-       core.state.pc==0x208,
-       "SC dispatches host service and advances to trampoline return");
+       core.state.pc==0x1204,
+       "SC 2 dispatches host service using the guest thunk address");
  check(core.step(ram)==machine::RunResult::Executed && core.state.pc==0x3000,
-       "trampoline BLR returns to guest caller through LR");
+       "kernel import thunk BLR returns to guest caller through LR");
  return failures==0?EXIT_SUCCESS:EXIT_FAILURE;
 }
