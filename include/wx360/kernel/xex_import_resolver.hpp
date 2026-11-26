@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wx360/memory/physical_memory.hpp"
+#include "wx360/memory/address_space.hpp"
 
 #include <array>
 #include <algorithm>
@@ -38,7 +39,7 @@ struct KernelExport {
 
 enum class ImportResolveError : std::uint8_t {
     None, DuplicateExport, MissingExport, InvalidThunk, MemoryWriteFailed,
-    KindMismatch, InvalidGuestAddress, DuplicateThunk
+    KindMismatch, InvalidGuestAddress, DuplicateThunk, TranslationFailed
 };
 
 class XexImportResolver {
@@ -53,6 +54,33 @@ public:
             return false;
         const auto key = make_key(item.library, item.ordinal);
         return exports_.emplace(key, ExportTarget{item.guest_address, item.kind}).second;
+    }
+
+    // Resolve XEX import locations expressed as Xenon guest virtual addresses.
+    // Translate and permission-check every destination before staging any patch.
+    [[nodiscard]] ImportResolveError resolve_virtual(
+        std::span<const XexImport> imports,
+        const memory::AddressSpace& address_space,
+        memory::PhysicalMemory& guest_memory) const {
+        std::vector<XexImport> physical_imports;
+        physical_imports.reserve(imports.size());
+        for (const auto& item : imports) {
+            XexImport translated = item;
+            if (item.kind == ImportKind::Function) {
+                const auto thunk = address_space.translate_range(
+                    item.thunk_address, 16, memory::Access::Write, guest_memory);
+                if (thunk.result != memory::MemoryResult::Ok)
+                    return ImportResolveError::TranslationFailed;
+                translated.thunk_address = thunk.physical_address;
+            }
+            const auto slot = address_space.translate_range(
+                item.value_address, 4, memory::Access::Write, guest_memory);
+            if (slot.result != memory::MemoryResult::Ok)
+                return ImportResolveError::TranslationFailed;
+            translated.value_address = slot.physical_address;
+            physical_imports.push_back(std::move(translated));
+        }
+        return resolve(physical_imports, guest_memory);
     }
 
     [[nodiscard]] ImportResolveError resolve(
