@@ -174,8 +174,19 @@ public:
 
         if (transformed.size() != image.format.image_size)
             return std::nullopt;
+        // Imports require a transactional image load. Use a private RAM
+        // snapshot so bad imports cannot leave partially mapped PE bytes.
+        std::optional<memory::PhysicalMemory> staged_guest_memory;
+        if (image.header.has_import_libraries) {
+            try {
+                staged_guest_memory.emplace(guest_memory);
+            } catch (...) {
+                return std::nullopt;
+            }
+        }
+        auto& load_memory = staged_guest_memory ? *staged_guest_memory : guest_memory;
         const auto mapped = XexPeMapper::map(
-            transformed, guest_memory, physical_base, guest_image_base,
+            transformed, load_memory, physical_base, guest_image_base,
             image.header.entry_point);
         if (!mapped) return std::nullopt;
 
@@ -194,7 +205,7 @@ public:
 
             std::vector<kernel::XexImport> decoded_imports;
             if (decode_import_records_virtual(image.imports, staged_address_space,
-                    guest_memory, decoded_imports) != ImportTableError::Ok)
+                    load_memory, decoded_imports) != ImportTableError::Ok)
                 return std::nullopt;
 
             // Keep PE permissions intact except while the import transaction
@@ -202,20 +213,20 @@ public:
             std::vector<std::pair<std::uint64_t, std::uint8_t>> restore;
             const auto grant_write = [&](std::uint64_t va, std::size_t length) -> bool {
                 const auto translated = staged_address_space.translate_range(
-                    va, length, memory::Access::Read, guest_memory);
+                    va, length, memory::Access::Read, load_memory);
                 if (translated.result != memory::MemoryResult::Ok) return false;
                 const auto first = translated.physical_address / memory::PhysicalMemory::page_size;
                 const auto last = (translated.physical_address + length - 1U) /
                                   memory::PhysicalMemory::page_size;
                 for (auto page = first; page <= last; ++page) {
                     const auto pa = page * memory::PhysicalMemory::page_size;
-                    const auto prior = guest_memory.page_permissions(pa);
+                    const auto prior = load_memory.page_permissions(pa);
                     if (!prior) return false;
                     if (std::none_of(restore.begin(), restore.end(),
                         [&](const auto& entry) { return entry.first == pa; }))
                         restore.emplace_back(pa, *prior);
                     if ((*prior & static_cast<std::uint8_t>(memory::Access::Write)) == 0 &&
-                        guest_memory.set_page_permissions(pa, memory::PhysicalMemory::page_size,
+                        load_memory.set_page_permissions(pa, memory::PhysicalMemory::page_size,
                             static_cast<std::uint8_t>(*prior |
                                 static_cast<std::uint8_t>(memory::Access::Write))) !=
                             memory::MemoryResult::Ok)
@@ -231,15 +242,40 @@ public:
             }
             const auto resolved = ready
                 ? kernel_runtime->resolve_imports_virtual(decoded_imports,
-                    staged_address_space, guest_memory)
+                    staged_address_space, load_memory)
                 : kernel::ImportResolveError::TranslationFailed;
             bool restored = true;
             for (auto it = restore.rbegin(); it != restore.rend(); ++it)
-                if (guest_memory.set_page_permissions(it->first,
+                if (load_memory.set_page_permissions(it->first,
                     memory::PhysicalMemory::page_size, it->second) != memory::MemoryResult::Ok)
                     restored = false;
             if (resolved != kernel::ImportResolveError::None || !restored)
                 return std::nullopt;
+            // Commit physical image bytes and permissions only after
+            // import resolution. The destination range was preflighted by
+            // XexPeMapper before any guest-visible mutation.
+            const auto source_bytes = load_memory.raw_bytes();
+            auto destination_bytes = guest_memory.raw_bytes();
+            if (physical_base > destination_bytes.size() ||
+                mapped.image_size > destination_bytes.size() -
+                    static_cast<std::size_t>(physical_base))
+                return std::nullopt;
+            std::copy_n(source_bytes.begin() + static_cast<std::size_t>(physical_base),
+                        mapped.image_size,
+                        destination_bytes.begin() + static_cast<std::size_t>(physical_base));
+            const auto first_page = physical_base / memory::PhysicalMemory::page_size;
+            const auto last_page = (physical_base + mapped.image_size - 1U) /
+                                   memory::PhysicalMemory::page_size;
+            for (auto page = first_page; page <= last_page; ++page) {
+                const auto pa = page * memory::PhysicalMemory::page_size;
+                const auto permissions = load_memory.page_permissions(pa);
+                const auto length = std::min<std::size_t>(
+                    memory::PhysicalMemory::page_size,
+                    destination_bytes.size() - static_cast<std::size_t>(pa));
+                if (!permissions || guest_memory.set_page_permissions(
+                        pa, length, *permissions) != memory::MemoryResult::Ok)
+                    return std::nullopt;
+            }
             *guest_address_space = std::move(staged_address_space);
         }
         return ValidatedXexImage(mapped.mapped_entry,
