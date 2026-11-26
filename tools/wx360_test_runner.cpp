@@ -53,9 +53,14 @@ int main() {
                bytes[at+2] == static_cast<std::uint8_t>(v >> 8) &&
                bytes[at+3] == static_cast<std::uint8_t>(v);
     };
+    const bool function_descriptor = be(0x200,0xDEADC0DE);
+    const bool variable_address = be(0x204,0x82002000);
+    const bool function_thunk =
+        be(0x3000,0x44000042) && be(0x3004,0x4E800020) &&
+        be(0x3008,0x60000000) && be(0x300C,0x60000000);
     check(function_added && variable_added && resolved == kernel::ImportResolveError::None &&
-          be(0x200,0x3000) && be(0x204,0x82002000),
-          "typed kernel function/variable import resolution");
+          function_descriptor && variable_address && function_thunk,
+          "typed kernel imports emit descriptor, variable address and sc2 thunk");
 
     const std::array invalid{
         kernel::XexImport{"xboxkrnl.exe",0x124,0x228,kernel::ImportKind::Function,0x208}
