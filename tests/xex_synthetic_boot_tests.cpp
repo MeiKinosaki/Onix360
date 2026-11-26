@@ -3,6 +3,7 @@
 #include "wx360/crypto/sha1.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -142,18 +143,45 @@ int main() {
     // Launch the same validated image through its guest virtual entry.
     // The PE code page is physically at 0x3000 and mapped at 0x82001000.
     machine::XenonCore mmu_core;
-    if (mmu_core.map_guest_page(0x82001000, physical_base + 0x1000, 7) !=
-            memory::MemoryResult::Ok ||
+    if (mmu_core.map_validated_xex(*validated) != memory::MemoryResult::Ok ||
+        mmu_core.map_guest_page(0x00000000, 0x6000, 7) != memory::MemoryResult::Ok ||
         mmu_core.start_xex(*validated, ram) != machine::LaunchResult::Started ||
         mmu_core.state.pc != validated->guest_entry_point()) {
-        std::cerr << "MMU-backed XEX entry validation failed\\n";
+        std::cerr << "Automatic PE-section MMU mapping or XEX entry validation failed\\n";
         return EXIT_FAILURE;
     }
-    const auto mmu_batch = mmu_core.run(ram, 2);
-    if (mmu_batch.instructions_executed != 2 || core.state.gpr[3] != 42 ||
+    const auto mmu_batch = mmu_core.run(ram, 4);
+    if (mmu_batch.instructions_executed != 4 || core.state.gpr[3] != 42 ||
         mmu_core.state.gpr[3] != 42 || mmu_core.state.gpr[4] != 7 ||
-        mmu_core.state.pc != 0x82001008) {
-        std::cerr << "MMU-backed XEX execution failed\\n";
+        mmu_core.state.gpr[5] != 42 || mmu_core.state.pc != 0x82001010) {
+        std::cerr << "MMU-backed XEX code/data execution failed\\n";
+        return EXIT_FAILURE;
+    }
+    // Verify guest data translation independently across the same address space.
+    const std::array<std::uint8_t, 4> guest_data{0x12, 0x34, 0x56, 0x78};
+    std::array<std::uint8_t, 4> guest_readback{};
+    if (mmu_core.write_guest(ram, 0x24, guest_data) != memory::MemoryResult::Ok ||
+        mmu_core.read_guest(ram, 0x24, guest_readback) != memory::MemoryResult::Ok ||
+        guest_readback != guest_data) {
+        std::cerr << "Guest virtual data read/write translation failed\\n";
+        return EXIT_FAILURE;
+    }
+
+    // The command-buffer bridge must fetch guest-visible PM4 words through MMU.
+    if (!mmu_core.gpu.configure_framebuffer(16, 16)) return EXIT_FAILURE;
+    const std::uint32_t pm4_words[4] = {
+        0xC000F100U, 0xFF336699U, 0xC000F200U, 0x00000000U
+    };
+    std::array<std::uint8_t, 16> pm4_bytes{};
+    for (unsigned w = 0; w < 4; ++w)
+        for (unsigned b = 0; b < 4; ++b)
+            pm4_bytes[w * 4U + b] = static_cast<std::uint8_t>(pm4_words[w] >> (24U - b * 8U));
+    if (ram.write(0x7000, pm4_bytes) != memory::MemoryResult::Ok ||
+        mmu_core.map_guest_page(0x82004000, 0x7000, 3) != memory::MemoryResult::Ok ||
+        !mmu_core.execute_gpu_command_buffer(ram, 0x82004000, 4) ||
+        mmu_core.gpu.framebuffer().present_count() != 1 ||
+        mmu_core.gpu.framebuffer().pixels().front() != 0xFF336699U) {
+        std::cerr << "MMU-backed guest PM4 clear/present bridge failed\\n";
         return EXIT_FAILURE;
     }
     std::cout << "WX360 synthetic XEX2-to-bounded-Xenon-batches test passed\n";
