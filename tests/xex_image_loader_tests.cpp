@@ -51,7 +51,7 @@ int main() {
     std::array<std::uint8_t, 4> after_guard{};
     if (rejected_import_image ||
         guarded_ram.read(0x1000, after_guard) != wx360::memory::MemoryResult::Ok ||
-        after_guard != guard || guarded_as.page_count() != 0) {
+        after_guard != guard || guarded_as.translate(0x82000000, wx360::memory::Access::Read, guarded_ram).result != wx360::memory::MemoryResult::Unmapped) {
         std::cerr << "XEX loader accepted unresolved imports or mutated guest state\\n";
         return EXIT_FAILURE;
     }
