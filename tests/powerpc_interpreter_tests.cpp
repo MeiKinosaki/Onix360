@@ -110,10 +110,7 @@ int main() {
     check((s.fpscr & 0x84000000U) == 0x84000000U, "FDIV by zero sets sticky FX and ZX flags");
 
     // VMX vector maximum XO encodings (VX form).
-    const auto vx_form = [](unsigned vd, unsigned va, unsigned vb, unsigned xo) {
-        return (4U << 26U) | (vd << 21U) | (va << 16U) |
-               (vb << 11U) | (xo << 1U);
-    };
+
     s.vr[1].lane = {0x01020304U, 0x7F80FF00U, 0x80000001U, 0xFFFFFFFFU};
     s.vr[2].lane = {0x04030201U, 0x0101FE01U, 0x7F000002U, 0x00000000U};
     check(execute(s, vx_form(3, 1, 2, 514U)) == StepResult::Executed,
