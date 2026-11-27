@@ -1138,6 +1138,32 @@ int main() {
           s.timebase_ticks == 0,
           "MTSPR TBL write is rejected in problem state");
 
+    // MFSR/MTSR access the architectural SR bank and require supervisor state.
+    s.reset(0x6220);
+    s.segment_registers[3] = 0xA1234567U;
+    const auto mfsr_r3 = (31U << 26U) | (21U << 21U) | (3U << 16U) | (595U << 1U);
+    check(execute(s, mfsr_r3) == StepResult::Executed &&
+          s.gpr[21] == 0xA1234567U && s.pc == 0x6224U,
+          "MFSR reads selected segment register");
+    s.reset(0x6230);
+    s.gpr[22] = 0xB7654321U;
+    const auto mtsr_r7 = (31U << 26U) | (22U << 21U) | (7U << 16U) | (210U << 1U);
+    check(execute(s, mtsr_r7) == StepResult::Executed &&
+          s.segment_registers[7] == 0xB7654321U,
+          "MTSR writes selected segment register");
+    s.reset(0x6240);
+    s.msr = 0x4000U;
+    check(execute_with_exception_delivery(s, mfsr_r3) == StepResult::ProgramException &&
+          s.exception_pending && s.exception_vector == 0x700U,
+          "MFSR is privileged and traps in problem state");
+    s.reset(0x6250);
+    s.msr = 0x4000U;
+    s.gpr[22] = 0xFFFFFFFFU;
+    check(execute_with_exception_delivery(s, mtsr_r7) == StepResult::ProgramException &&
+          s.exception_pending && s.exception_vector == 0x700U &&
+          s.segment_registers[7] == 0,
+          "MTSR is privileged and does not modify SR in problem state");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
