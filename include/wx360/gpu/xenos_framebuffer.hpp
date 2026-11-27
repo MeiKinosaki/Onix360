@@ -5,6 +5,7 @@
 #include <limits>
 #include <cmath>
 #include <vector>
+#include <span>
 
 namespace wx360::gpu {
 
@@ -57,6 +58,32 @@ public:
                     (area < 0.0F && w0 <= 0.0F && w1 <= 0.0F && w2 <= 0.0F))
                     pixels_[static_cast<std::size_t>(y) * width_ +
                             static_cast<std::size_t>(x)] = rgba;
+            }
+        }
+        return true;
+    }
+    // Bounded linear RGBA8 texture copy with nearest-neighbour scaling.
+    // This is a software texture stage, not Xenos tiled/swizzled memory decoding.
+    [[nodiscard]] bool blit_rgba8(std::span<const std::uint32_t> source,
+        std::uint32_t source_width, std::uint32_t source_height,
+        std::uint32_t dst_x, std::uint32_t dst_y,
+        std::uint32_t dst_width, std::uint32_t dst_height) noexcept {
+        if (source_width == 0 || source_height == 0 || dst_width == 0 ||
+            dst_height == 0 || pixels_.empty()) return false;
+        const std::uint64_t source_count =
+            static_cast<std::uint64_t>(source_width) * source_height;
+        if (source_count != source.size() ||
+            dst_x >= width_ || dst_y >= height_) return false;
+        const auto copy_width = (std::min)(dst_width, width_ - dst_x);
+        const auto copy_height = (std::min)(dst_height, height_ - dst_y);
+        for (std::uint32_t y = 0; y < copy_height; ++y) {
+            const auto sy = static_cast<std::uint32_t>(
+                (static_cast<std::uint64_t>(y) * source_height) / dst_height);
+            for (std::uint32_t x = 0; x < copy_width; ++x) {
+                const auto sx = static_cast<std::uint32_t>(
+                    (static_cast<std::uint64_t>(x) * source_width) / dst_width);
+                pixels_[static_cast<std::size_t>(dst_y + y) * width_ + dst_x + x] =
+                    source[static_cast<std::size_t>(sy) * source_width + sx];
             }
         }
         return true;
