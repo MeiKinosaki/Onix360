@@ -60,6 +60,26 @@ int main() {
     check(execute(s, fmul) == StepResult::Executed, "FMUL double executes");
     check(std::bit_cast<double>(s.fpr[7]) == 6.0, "FMUL uses FRC operand");
 
+    // Single-precision arithmetic opcodes use IEEE-754 single rounding.
+    const auto single_fp = [](unsigned frt, unsigned fra, unsigned frb, unsigned xo,
+                              unsigned frc = 0, bool rc = false) {
+        return (59U << 26U) | (frt << 21U) | (fra << 16U) |
+               (frb << 11U) | (frc << 6U) | (xo << 1U) | (rc ? 1U : 0U);
+    };
+    s.fpr[1] = std::bit_cast<std::uint64_t>(1.5);
+    s.fpr[2] = std::bit_cast<std::uint64_t>(2.25);
+    check(execute(s, single_fp(3, 1, 2, 21)) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[3]) == 3.75, "FADDS computes single-precision sum");
+    check(execute(s, single_fp(4, 2, 1, 20)) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[4]) == 0.75, "FSUBS computes single-precision difference");
+    check(execute(s, single_fp(5, 2, 1, 18)) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[5]) == 1.5, "FDIVS computes single-precision quotient");
+    check(execute(s, single_fp(6, 1, 0, 25, 2)) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[6]) == 3.375, "FMULS reads FRC and rounds single precision");
+    s.fpscr = 0x50000000U;
+    check(execute(s, single_fp(7, 1, 2, 21, 0, true)) == StepResult::Executed &&
+          s.condition_field(1) == 0x5U, "FADDS. copies FPSCR summary to CR1");
+
     // FPU memory transfers and compare/conversion coverage.
     std::array<std::uint8_t, 64> fpu_ram{};
     s.gpr[0] = 0;
