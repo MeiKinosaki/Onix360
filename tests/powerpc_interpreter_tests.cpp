@@ -1035,6 +1035,38 @@ int main() {
 
 
 
+    // Privileged machine-state register access: MFMSR / MTMSR.
+    s.reset(0x6100);
+    s.msr = 0x8000U;
+    const std::uint32_t mfmsr = (31U << 26U) | (7U << 21U) | (83U << 1U);
+    check(execute(s, mfmsr) == StepResult::Executed &&
+          s.gpr[7] == 0x8000U && s.pc == 0x6104U,
+          "MFMSR reads MSR in privileged state");
+    s.reset(0x6110);
+    s.msr = 0x4000U; // PR=1: problem state.
+    s.gpr[7] = 0x1234U;
+    check(execute(s, mfmsr) == StepResult::ProgramException &&
+          s.gpr[7] == 0x1234U && s.pc == 0x6110U,
+          "MFMSR is rejected in problem state without modifying destination");
+    s.reset(0x6120);
+    s.msr = 0x4000U;
+    s.gpr[7] = 0x8000U;
+    const std::uint32_t mtmsr = (31U << 26U) | (7U << 21U) | (146U << 1U);
+    check(execute(s, mtmsr) == StepResult::ProgramException &&
+          s.msr == 0x4000U && s.pc == 0x6120U,
+          "MTMSR is rejected in problem state without changing MSR");
+    s.reset(0x6130);
+    s.gpr[7] = 0x8000U;
+    check(execute(s, mtmsr) == StepResult::Executed &&
+          s.msr == 0x8000U && s.pc == 0x6134U,
+          "MTMSR updates MSR in privileged state");
+    s.reset(0x6140);
+    s.msr = 0x4000U;
+    check(execute_with_exception_delivery(s, mfmsr) == StepResult::ProgramException &&
+          s.exception_pending && s.exception_vector == 0x700U &&
+          s.srr0 == 0x6140U && s.srr1 == 0x4000U && s.pc == 0x700U,
+          "privileged instruction violation enters program exception vector");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
