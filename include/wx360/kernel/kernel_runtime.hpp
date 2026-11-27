@@ -4,6 +4,7 @@
 #include "wx360/kernel/kernel_heap.hpp"
 #include "wx360/kernel/kernel_thread_scheduler.hpp"
 #include "wx360/kernel/kernel_synchronization.hpp"
+#include "wx360/storage/guest_file_system.hpp"
 #include "wx360/kernel/xbox360_export_metadata.hpp"
 #include "wx360/memory/physical_memory.hpp"
 #include "wx360/memory/address_space.hpp"
@@ -99,6 +100,15 @@ public:
         bool ok = true;
         for (const auto id : *released) ok = threads_.unblock(id) && ok;
         return ok;
+    }
+
+    // Frontends mount verified game/content files; guest code receives only
+    // bounded handles and cannot address arbitrary host filesystem paths.
+    [[nodiscard]] storage::GuestFileSystem& guest_file_system() noexcept {
+        return guest_files_;
+    }
+    [[nodiscard]] const storage::GuestFileSystem& guest_file_system() const noexcept {
+        return guest_files_;
     }
     // Register a host implementation and its guest-callable export as one
     // operation. If trampoline creation fails, roll back the service entry so
@@ -283,6 +293,7 @@ private:
     KernelHeap* heap_{};
     KernelThreadScheduler threads_{};
     KernelSynchronization synchronization_{};
+    storage::GuestFileSystem guest_files_{};
     std::uint16_t allocate_pool_service_{};
     std::uint16_t free_pool_service_{};
     std::map<std::uint16_t,Handler> services_;
