@@ -3,7 +3,8 @@
 #include "wx360/memory/physical_memory.hpp"
 #include "wx360/memory/address_space.hpp"
 
-#include <algorithm>\n#include <cstddef>
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <map>
