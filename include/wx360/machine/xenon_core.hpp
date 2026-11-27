@@ -223,6 +223,7 @@ struct XenonCore {
         // Interim timing model: one DEC tick per interpreted instruction.
         // Replace with core-cycle accounting when instruction latency is modeled.
         state.advance_decrementer(1U);
+        state.advance_timebase(1U);
         // Sample pending IRQs at instruction boundaries; masked requests stay latched.
         if (state.take_external_interrupt()) return RunResult::ExceptionTaken;
         if (state.take_decrementer_interrupt()) return RunResult::ExceptionTaken;
