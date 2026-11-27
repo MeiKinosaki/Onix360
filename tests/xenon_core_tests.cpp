@@ -384,5 +384,28 @@ int main() {
           "XenonCore fetches and executes from Execute-only virtual page");
 
     if (failures == 0) std::cout << "WX360 Xenon core integration tests passed\n";
+    // External IRQ requests remain latched while MSR[EE] is disabled,
+    // then enter vector 0x500 at the next instruction boundary.
+    memory::PhysicalMemory irq_ram(0x4000);
+    const std::array<std::uint8_t, 4> irq_nop{0x60, 0x00, 0x00, 0x00};
+    check(irq_ram.write(0x300, irq_nop) == memory::MemoryResult::Ok,
+          "write synthetic instruction before external interrupt test");
+    machine::XenonCore irq_core;
+    irq_core.state.reset(0x300);
+    irq_core.state.msr = 0;
+    irq_core.state.request_external_interrupt();
+    check(irq_core.step(irq_ram) == machine::RunResult::Executed &&
+          irq_core.state.pc == 0x304 &&
+          irq_core.state.external_interrupt_pending,
+          "masked external interrupt remains pending while guest executes");
+    irq_core.state.msr = 0x8000U;
+    const auto saved_irq_pc = irq_core.state.pc;
+    check(irq_core.step(irq_ram) == machine::RunResult::ExceptionTaken &&
+          irq_core.state.pc == 0x500U &&
+          irq_core.state.srr0 == saved_irq_pc &&
+          irq_core.state.srr1 == 0x8000U &&
+          !irq_core.state.external_interrupt_pending,
+          "enabled external interrupt enters vector and saves guest context");
+
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
