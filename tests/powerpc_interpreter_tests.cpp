@@ -45,6 +45,10 @@ int main() {
     const std::uint32_t fadd = (63U << 26U) | (3U << 21U) | (1U << 16U) | (2U << 11U) | (21U << 1U);
     check(execute(s, fadd) == StepResult::Executed, "FADD double executes");
     check(std::bit_cast<double>(s.fpr[3]) == 3.75, "FADD writes IEEE-754 result");
+    s.fpscr = 0xA0000000U;
+    check(execute(s, fadd | 1U) == StepResult::Executed, "FADD. executes with Rc set");
+    check(s.condition_field(1) == 0xA,
+          "FADD. copies FPSCR[0:3] into CR1");
     const std::uint32_t fsub = (63U << 26U) | (4U << 21U) | (2U << 16U) | (1U << 11U) | (20U << 1U);
     check(execute(s, fsub) == StepResult::Executed, "FSUB double executes");
     check(std::bit_cast<double>(s.fpr[4]) == 0.75, "FSUB computes FRA minus FRB");
