@@ -90,6 +90,17 @@ int main() {
     check(execute(s, d_form(14, 4, 3, 5)) == StepResult::Executed, "ADDI executes");
     check(s.gpr[4] == 15 && s.pc == 0x1004, "ADDI writes RT and advances PC");
 
+    // D-form ADDI/ADDIS interpret RA=0 as literal zero, even when GPR[0] is nonzero.
+    s.gpr[0] = 0x123456789ABCDEF0ULL;
+    check(execute(s, d_form(14, 6, 0, 0xFFFC)) == StepResult::Executed,
+          "ADDI rD,0,SIMM executes with nonzero GPR0");
+    check(s.gpr[6] == 0xFFFFFFFFFFFFFFFCULL,
+          "ADDI uses literal zero for RA=0 and sign-extends SIMM");
+    check(execute(s, d_form(15, 7, 0, 0x0001)) == StepResult::Executed,
+          "ADDIS rD,0,SIMM executes with nonzero GPR0");
+    check(s.gpr[7] == 0x10000ULL,
+          "ADDIS uses literal zero for RA=0 before shifting SIMM");
+
     check(execute(s, d_form(14, 5, 0, 0xFFFF)) == StepResult::Executed, "ADDI accepts negative immediate");
     check(s.gpr[5] == UINT64_MAX, "ADDI sign-extends immediate");
 
