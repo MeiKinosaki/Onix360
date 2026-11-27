@@ -26,29 +26,7 @@ public:
     }
     [[nodiscard]] bool dispatch(cpu::XenonThreadState& state) const noexcept {
         const auto id = static_cast<std::uint16_t>(state.gpr[0] & 0xFFFFU);
-        if (heap_ && id == allocate_pool_service_) {
-            // Xbox PPC ABI: ExAllocatePool(PoolType, NumberOfBytes).
-            // This early runtime has one guest heap, so supported pool types
-            // share the same bounded arena; unknown types fail closed.
-            const auto pool_type = state.gpr[3];
-            const auto bytes = state.gpr[4];
-            if (pool_type > 1U || bytes > UINT32_MAX) {
-                state.gpr[3] = 0;
-                return true;
-            }
-            const auto result = heap_->allocate(static_cast<std::uint32_t>(bytes), 16);
-            state.gpr[3] = result ? *result : 0U;
-            return true;
-        }
-        if (heap_ && id == free_pool_service_) {
-            // ExFreePool(P); invalid/double frees are ignored safely.
-            (void)heap_->release(static_cast<std::uint32_t>(state.gpr[3]));
-            return true;
-        }
-        const auto it = services_.find(id);
-        if (it == services_.end()) return false;
-        it->second(state);
-        return true;
+        return dispatch_service(id, state);
     }
     // Register a host implementation and its guest-callable export as one
     // operation. If trampoline creation fails, roll back the service entry so
@@ -107,9 +85,7 @@ public:
         std::uint64_t guest_pc, cpu::XenonThreadState& state) const noexcept {
         const auto thunk = thunk_services_.find(static_cast<std::uint32_t>(guest_pc));
         if (thunk == thunk_services_.end()) return false;
-        const auto service = services_.find(thunk->second);
-        if (service == services_.end()) return false;
-        return dispatch(state);
+        return dispatch_service(thunk->second, state);
     }
 
     // Register the source-listed pool exports against a bounded guest heap.
@@ -118,7 +94,13 @@ public:
         KernelHeap& heap, std::uint16_t allocate_service,
         std::uint16_t free_service, std::uint32_t allocate_thunk,
         std::uint32_t free_thunk, memory::PhysicalMemory& ram) {
-        if (!heap.valid() || allocate_service == free_service || heap_)
+        if (!heap.valid() || allocate_service == free_service || heap_ ||
+            allocate_service > 0x7FFFU || free_service > 0x7FFFU ||
+            services_.contains(allocate_service) || services_.contains(free_service) ||
+            imports_.has_export("xboxkrnl.exe", 0x0009) ||
+            imports_.has_export("xboxkrnl.exe", 0x000F) ||
+            ram.check_access(allocate_thunk, 12, memory::Access::Write) != memory::MemoryResult::Ok ||
+            ram.check_access(free_thunk, 12, memory::Access::Write) != memory::MemoryResult::Ok)
             return false;
         heap_ = &heap;
         allocate_pool_service_ = allocate_service;
@@ -191,6 +173,29 @@ public:
     }
 
 private:
+    [[nodiscard]] bool dispatch_service(std::uint16_t id,
+        cpu::XenonThreadState& state) const noexcept {
+        if (heap_ && id == allocate_pool_service_) {
+            const auto pool_type = state.gpr[3];
+            const auto bytes = state.gpr[4];
+            if (pool_type > 1U || bytes > UINT32_MAX) {
+                state.gpr[3] = 0;
+                return true;
+            }
+            const auto result = heap_->allocate(static_cast<std::uint32_t>(bytes), 16);
+            state.gpr[3] = result ? *result : 0U;
+            return true;
+        }
+        if (heap_ && id == free_pool_service_) {
+            (void)heap_->release(static_cast<std::uint32_t>(state.gpr[3]));
+            return true;
+        }
+        const auto it = services_.find(id);
+        if (it == services_.end()) return false;
+        it->second(state);
+        return true;
+    }
+
     [[nodiscard]] static std::string make_export_key(
         std::string_view library, std::uint16_t ordinal) {
         std::string key;
