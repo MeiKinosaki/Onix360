@@ -1067,6 +1067,41 @@ int main() {
           s.srr0 == 0x6140U && s.srr1 == 0x4000U && s.pc == 0x700U,
           "privileged instruction violation enters program exception vector");
 
+    // XFX SPR access: the ten-bit SPR number is split across instruction fields.
+    const auto xfx_spr = [](unsigned rt, unsigned spr, unsigned xo) {
+        return (31U << 26U) | (rt << 21U) | ((spr & 0x1FU) << 16U) |
+               (((spr >> 5U) & 0x1FU) << 11U) | (xo << 1U);
+    };
+    s.reset(0x6150);
+    s.xer = 0x00000000A0000000ULL;
+    check(execute(s, xfx_spr(8, 1, 339)) == StepResult::Executed &&
+          s.gpr[8] == s.xer && s.pc == 0x6154U,
+          "MFSPR reads XER using split SPR encoding");
+    s.reset(0x6160);
+    s.lr = 0x12345678ULL;
+    check(execute(s, xfx_spr(9, 8, 339)) == StepResult::Executed &&
+          s.gpr[9] == 0x12345678ULL, "MFSPR reads LR");
+    s.reset(0x6170);
+    s.ctr = 0x87654321ULL;
+    check(execute(s, xfx_spr(10, 9, 339)) == StepResult::Executed &&
+          s.gpr[10] == 0x87654321ULL, "MFSPR reads CTR");
+    s.reset(0x6180);
+    s.gpr[11] = 0x13579BDFULL;
+    check(execute(s, xfx_spr(11, 1, 467)) == StepResult::Executed &&
+          s.xer == 0x13579BDFULL, "MTSPR writes XER");
+    s.reset(0x6190);
+    s.gpr[12] = 0x2468ACE0ULL;
+    check(execute(s, xfx_spr(12, 8, 467)) == StepResult::Executed &&
+          s.lr == 0x2468ACE0ULL, "MTSPR writes LR");
+    s.reset(0x61A0);
+    s.gpr[13] = 0xABCDEF01ULL;
+    check(execute(s, xfx_spr(13, 9, 467)) == StepResult::Executed &&
+          s.ctr == 0xABCDEF01ULL, "MTSPR writes CTR");
+    s.reset(0x61B0);
+    check(execute(s, xfx_spr(14, 268, 339)) == StepResult::UnsupportedInstruction &&
+          s.pc == 0x61B0U,
+          "MFSPR rejects unimplemented time-base SPR without changing PC");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
