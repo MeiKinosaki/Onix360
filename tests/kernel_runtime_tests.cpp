@@ -78,6 +78,24 @@ int main() {
        "semaphore wait queues current guest thread");
  check(runtime.release_guest_semaphore(*sem_id),"semaphore release wakes guest waiter");
  const std::array<std::uint8_t,4> guest_file_data{0xDE,0xAD,0xBE,0xEF};
+ // ExAllocatePoolWithTag is registered separately and consumes the guest
+ // POOL_TYPE/size/tag argument registers without invoking a real XEX.
+ kernel::KernelHeap heap(ram,0x3000,0x1000);
+ check(runtime.register_kernel_heap_exports(heap,20,21,0x400,0x440,ram),
+       "registers bounded guest heap exports");
+ check(runtime.register_kernel_heap_tagged_export(heap,22,0x480,ram),
+       "registers ExAllocatePoolWithTag from verified metadata");
+ cpu::XenonThreadState tagged_alloc{};
+ tagged_alloc.gpr[0]=22; tagged_alloc.gpr[3]=0; tagged_alloc.gpr[4]=96;
+ tagged_alloc.gpr[5]=0x54455354;
+ check(runtime.dispatch(tagged_alloc) && tagged_alloc.gpr[3]>=0x3000 &&
+       tagged_alloc.gpr[3]<0x4000 && heap.allocation_count()==1,
+       "tagged pool allocation returns bounded guest address");
+ cpu::XenonThreadState bad_pool{};
+ bad_pool.gpr[0]=22; bad_pool.gpr[3]=2; bad_pool.gpr[4]=96;
+ check(runtime.dispatch(bad_pool) && bad_pool.gpr[3]==0 &&
+       heap.allocation_count()==1,
+       "tagged pool allocation rejects unsupported pool type");
  check(runtime.guest_file_system().mount_file("content/default.xex",guest_file_data),
        "kernel runtime mounts frontend-provided guest content");
  const auto guest_file=runtime.guest_file_system().open("CONTENT/DEFAULT.XEX");
