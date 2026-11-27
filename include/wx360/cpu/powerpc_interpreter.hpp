@@ -422,6 +422,36 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         if (update) state.gpr[d.ra] = address;
         break;
     }
+    case 59: { // Single-precision FPU arithmetic (A-form).
+        const double a64 = std::bit_cast<double>(state.fpr[d.ra]);
+        const double b64 = std::bit_cast<double>(state.fpr[d.rb]);
+        const float a = static_cast<float>(a64);
+        const float b = static_cast<float>(b64);
+        const unsigned fp_xo = (instruction >> 1U) & 0x1FU;
+        float value = 0.0F;
+        switch (fp_xo) {
+        case 18: value = a / b; break; // fdivs
+        case 20: value = a - b; break; // fsubs
+        case 21: value = a + b; break; // fadds
+        case 25: { // fmuls: FRC is encoded separately from FRB.
+            const unsigned frc = (instruction >> 6U) & 0x1FU;
+            value = a * static_cast<float>(std::bit_cast<double>(state.fpr[frc]));
+            break;
+        }
+        default: return StepResult::UnsupportedInstruction;
+        }
+        const double rounded = static_cast<double>(value);
+        if (std::isnan(value) && !std::isnan(a) && !std::isnan(b))
+            state.fpscr |= 0xA0000000U; // FX | VX
+        if (std::isinf(value) && std::isfinite(a) && std::isfinite(b))
+            state.fpscr |= 0x90000000U; // FX | OX
+        if (fp_xo == 18U && b == 0.0F && a != 0.0F)
+            state.fpscr |= 0x84000000U; // FX | ZX
+        state.fpr[d.rt] = std::bit_cast<std::uint64_t>(rounded);
+        if ((instruction & 1U) != 0)
+            state.set_condition_field(1, static_cast<std::uint8_t>((state.fpscr >> 28U) & 0xFU));
+        break;
+    }
     case 63: { // Floating-point arithmetic, compare, and conversion subset.
         const double a = std::bit_cast<double>(state.fpr[d.ra]);
         const double b = std::bit_cast<double>(state.fpr[d.rb]);
