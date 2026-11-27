@@ -47,11 +47,12 @@ public:
         if (it == open_files_.end()) return std::nullopt;
         const auto file = files_.find(it->second.path);
         if (file == files_.end()) return std::nullopt;
-        const auto available = file->second.size() - it->second.position;
+        const auto start = (std::min)(it->second.position, file->second.size());
+        const auto available = file->second.size() - start;
         const auto count = (std::min)(available, output.size());
-        std::copy_n(file->second.begin() + static_cast<std::ptrdiff_t>(it->second.position),
+        std::copy_n(file->second.begin() + static_cast<std::ptrdiff_t>(start),
                     count, output.begin());
-        it->second.position += count;
+        it->second.position = start + count;
         return count;
     }
 
