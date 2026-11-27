@@ -64,6 +64,10 @@ public:
         return released;
     }
 
+    [[nodiscard]] bool has_event(std::uint32_t id) const noexcept {
+        return events_.contains(id);
+    }
+
     [[nodiscard]] bool reset_event(std::uint32_t id) noexcept {
         auto it = events_.find(id);
         if (it == events_.end()) return false;
