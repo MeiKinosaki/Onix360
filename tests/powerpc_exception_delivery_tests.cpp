@@ -35,5 +35,17 @@ int main() {
           StepResult::Executed && !state.exception_pending && state.pc == 0x3004U,
           "successful memory access does not raise an exception");
 
+    wx360::memory::PhysicalMemory physical(0x10000);
+    wx360::memory::AddressSpace address_space;
+    check(address_space.map_page(0x80000000,0x2000,3U)==wx360::memory::MemoryResult::Ok,"maps writable virtual page");
+    check(address_space.map_page(0x80001000,0x3000,1U)==wx360::memory::MemoryResult::Ok,"maps read-only virtual page");
+    wx360::cpu::AddressSpaceMemoryBus bus{&address_space,&physical};
+    const auto callbacks=bus.callbacks();
+    state.reset(0x4000); state.gpr[3]=0x12345678;
+    check(execute_with_exception_delivery(state,d_form(36,3,0,0x8000),{},nullptr,&callbacks)==StepResult::MemoryFault,"unmapped virtual store faults");
+    state.reset(0x5000); state.gpr[4]=0x80001000;
+    check(execute_with_exception_delivery(state,d_form(36,3,4,0),{},nullptr,&callbacks)==StepResult::MemoryFault && state.pc==0x300U,"read-only virtual page rejects store");
+    state.reset(0x6000); state.gpr[4]=0x80001000;
+    check(execute_with_exception_delivery(state,d_form(32,5,4,0),{},nullptr,&callbacks)==StepResult::Executed,"read-only virtual page allows load");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
