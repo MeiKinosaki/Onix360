@@ -357,7 +357,7 @@ private:
     std::uint16_t free_pool_service_{};
     std::optional<std::uint16_t> tagged_allocate_pool_service_{};
     // address -> (allocation size, caller-supplied pool tag)
-    std::map<std::uint32_t,std::pair<std::uint32_t,std::uint32_t>> tagged_allocations_;
+    mutable std::map<std::uint32_t,std::pair<std::uint32_t,std::uint32_t>> tagged_allocations_;
     std::map<std::uint16_t,Handler> services_;
     std::map<std::string,std::uint16_t> export_services_;
     std::map<std::uint32_t,std::uint16_t> thunk_services_;
