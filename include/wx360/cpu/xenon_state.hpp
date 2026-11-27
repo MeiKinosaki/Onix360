@@ -10,6 +10,8 @@ struct XenonThreadState {
  std::uint64_t pc{0},lr{0},ctr{0},xer{0};
  std::uint32_t cr{0};
  std::uint64_t msr{0};
+ // Architectural PowerPC segment registers; translation use remains unimplemented.
+ std::array<std::uint32_t,16> segment_registers{};
  std::uint32_t fpscr{0};
  // PowerPC exception-save registers and last fault address.
  std::uint64_t srr0{0},srr1{0},dar{0};
