@@ -145,6 +145,23 @@ struct XenonCore {
             ram.write(translated.physical_address, input) == memory::MemoryResult::Ok;
     }
 
+    [[nodiscard]] static bool interpreter_fetch(
+        void* opaque, std::uint64_t guest_address,
+        std::span<std::uint8_t> output) noexcept {
+        auto& context = *static_cast<InterpreterBusContext*>(opaque);
+        auto& core = *context.core;
+        auto& ram = *context.ram;
+        std::uint64_t physical_address = guest_address;
+        if (core.mmu_enabled) {
+            const auto translated = core.address_space.translate_range(
+                guest_address, output.size(), memory::Access::Execute, ram);
+            if (translated.result != memory::MemoryResult::Ok) return false;
+            physical_address = translated.physical_address;
+        }
+        return ram.read(physical_address, output, memory::Access::Execute) ==
+            memory::MemoryResult::Ok;
+    }
+
     // Install all PE section mappings emitted by the validated XEX loader.
     // This enables the software guest MMU before the first guest instruction.
     [[nodiscard]] memory::MemoryResult map_validated_xex(
@@ -203,22 +220,17 @@ struct XenonCore {
     }
 
     [[nodiscard]] RunResult step(memory::PhysicalMemory& ram) noexcept {
-        std::uint32_t instruction = 0;
-        std::uint64_t fetch_address = state.pc;
-        if (mmu_enabled) {
-            const auto translated = address_space.translate(state.pc, memory::Access::Execute, ram);
-            if (translated.result != memory::MemoryResult::Ok) {
-                state.raise_exception(0x400U, state.pc);
-                return RunResult::ExceptionTaken;
-            }
-            fetch_address = translated.physical_address;
-        }
-        const auto fetch = ram.fetch_u32(fetch_address, instruction);
-        if (fetch == memory::MemoryResult::AlignmentFault) {
+        if ((state.pc & 0x3U) != 0) {
             state.raise_exception(0x600U, state.pc);
             return RunResult::ExceptionTaken;
         }
-        if (fetch != memory::MemoryResult::Ok) {
+        InterpreterBusContext bus_context{this, &ram};
+        const cpu::MemoryAccess bus{&bus_context, &XenonCore::interpreter_read,
+                                    &XenonCore::interpreter_write,
+                                    &XenonCore::interpreter_fetch};
+        std::uint32_t instruction = 0;
+        const auto fetched = cpu::fetch_virtual_instruction(state.pc, bus, instruction);
+        if (fetched != cpu::StepResult::Executed) {
             state.raise_exception(0x400U, state.pc);
             return RunResult::ExceptionTaken;
         }
@@ -239,9 +251,6 @@ struct XenonCore {
             return RunResult::ExceptionTaken;
         }
         std::uint64_t fault_address = 0;
-        InterpreterBusContext bus_context{this, &ram};
-        const cpu::MemoryAccess bus{&bus_context, &XenonCore::interpreter_read,
-                                    &XenonCore::interpreter_write};
         const auto result = cpu::execute(state, instruction, ram.raw_bytes(),
                                          &fault_address, &bus);
         switch (result) {
