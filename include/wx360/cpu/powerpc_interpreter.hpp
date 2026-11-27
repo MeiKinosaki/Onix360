@@ -846,6 +846,14 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             case 1: state.xer = source; break; // XER
             case 8: state.lr = source; break;  // LR
             case 9: state.ctr = source; break; // CTR
+            case 284: // TBL (write alias)
+            case 285: { // TBU (write alias)
+                constexpr std::uint64_t msr_pr = std::uint64_t{1} << 14U;
+                if ((state.msr & msr_pr) != 0) return StepResult::ProgramException;
+                if (spr == 284U) state.write_timebase_lower(static_cast<std::uint32_t>(source));
+                else state.write_timebase_upper(static_cast<std::uint32_t>(source));
+                break;
+            }
             default: return StepResult::UnsupportedInstruction;
             }
             break;
