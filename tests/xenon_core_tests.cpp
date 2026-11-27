@@ -95,6 +95,28 @@ int main() {
     check(subsystem_core.audio.frames() == 1,
           "machine-owned PCM queue tracks submitted frame count");
 
+    // Guest thread scheduling is exposed through the machine core.
+    kernel::KernelRuntime thread_runtime;
+    machine::XenonCore thread_core;
+    thread_core.attach_kernel_runtime(thread_runtime);
+    cpu::XenonThreadState low_priority{}, high_priority{};
+    low_priority.reset(0x1000);
+    high_priority.reset(0x2000);
+    const auto low_id = thread_core.create_guest_thread(low_priority, 4);
+    const auto high_id = thread_core.create_guest_thread(high_priority, 20);
+    check(low_id && high_id, "machine core creates guest threads through kernel runtime");
+    check(thread_core.schedule_guest_thread() && thread_core.state.pc == 0x2000,
+          "machine core dispatches highest-priority guest thread");
+    thread_core.state.pc = 0x2010;
+    check(thread_core.yield_guest_thread() && thread_core.state.pc == 0x1000,
+          "machine core yields and switches guest execution context");
+    check(thread_core.thread_scheduler().current_id() == low_id,
+          "machine core exposes current scheduled guest thread");
+    check(thread_core.terminate_guest_thread() && thread_core.state.pc == 0x2010,
+          "machine core terminates thread and resumes ready context");
+    check(thread_core.thread_scheduler().current_id() == high_id,
+          "terminated guest thread is no longer current");
+
     // XEX launch authorization is covered by xex_synthetic_boot_tests,
     // which obtains the non-forgeable token from XexImageLoader. This unit
     // test intentionally exercises CPU/memory behavior only.
