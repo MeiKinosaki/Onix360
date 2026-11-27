@@ -24,6 +24,7 @@ struct MemoryAccess {
     void* context{};
     bool (*read)(void*, std::uint64_t, std::span<std::uint8_t>) noexcept{};
     bool (*write)(void*, std::uint64_t, std::span<const std::uint8_t>) noexcept{};
+    bool (*fetch)(void*, std::uint64_t, std::span<std::uint8_t>) noexcept{};
 };
 
 struct AddressSpaceMemoryBus {
@@ -42,6 +43,12 @@ struct AddressSpaceMemoryBus {
                 if(!b.address_space||!b.physical_memory) return false;
                 const auto p=b.address_space->translate_range(a,in.size(),memory::Access::Write,*b.physical_memory);
                 return p.result==memory::MemoryResult::Ok && b.physical_memory->write(p.physical_address,in)==memory::MemoryResult::Ok;
+            },
+            +[](void* c, std::uint64_t a, std::span<std::uint8_t> out) noexcept {
+                auto& b=*static_cast<AddressSpaceMemoryBus*>(c);
+                if(!b.address_space||!b.physical_memory) return false;
+                const auto p=b.address_space->translate_range(a,out.size(),memory::Access::Execute,*b.physical_memory);
+                return p.result==memory::MemoryResult::Ok && b.physical_memory->read(p.physical_address,out)==memory::MemoryResult::Ok;
             }};
     }
 };
@@ -1178,6 +1185,31 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
     if (update_base) state.gpr[d.ra] = updated_address;
     state.pc = branch_taken ? branch_target : state.pc + 4U;
     return StepResult::Executed;
+}
+
+// Fetch one big-endian Xenon instruction through the guest virtual address
+// space. Execute permission is checked independently from data-read permission.
+[[nodiscard]] inline StepResult fetch_virtual_instruction(
+    std::uint64_t guest_pc, const MemoryAccess& bus,
+    std::uint32_t& instruction) noexcept {
+    if (!bus.fetch) return StepResult::MemoryFault;
+    std::array<std::uint8_t,4> bytes{};
+    if (!bus.fetch(bus.context,guest_pc,bytes)) return StepResult::MemoryFault;
+    instruction=(static_cast<std::uint32_t>(bytes[0])<<24U)|
+        (static_cast<std::uint32_t>(bytes[1])<<16U)|
+        (static_cast<std::uint32_t>(bytes[2])<<8U)|bytes[3];
+    return StepResult::Executed;
+}
+
+[[nodiscard]] inline StepResult fetch_and_execute_with_exception_delivery(
+    XenonThreadState& state, const MemoryAccess& bus) noexcept {
+    std::uint32_t instruction=0;
+    const auto fetched=fetch_virtual_instruction(state.pc,bus,instruction);
+    if (fetched!=StepResult::Executed) {
+        state.raise_exception(0x400U,state.pc);
+        return StepResult::MemoryFault;
+    }
+    return execute_with_exception_delivery(state,instruction,{},nullptr,&bus);
 }
 
 // Architectural exception delivery wrapper for the interpreter. The low-level
