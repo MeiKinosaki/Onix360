@@ -28,9 +28,19 @@ struct MemoryAccess {
     bool (*fetch)(void*, std::uint64_t, std::span<std::uint8_t>) noexcept{};
 };
 
+// PowerPC segment-register N bit (architectural bit 3, numeric bit 28)
+// disables instruction fetches from the selected 256 MiB segment.
+inline constexpr std::uint32_t segment_no_execute_mask = std::uint32_t{1} << 28U;
+[[nodiscard]] inline bool segment_allows_instruction_fetch(
+    const XenonThreadState& state, std::uint64_t effective_address) noexcept {
+    const unsigned segment = static_cast<unsigned>((effective_address >> 28U) & 0xFU);
+    return (state.segment_registers[segment] & segment_no_execute_mask) == 0;
+}
+
 struct AddressSpaceMemoryBus {
     memory::AddressSpace* address_space{};
     memory::PhysicalMemory* physical_memory{};
+    XenonThreadState* thread_state{};
     [[nodiscard]] MemoryAccess callbacks() noexcept {
         return {this,
             +[](void* c, std::uint64_t a, std::span<std::uint8_t> out) noexcept {
@@ -48,6 +58,7 @@ struct AddressSpaceMemoryBus {
             +[](void* c, std::uint64_t a, std::span<std::uint8_t> out) noexcept {
                 auto& b=*static_cast<AddressSpaceMemoryBus*>(c);
                 if(!b.address_space||!b.physical_memory) return false;
+                if(b.thread_state && !segment_allows_instruction_fetch(*b.thread_state,a)) return false;
                 const auto p=b.address_space->translate_range(a,out.size(),memory::Access::Execute,*b.physical_memory);
                 return p.result==memory::MemoryResult::Ok && b.physical_memory->read(p.physical_address,out)==memory::MemoryResult::Ok;
             }};
