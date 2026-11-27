@@ -205,6 +205,27 @@ public:
         return true;
     }
 
+    // Register ExAllocatePoolWithTag as a distinct source-listed export.
+    // The tag is accepted per the guest ABI; allocation accounting remains
+    // address/size based until per-tag diagnostics are implemented.
+    [[nodiscard]] bool register_kernel_heap_tagged_export(
+        KernelHeap& heap, std::uint16_t service_id,
+        std::uint32_t guest_thunk, memory::PhysicalMemory& ram) {
+        if (!heap.valid() || heap_ != &heap || service_id > 0x7FFFU ||
+            services_.contains(service_id) ||
+            imports_.has_export("xboxkrnl.exe", 0x000A) ||
+            ram.check_access(guest_thunk, 12, memory::Access::Write) != memory::MemoryResult::Ok)
+            return false;
+        tagged_allocate_pool_service_ = service_id;
+        if (!register_known_function_export("xboxkrnl.exe", 0x000A,
+                service_id, guest_thunk,
+                +[](cpu::XenonThreadState&) noexcept {}, ram)) {
+            tagged_allocate_pool_service_.reset();
+            return false;
+        }
+        return true;
+    }
+
     // Resolve guest-virtual XEX imports as one transaction. Validate every
     // registered service and executable thunk mapping before the resolver
     // writes any guest bytes; stage dispatch entries before committing patches.
@@ -271,6 +292,20 @@ private:
             state.gpr[3] = result ? *result : 0U;
             return true;
         }
+        if (heap_ && tagged_allocate_pool_service_ &&
+            id == *tagged_allocate_pool_service_) {
+            const auto pool_type = state.gpr[3];
+            const auto bytes = state.gpr[4];
+            // r5 carries the caller's pool tag. It is currently accepted but
+            // not retained; unsupported pool types fail safely with NULL.
+            if (pool_type > 1U || bytes == 0 || bytes > UINT32_MAX) {
+                state.gpr[3] = 0;
+                return true;
+            }
+            const auto result = heap_->allocate(static_cast<std::uint32_t>(bytes), 16);
+            state.gpr[3] = result ? *result : 0U;
+            return true;
+        }
         if (heap_ && id == free_pool_service_) {
             (void)heap_->release(static_cast<std::uint32_t>(state.gpr[3]));
             return true;
@@ -299,6 +334,7 @@ private:
     storage::GuestFileSystem guest_files_{};
     std::uint16_t allocate_pool_service_{};
     std::uint16_t free_pool_service_{};
+    std::optional<std::uint16_t> tagged_allocate_pool_service_{};
     std::map<std::uint16_t,Handler> services_;
     std::map<std::string,std::uint16_t> export_services_;
     std::map<std::uint32_t,std::uint16_t> thunk_services_;
