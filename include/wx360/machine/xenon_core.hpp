@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <vector>
 
 namespace wx360::machine {
@@ -44,6 +45,29 @@ struct XenonCore {
     // Explicit subsystem bridges used by the machine scheduler and tests.
     void attach_kernel_runtime(kernel::KernelRuntime& runtime) noexcept {
         kernel_runtime = &runtime;
+    }
+
+    // Explicit cooperative guest-thread entry points. The caller decides
+    // scheduling boundaries; run() remains a single-context bounded loop.
+    [[nodiscard]] std::optional<std::uint32_t> create_guest_thread(
+        const cpu::XenonThreadState& initial, std::uint8_t priority = 16) {
+        return kernel_runtime ? kernel_runtime->create_guest_thread(initial, priority)
+                              : std::nullopt;
+    }
+    [[nodiscard]] bool schedule_guest_thread() noexcept {
+        return kernel_runtime && kernel_runtime->schedule_guest_thread(state);
+    }
+    [[nodiscard]] bool yield_guest_thread() noexcept {
+        return kernel_runtime && kernel_runtime->yield_guest_thread(state);
+    }
+    [[nodiscard]] bool block_guest_thread() noexcept {
+        return kernel_runtime && kernel_runtime->block_guest_thread(state);
+    }
+    [[nodiscard]] bool unblock_guest_thread(std::uint32_t id) noexcept {
+        return kernel_runtime && kernel_runtime->unblock_guest_thread(id);
+    }
+    [[nodiscard]] bool terminate_guest_thread() noexcept {
+        return kernel_runtime && kernel_runtime->terminate_guest_thread(state);
     }
 
     [[nodiscard]] bool execute_gpu_command_buffer(
