@@ -32,6 +32,7 @@ public:
     static constexpr std::uint8_t wx360_draw_triangle_opcode = 0xF0U;
     static constexpr std::uint8_t wx360_clear_opcode = 0xF1U;
     static constexpr std::uint8_t wx360_present_opcode = 0xF2U;
+    static constexpr std::uint8_t wx360_texture_blit_opcode = 0xF3U;
     [[nodiscard]] bool configure_framebuffer(std::uint32_t width, std::uint32_t height) {
         return framebuffer_.resize(width, height);
     }
@@ -44,6 +45,15 @@ public:
             return true;
         }
         if (packet.opcode == wx360_present_opcode && packet.payload.size() == 1U && packet.payload[0] == 0U) return framebuffer_.present();
+        if (packet.opcode == wx360_texture_blit_opcode && packet.payload.size() >= 7U) {
+            const auto& p = packet.payload;
+            const std::uint64_t pixel_count =
+                static_cast<std::uint64_t>(p[0]) * p[1];
+            if (pixel_count != p.size() - 6U || pixel_count > 1024U * 1024U)
+                return false;
+            return framebuffer_.blit_rgba8(p.subspan(6), p[0], p[1],
+                p[2], p[3], p[4], p[5]);
+        }
         if (packet.opcode != wx360_draw_triangle_opcode || packet.payload.size() != 7U) return false;
         const auto& p = packet.payload;
         return framebuffer_.draw_triangle(
