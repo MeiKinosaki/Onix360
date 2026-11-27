@@ -15,7 +15,7 @@ int main() {
     a.reset(0x1000); b.reset(0x2000); c.reset(0x3000);
     a.gpr[3] = 11; b.gpr[3] = 22; c.gpr[3] = 33;
     const auto id_a = scheduler.create(a, 8);
-    const auto id_b = scheduler.create(b, 16);
+    const auto id_b = scheduler.create(b, 24);
     const auto id_c = scheduler.create(c, 24);
     check(id_a && id_b && id_c, "creates guest threads within capacity");
     check(!scheduler.create(a), "rejects thread creation beyond capacity");
