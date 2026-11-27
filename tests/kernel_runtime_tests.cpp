@@ -77,5 +77,14 @@ int main() {
  check(sem_id && runtime.wait_guest_semaphore(*sem_id,live)==kernel::WaitResult::Blocked,
        "semaphore wait queues current guest thread");
  check(runtime.release_guest_semaphore(*sem_id),"semaphore release wakes guest waiter");
+ const std::array<std::uint8_t,4> guest_file_data{0xDE,0xAD,0xBE,0xEF};
+ check(runtime.guest_file_system().mount_file("content/default.xex",guest_file_data),
+       "kernel runtime mounts frontend-provided guest content");
+ const auto guest_file=runtime.guest_file_system().open("CONTENT/DEFAULT.XEX");
+ std::array<std::uint8_t,4> guest_file_read{};
+ const auto guest_read=guest_file ? runtime.guest_file_system().read(*guest_file,guest_file_read)
+                                  : std::nullopt;
+ check(guest_read && *guest_read==4 && guest_file_read==guest_file_data,
+       "kernel runtime exposes bounded guest file reads");
  return failures==0?EXIT_SUCCESS:EXIT_FAILURE;
 }
