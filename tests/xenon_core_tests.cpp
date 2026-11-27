@@ -110,7 +110,7 @@ int main() {
     thread_core.state.pc = 0x2010;
     check(thread_core.yield_guest_thread() && thread_core.state.pc == 0x1000,
           "machine core yields and switches guest execution context");
-    check(thread_core.thread_scheduler().current_id() == low_id,
+    check(thread_runtime.thread_scheduler().current_id() == low_id,
           "machine core exposes current scheduled guest thread");
     check(thread_core.terminate_guest_thread() && thread_core.state.pc == 0x2010,
           "machine core terminates thread and resumes ready context");
