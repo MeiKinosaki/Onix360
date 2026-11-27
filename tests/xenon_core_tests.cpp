@@ -427,6 +427,29 @@ int main() {
           dec_core.state.srr1 == 0x8000U &&
           !dec_core.state.decrementer_interrupt_pending,
           "enabled decrementer interrupt enters vector 0x900 and saves context");
+    // Time Base is a split 64-bit counter with independently readable halves.
+    cpu::XenonThreadState tb_state{};
+    tb_state.reset(0x700);
+    tb_state.advance_timebase(0xFFFFFFFEULL);
+    check(tb_state.read_timebase_upper() == 0U &&
+          tb_state.read_timebase_lower() == 0xFFFFFFFEU,
+          "timebase exposes lower counter before wrap");
+    tb_state.advance_timebase(3U);
+    check(tb_state.read_timebase_upper() == 1U &&
+          tb_state.read_timebase_lower() == 1U,
+          "timebase carries into upper half on 32-bit wrap");
+    tb_state.write_timebase_lower(0xAABBCCDDU);
+    check(tb_state.read_timebase_upper() == 1U &&
+          tb_state.read_timebase_lower() == 0xAABBCCDDU,
+          "writing TBL preserves TBU");
+    tb_state.write_timebase_upper(0x11223344U);
+    check(tb_state.read_timebase_upper() == 0x11223344U &&
+          tb_state.read_timebase_lower() == 0xAABBCCDDU,
+          "writing TBU preserves TBL");
+    tb_state.reset();
+    check(tb_state.timebase_ticks == 0U,
+          "CPU reset clears emulated timebase");
+
     // DEC underflow latches the decrementer exception request.
     cpu::XenonThreadState timer_state{};
     timer_state.reset(0x700);
