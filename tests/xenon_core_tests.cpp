@@ -366,6 +366,23 @@ int main() {
           integrated_core.pending_audio_frames() == 2U,
           "machine routes stereo PCM samples into attached audio engine");
 
+    std::cerr << "CHECKPOINT 14\n";
+    // The machine instruction-fetch path must honor Execute independently
+    // from Read: executable-only guest pages are valid code mappings.
+    memory::PhysicalMemory execute_only_ram(0x4000);
+    const std::array<std::uint8_t, 4> execute_only_addi{0x38, 0x60, 0x00, 0x07};
+    check(execute_only_ram.write(0x1000, execute_only_addi) == memory::MemoryResult::Ok,
+          "store synthetic instruction in physical backing page");
+    machine::XenonCore execute_only_core;
+    check(execute_only_core.map_guest_page(0x9000, 0x1000,
+          static_cast<std::uint8_t>(memory::Access::Execute)) == memory::MemoryResult::Ok,
+          "map guest code page with Execute but without Read permission");
+    execute_only_core.state.reset(0x9000);
+    check(execute_only_core.step(execute_only_ram) == machine::RunResult::Executed &&
+          execute_only_core.state.gpr[3] == 7U &&
+          execute_only_core.state.pc == 0x9004U,
+          "XenonCore fetches and executes from Execute-only virtual page");
+
     if (failures == 0) std::cout << "WX360 Xenon core integration tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
