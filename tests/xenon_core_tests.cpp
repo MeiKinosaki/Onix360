@@ -27,6 +27,7 @@ int main() {
     check(core.state.gpr[3] == 42 && core.state.pc == 0x104,
           "core updates GPR and PC after instruction execution");
 
+    std::cerr << "CHECKPOINT 1\n";
     // The scheduler-facing run loop must honor its instruction budget.
     memory::PhysicalMemory batch_ram(0x4000);
     const std::array<std::uint8_t, 4> addi_r3_1{0x38, 0x60, 0x00, 0x01};
@@ -50,6 +51,7 @@ int main() {
           batch_core.state.pc == 0x108,
           "run loop resumes at the next guest instruction");
 
+    std::cerr << "CHECKPOINT 2\n";
     // A bounded batch must stop at the first guest exception and report
     // the reason without counting the faulting instruction as executed.
     memory::PhysicalMemory fault_batch_ram(0x4000);
@@ -82,6 +84,7 @@ int main() {
           core.state.exception_pending && core.state.exception_vector == 0x400,
           "instruction-storage exception saves PC and selects vector 0x400");
 
+    std::cerr << "CHECKPOINT 3\n";
     // The machine core owns the staged GPU, controller and audio queue.
     machine::XenonCore subsystem_core;
     check(subsystem_core.gpu.configure_framebuffer(4, 4),
@@ -95,6 +98,7 @@ int main() {
     check(subsystem_core.audio.frames() == 1,
           "machine-owned PCM queue tracks submitted frame count");
 
+    std::cerr << "CHECKPOINT 4\n";
     // Guest thread scheduling is exposed through the machine core.
     kernel::KernelRuntime thread_runtime;
     machine::XenonCore thread_core;
@@ -117,10 +121,12 @@ int main() {
     check(thread_runtime.thread_scheduler().current_id() == high_id,
           "terminated guest thread is no longer current");
 
+    std::cerr << "CHECKPOINT 5\n";
     // XEX launch authorization is covered by xex_synthetic_boot_tests,
     // which obtains the non-forgeable token from XexImageLoader. This unit
     // test intentionally exercises CPU/memory behavior only.
 
+    std::cerr << "CHECKPOINT 6\n";
     core.state.pc = 0x5000;
     check(core.step(ram) == machine::RunResult::ExceptionTaken,
           "core raises instruction-storage exception outside physical RAM");
@@ -146,6 +152,7 @@ int main() {
           data_core.state.dar == 0x101,
           "data alignment exception saves effective address in DAR");
 
+    std::cerr << "CHECKPOINT 7\n";
     // Exercise guest virtual instruction fetch through the page translator.
     memory::PhysicalMemory virtual_ram(0x4000);
     check(virtual_ram.write(0x100, addi) == memory::MemoryResult::Ok,
@@ -162,6 +169,7 @@ int main() {
     check(virtual_core.state.gpr[3] == 42 && virtual_core.state.pc == 0x1104,
           "translated fetch preserves virtual PC progression");
 
+    std::cerr << "CHECKPOINT 8\n";
     // D-form data instructions must translate their effective virtual address,
     // not index the physical RAM span directly.
     const std::array<std::uint8_t, 4> lwz_virtual{0x80, 0x83, 0x00, 0x00};
@@ -218,6 +226,7 @@ int main() {
           virtual_core.state.dar == 0x9000,
           "unmapped guest instruction fetch raises ISI and records faulting PC");
 
+    std::cerr << "CHECKPOINT 9\n";
     // Indexed LWZX/STWX use the same translated guest memory bus.
     const auto xform = [](unsigned rt, unsigned ra, unsigned rb, unsigned xo) {
         return (31U << 26U) | (rt << 21U) | (ra << 16U) | (rb << 11U) | (xo << 1U);
@@ -288,6 +297,7 @@ int main() {
           indexed_bytes == std::array<std::uint8_t, 4>{0x12, 0x34, 0x77, 0xBE},
           "STHX updates translated memory in big-endian order");
 
+    std::cerr << "CHECKPOINT 10\n";
     const std::array<std::uint8_t, 4> guest_data{0x11, 0x22, 0x33, 0x44};
     check(virtual_core.write_guest(virtual_ram, 0x1120, guest_data) == memory::MemoryResult::Ok,
           "writes data through guest virtual address");
@@ -300,6 +310,7 @@ int main() {
           memory::MemoryResult::Unmapped, "guest data access faults on unmapped page");
 
 
+    std::cerr << "CHECKPOINT 11\n";
     // Kernel SC dispatch is connected to the machine's CPU execution path.
     kernel::KernelRuntime runtime;
     check(runtime.register_service(0x42U, &kernel_test_service),
@@ -324,6 +335,7 @@ int main() {
           integrated_core.state.pc == 0x308,
           "guest instruction consumes register result returned by kernel service");
 
+    std::cerr << "CHECKPOINT 12\n";
     // Guest big-endian PM4 command buffer flows through guest memory into GPU.
     check(integrated_core.gpu.configure_framebuffer(4, 4),
           "configure integrated GPU framebuffer");
@@ -348,6 +360,7 @@ int main() {
           integrated_core.gpu.framebuffer().front_buffer()[0] == 0xFF123456U,
           "GPU command buffer clears and presents framebuffer");
 
+    std::cerr << "CHECKPOINT 13\n";
     // CPU machine owns the audio producer queue; device output remains explicit.
     check(integrated_core.submit_audio_pcm16({321, -321, 123, -123}) &&
           integrated_core.pending_audio_frames() == 2U,
