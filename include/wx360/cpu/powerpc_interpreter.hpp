@@ -827,6 +827,17 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             writes_result = true;
             break;
         }
+        case 371: { // mftb: read the Xenon time-base register (TBR).
+            const unsigned tbr = (((instruction >> 11U) & 0x1FU) << 5U) |
+                                 ((instruction >> 16U) & 0x1FU);
+            switch (tbr) {
+            case 268: result = state.read_timebase_lower(); break; // TBL
+            case 269: result = state.read_timebase_upper(); break; // TBU
+            default: return StepResult::UnsupportedInstruction;
+            }
+            writes_result = true;
+            break;
+        }
         case 467: { // mtspr: supported Xenon-visible SPRs
             const unsigned spr = (((instruction >> 11U) & 0x1FU) << 5U) |
                                  ((instruction >> 16U) & 0x1FU);
