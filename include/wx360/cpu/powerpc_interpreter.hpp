@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wx360/cpu/xenon_state.hpp"
+#include "wx360/memory/address_space.hpp"
 
 #include <array>
 #include <bit>
@@ -23,6 +24,26 @@ struct MemoryAccess {
     void* context{};
     bool (*read)(void*, std::uint64_t, std::span<std::uint8_t>) noexcept{};
     bool (*write)(void*, std::uint64_t, std::span<const std::uint8_t>) noexcept{};
+};
+
+struct AddressSpaceMemoryBus {
+    memory::AddressSpace* address_space{};
+    memory::PhysicalMemory* physical_memory{};
+    [[nodiscard]] MemoryAccess callbacks() noexcept {
+        return {this,
+            +[](void* c, std::uint64_t a, std::span<std::uint8_t> out) noexcept {
+                auto& b=*static_cast<AddressSpaceMemoryBus*>(c);
+                if(!b.address_space||!b.physical_memory) return false;
+                const auto p=b.address_space->translate_range(a,out.size(),memory::Access::Read,*b.physical_memory);
+                return p.result==memory::MemoryResult::Ok && b.physical_memory->read(p.physical_address,out)==memory::MemoryResult::Ok;
+            },
+            +[](void* c, std::uint64_t a, std::span<const std::uint8_t> in) noexcept {
+                auto& b=*static_cast<AddressSpaceMemoryBus*>(c);
+                if(!b.address_space||!b.physical_memory) return false;
+                const auto p=b.address_space->translate_range(a,in.size(),memory::Access::Write,*b.physical_memory);
+                return p.result==memory::MemoryResult::Ok && b.physical_memory->write(p.physical_address,in)==memory::MemoryResult::Ok;
+            }};
+    }
 };
 
 struct DecodedInstruction {
