@@ -107,6 +107,20 @@ public:
         return released;
     }
 
+    void cancel_thread(std::uint32_t thread_id) noexcept {
+        for (auto& [id, event] : events_) {
+            (void)id;
+            event.waiters.erase(std::remove(event.waiters.begin(), event.waiters.end(), thread_id),
+                                event.waiters.end());
+        }
+        for (auto& [id, semaphore] : semaphores_) {
+            (void)id;
+            semaphore.waiters.erase(
+                std::remove(semaphore.waiters.begin(), semaphore.waiters.end(), thread_id),
+                semaphore.waiters.end());
+        }
+    }
+
     [[nodiscard]] std::optional<std::uint32_t> semaphore_count(std::uint32_t id) const noexcept {
         const auto it = semaphores_.find(id);
         if (it == semaphores_.end()) return std::nullopt;
