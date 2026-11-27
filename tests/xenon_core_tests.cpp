@@ -407,5 +407,30 @@ int main() {
           !irq_core.state.external_interrupt_pending,
           "enabled external interrupt enters vector and saves guest context");
 
+    // Decrementer requests use the PPC decrementer exception vector and
+    // remain pending while external exceptions are globally masked.
+    memory::PhysicalMemory dec_ram(0x4000);
+    check(dec_ram.write(0x600, irq_nop) == memory::MemoryResult::Ok,
+          "write synthetic instruction for decrementer interrupt test");
+    machine::XenonCore dec_core;
+    dec_core.state.reset(0x600);
+    dec_core.state.request_decrementer_interrupt();
+    check(dec_core.step(dec_ram) == machine::RunResult::Executed &&
+          dec_core.state.pc == 0x604 &&
+          dec_core.state.decrementer_interrupt_pending,
+          "masked decrementer interrupt remains pending");
+    dec_core.state.msr = 0x8000U;
+    const auto saved_dec_pc = dec_core.state.pc;
+    check(dec_core.step(dec_ram) == machine::RunResult::ExceptionTaken &&
+          dec_core.state.pc == 0x900U &&
+          dec_core.state.srr0 == saved_dec_pc &&
+          dec_core.state.srr1 == 0x8000U &&
+          !dec_core.state.decrementer_interrupt_pending,
+          "enabled decrementer interrupt enters vector 0x900 and saves context");
+    dec_core.state.request_decrementer_interrupt();
+    dec_core.state.reset(0x600);
+    check(!dec_core.state.decrementer_interrupt_pending,
+          "CPU reset clears pending decrementer interrupt");
+
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
