@@ -72,7 +72,7 @@ struct XenonThreadState {
  }
  void set_fpscr_exception(std::uint32_t mask) noexcept { fpscr |= mask; }
  void clear_fpscr_exceptions() noexcept { fpscr &= ~0xF8U; }
- void reset(std::uint64_t entry_point=0) noexcept {gpr.fill(0);fpr.fill(0);for(auto& v:vr)v.lane.fill(0);pc=entry_point;lr=ctr=xer=msr=0;cr=fpscr=0;srr0=srr1=dar=0;clear_exception();external_interrupt_pending=false;decrementer_interrupt_pending=false;decrementer=0xFFFFFFFFU;timebase_ticks=0;reservation_valid=false;reservation_address=0;}
+ void reset(std::uint64_t entry_point=0) noexcept {gpr.fill(0);fpr.fill(0);for(auto& v:vr)v.lane.fill(0);segment_registers.fill(0);pc=entry_point;lr=ctr=xer=msr=0;cr=fpscr=0;srr0=srr1=dar=0;clear_exception();external_interrupt_pending=false;decrementer_interrupt_pending=false;decrementer=0xFFFFFFFFU;timebase_ticks=0;reservation_valid=false;reservation_address=0;}
  [[nodiscard]] std::uint8_t condition_field(unsigned field)const noexcept{return field>=8?0:static_cast<std::uint8_t>((cr>>(28U-field*4U))&0xFU);}
  void set_condition_field(unsigned field,std::uint8_t value)noexcept{if(field>=8)return;unsigned shift=28U-field*4U;std::uint32_t mask=0xFU<<shift;cr=(cr&~mask)|((static_cast<std::uint32_t>(value)&0xFU)<<shift);}
 };
