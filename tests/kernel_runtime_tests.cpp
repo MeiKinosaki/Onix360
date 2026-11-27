@@ -96,6 +96,15 @@ int main() {
  check(runtime.dispatch(bad_pool) && bad_pool.gpr[3]==0 &&
        heap.allocation_count()==1,
        "tagged pool allocation rejects unsupported pool type");
+ const auto tag_stats=runtime.pool_tag_statistics(0x54455354);
+ check(tag_stats.live_allocations==1 && tag_stats.live_bytes==96,
+       "tracks live tagged allocation count and bytes");
+ cpu::XenonThreadState tagged_free{};
+ tagged_free.gpr[0]=21; tagged_free.gpr[3]=tagged_alloc.gpr[3];
+ check(runtime.dispatch(tagged_free) &&
+       runtime.pool_tag_statistics(0x54455354).live_allocations==0 &&
+       heap.validate(),
+       "ExFreePool removes tag accounting and restores heap integrity");
  check(runtime.guest_file_system().mount_file("content/default.xex",guest_file_data),
        "kernel runtime mounts frontend-provided guest content");
  const auto guest_file=runtime.guest_file_system().open("CONTENT/DEFAULT.XEX");
