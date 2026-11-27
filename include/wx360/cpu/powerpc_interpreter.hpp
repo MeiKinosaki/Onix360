@@ -541,6 +541,35 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
                     out.lane[lane] = std::bit_cast<std::uint32_t>(x < y ? x : y);
                 }
             }
+        } else if (xo == 514U || xo == 642U || xo == 770U || xo == 898U) {
+            // vmaxub, vmaxuw, vmaxsb and vmaxsw.
+            for (unsigned lane = 0; lane < 4; ++lane) {
+                if (xo == 642U) {
+                    out.lane[lane] = a.lane[lane] > b.lane[lane]
+                        ? a.lane[lane] : b.lane[lane];
+                } else if (xo == 898U) {
+                    const auto x = std::bit_cast<std::int32_t>(a.lane[lane]);
+                    const auto y = std::bit_cast<std::int32_t>(b.lane[lane]);
+                    out.lane[lane] = std::bit_cast<std::uint32_t>(x > y ? x : y);
+                } else {
+                    std::uint32_t value = 0;
+                    for (unsigned byte = 0; byte < 4; ++byte) {
+                        const unsigned shift = 24U - byte * 8U;
+                        const auto ux = static_cast<std::uint8_t>(a.lane[lane] >> shift);
+                        const auto uy = static_cast<std::uint8_t>(b.lane[lane] >> shift);
+                        if (xo == 514U) {
+                            value |= static_cast<std::uint32_t>(ux > uy ? ux : uy) << shift;
+                        } else {
+                            const auto sx = std::bit_cast<std::int8_t>(ux);
+                            const auto sy = std::bit_cast<std::int8_t>(uy);
+                            const auto maximum = sx > sy ? sx : sy;
+                            value |= static_cast<std::uint32_t>(
+                                std::bit_cast<std::uint8_t>(maximum)) << shift;
+                        }
+                    }
+                    out.lane[lane] = value;
+                }
+            }
         } else if (xo == 1028U || xo == 1092U || xo == 1156U ||
                    xo == 1220U || xo == 1284U) { // vand/vandc/vor/vxor/vnor
             for (unsigned lane = 0; lane < 4; ++lane) {
