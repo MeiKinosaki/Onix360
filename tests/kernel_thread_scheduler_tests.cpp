@@ -30,20 +30,20 @@ int main() {
           "preserves full guest register context across yield");
 
     live.pc = 0x2020;
-    check(scheduler.block_current(live) && live.pc == 0x1000 &&
+    check(scheduler.block_current(live) && live.pc == 0x3010 &&
           scheduler.find(*id_b)->status == kernel::ThreadStatus::Blocked,
           "blocking current thread schedules another ready thread");
     check(!scheduler.unblock(*id_a), "cannot unblock a non-blocked thread");
     check(scheduler.unblock(*id_b), "unblocks a blocked guest thread");
 
     check(scheduler.terminate_current(live) &&
-          scheduler.find(*id_a)->status == kernel::ThreadStatus::Terminated &&
-          live.pc == 0x3010,
-          "terminates current thread and schedules highest-priority ready context");
-    check(scheduler.current_id() == id_c, "highest-priority yielded thread resumes");
-    check(scheduler.terminate_current(live) && live.pc == 0x2020,
-          "terminates yielded thread and dispatches unblocked thread");
-    check(scheduler.find(*id_b)->status == kernel::ThreadStatus::Running,
-          "unblocked thread returns to running state");
+          scheduler.find(*id_c)->status == kernel::ThreadStatus::Terminated &&
+          live.pc == 0x2020,
+          "terminates current thread and schedules unblocked higher-priority thread");
+    check(scheduler.current_id() == id_b, "unblocked thread resumes by priority");
+    check(scheduler.terminate_current(live) && live.pc == 0x1000,
+          "terminates unblocked thread and dispatches remaining ready thread");
+    check(scheduler.find(*id_a)->status == kernel::ThreadStatus::Running,
+          "remaining guest thread returns to running state");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
