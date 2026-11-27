@@ -220,7 +220,10 @@ struct XenonCore {
     }
 
     [[nodiscard]] RunResult step(memory::PhysicalMemory& ram) noexcept {
-        // Sample external IRQs at instruction boundaries; masked requests stay latched.
+        // Interim timing model: one DEC tick per interpreted instruction.
+        // Replace with core-cycle accounting when instruction latency is modeled.
+        state.advance_decrementer(1U);
+        // Sample pending IRQs at instruction boundaries; masked requests stay latched.
         if (state.take_external_interrupt()) return RunResult::ExceptionTaken;
         if (state.take_decrementer_interrupt()) return RunResult::ExceptionTaken;
         if ((state.pc & 0x3U) != 0) {
