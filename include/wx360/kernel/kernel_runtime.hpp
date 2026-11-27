@@ -2,6 +2,7 @@
 #include "wx360/cpu/xenon_state.hpp"
 #include "wx360/kernel/xex_import_resolver.hpp"
 #include "wx360/kernel/kernel_heap.hpp"
+#include "wx360/kernel/kernel_thread_scheduler.hpp"
 #include "wx360/kernel/xbox360_export_metadata.hpp"
 #include "wx360/memory/physical_memory.hpp"
 #include "wx360/memory/address_space.hpp"
@@ -27,6 +28,31 @@ public:
     [[nodiscard]] bool dispatch(cpu::XenonThreadState& state) const noexcept {
         const auto id = static_cast<std::uint16_t>(state.gpr[0] & 0xFFFFU);
         return dispatch_service(id, state);
+    }
+
+    // Cooperative guest-thread lifecycle; scheduling occurs at explicit
+    // guest yield/block/termination boundaries, never on arbitrary host timing.
+    [[nodiscard]] std::optional<std::uint32_t> create_guest_thread(
+        const cpu::XenonThreadState& initial, std::uint8_t priority = 16) {
+        return threads_.create(initial, priority);
+    }
+    [[nodiscard]] bool schedule_guest_thread(cpu::XenonThreadState& live) noexcept {
+        return threads_.schedule(live);
+    }
+    [[nodiscard]] bool yield_guest_thread(cpu::XenonThreadState& live) noexcept {
+        return threads_.yield(live);
+    }
+    [[nodiscard]] bool block_guest_thread(cpu::XenonThreadState& live) noexcept {
+        return threads_.block_current(live);
+    }
+    [[nodiscard]] bool unblock_guest_thread(std::uint32_t id) noexcept {
+        return threads_.unblock(id);
+    }
+    [[nodiscard]] bool terminate_guest_thread(cpu::XenonThreadState& live) noexcept {
+        return threads_.terminate_current(live);
+    }
+    [[nodiscard]] const KernelThreadScheduler& thread_scheduler() const noexcept {
+        return threads_;
     }
     // Register a host implementation and its guest-callable export as one
     // operation. If trampoline creation fails, roll back the service entry so
@@ -209,6 +235,7 @@ private:
     }
 
     KernelHeap* heap_{};
+    KernelThreadScheduler threads_{};
     std::uint16_t allocate_pool_service_{};
     std::uint16_t free_pool_service_{};
     std::map<std::uint16_t,Handler> services_;
