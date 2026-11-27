@@ -46,6 +46,9 @@ int main() {
           "readback observes guest file modifications");
     check(!fs.seek(*write_handle,-10,GuestSeekOrigin::Begin),
           "rejects seek before beginning of file");
+    check(fs.seek(*write_handle,100,GuestSeekOrigin::Begin) &&
+          fs.read(*write_handle,updated)==0,
+          "read after seeking beyond EOF safely returns zero bytes");
     check(fs.file_size(*write_handle)==5 && fs.open_handle_count()==1,
           "reports file size and open handle count");
     check(!fs.open("../../escape",GuestFileMode::ReadWrite),
