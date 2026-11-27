@@ -35,6 +35,10 @@ constexpr std::uint32_t x_form(unsigned rt, unsigned ra, unsigned rb, unsigned x
 }
 
 int main() {
+    const auto vx_form = [](unsigned vd, unsigned va, unsigned vb, unsigned xo) {
+        return (4U << 26U) | (vd << 21U) | (va << 16U) |
+               (vb << 11U) | (xo & 0x7FFU);
+    };
     using namespace wx360::cpu;
     constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
     XenonThreadState s;
@@ -720,10 +724,6 @@ int main() {
           "STHBRX stores indexed halfword in reversed byte order");
 
     // VX-form VMX arithmetic: opcode extension includes its low bit.
-    const auto vx_form = [](unsigned vd, unsigned va, unsigned vb, unsigned xo) {
-        return (4U << 26U) | (vd << 21U) | (va << 16U) |
-               (vb << 11U) | (xo & 0x7FFU);
-    };
     s.vr[1].lane = {0xFF01FE02U, 0xFFFFFFFFU, 0xFFFF0001U, 0x3F800000U};
     s.vr[2].lane = {0x01020304U, 0x00000002U, 0x00020003U, 0x40000000U};
     check(execute(s, vx_form(3, 1, 2, 0)) == StepResult::Executed &&
