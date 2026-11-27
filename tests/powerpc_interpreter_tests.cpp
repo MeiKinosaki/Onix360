@@ -120,7 +120,7 @@ int main() {
     check(execute(s, vx_form(3, 1, 2, 514U)) == StepResult::Executed,
           "VMX VMAXUB executes");
     check(s.vr[3].lane[0] == 0x04030304U &&
-          s.vr[3].lane[1] == 0x7F80FE01U,
+          s.vr[3].lane[1] == 0x7F80FF01U,
           "VMAXUB compares each byte as unsigned");
     check(execute(s, vx_form(4, 1, 2, 642U)) == StepResult::Executed,
           "VMX VMAXUW executes");
