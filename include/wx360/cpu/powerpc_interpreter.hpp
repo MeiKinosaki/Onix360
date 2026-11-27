@@ -460,6 +460,9 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         if (fp_xo == 18U && b == 0.0 && a != 0.0)
             state.fpscr |= 0x84000000U; // FX | ZX
         state.fpr[d.rt] = std::bit_cast<std::uint64_t>(value);
+        // Floating-point Rc copies FPSCR[0:3] into CR1.
+        if ((instruction & 1U) != 0)
+            state.set_condition_field(1, static_cast<std::uint8_t>((state.fpscr >> 28U) & 0xFU));
         break;
     }
     case 4: { // VMX/AltiVec three-register arithmetic subset.
