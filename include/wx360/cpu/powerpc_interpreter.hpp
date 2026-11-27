@@ -18,6 +18,7 @@ enum class StepResult {
     UnsupportedInstruction,
     MemoryFault,
     AlignmentFault,
+    ProgramException,
 };
 
 struct MemoryAccess {
@@ -801,6 +802,19 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             }
             break;
         }
+        case 83: { // mfmsr: privileged read of the machine state register.
+            constexpr std::uint64_t msr_pr = std::uint64_t{1} << 14U;
+            if ((state.msr & msr_pr) != 0) return StepResult::ProgramException;
+            result = static_cast<std::uint32_t>(state.msr);
+            writes_result = true;
+            break;
+        }
+        case 146: { // mtmsr: privileged write of the 32-bit machine state register.
+            constexpr std::uint64_t msr_pr = std::uint64_t{1} << 14U;
+            if ((state.msr & msr_pr) != 0) return StepResult::ProgramException;
+            state.msr = static_cast<std::uint32_t>(state.gpr[d.rt]);
+            break;
+        }
         case 339: { // mfspr: supported Xenon-visible SPRs
             const unsigned spr = (((instruction >> 11U) & 0x1FU) << 5U) |
                                  ((instruction >> 16U) & 0x1FU);
@@ -1217,6 +1231,8 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         state.raise_exception(0x300U, *fault);
     else if (result == StepResult::AlignmentFault)
         state.raise_exception(0x600U, *fault);
+    else if (result == StepResult::ProgramException)
+        state.raise_exception(0x700U);
     return result;
 }
 
