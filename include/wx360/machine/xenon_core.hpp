@@ -222,6 +222,7 @@ struct XenonCore {
     [[nodiscard]] RunResult step(memory::PhysicalMemory& ram) noexcept {
         // Sample external IRQs at instruction boundaries; masked requests stay latched.
         if (state.take_external_interrupt()) return RunResult::ExceptionTaken;
+        if (state.take_decrementer_interrupt()) return RunResult::ExceptionTaken;
         if ((state.pc & 0x3U) != 0) {
             state.raise_exception(0x600U, state.pc);
             return RunResult::ExceptionTaken;
