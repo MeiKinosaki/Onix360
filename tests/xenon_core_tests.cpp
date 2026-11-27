@@ -447,5 +447,23 @@ int main() {
     check(!dec_core.state.decrementer_interrupt_pending,
           "CPU reset clears pending decrementer interrupt");
 
+    // XenonCore advances the provisional DEC clock once per interpreted
+    // instruction and delivers underflow at the following instruction boundary.
+    check(dec_ram.write(0x604, irq_nop) == memory::MemoryResult::Ok,
+          "write second synthetic instruction for integrated DEC timing");
+    machine::XenonCore timed_core;
+    timed_core.state.reset(0x600);
+    timed_core.state.msr = 0x8000U;
+    timed_core.state.write_decrementer(1U);
+    check(timed_core.step(dec_ram) == machine::RunResult::Executed &&
+          timed_core.state.decrementer == 0U &&
+          timed_core.state.pc == 0x604U,
+          "DEC advances by one provisional tick after first instruction");
+    check(timed_core.step(dec_ram) == machine::RunResult::ExceptionTaken &&
+          timed_core.state.pc == 0x900U &&
+          timed_core.state.srr0 == 0x604U &&
+          timed_core.state.decrementer_interrupt_pending == false,
+          "DEC underflow is delivered before the next instruction executes");
+
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
