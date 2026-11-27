@@ -2,7 +2,7 @@
 
 #include "wx360/memory/physical_memory.hpp"
 
-#include <cstddef>
+#include <algorithm>\n#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <map>
@@ -31,6 +31,58 @@ public:
     [[nodiscard]] std::uint32_t size() const noexcept { return size_; }
     [[nodiscard]] std::size_t allocation_count() const noexcept {
         return allocated_.size();
+    }
+    [[nodiscard]] std::uint64_t free_bytes() const noexcept {
+        std::uint64_t total = 0;
+        for (const auto& [address, bytes] : free_) {
+            (void)address;
+            total += bytes;
+        }
+        return total;
+    }
+    [[nodiscard]] std::uint32_t largest_free_block() const noexcept {
+        std::uint32_t largest = 0;
+        for (const auto& [address, bytes] : free_) {
+            (void)address;
+            largest = (std::max)(largest, bytes);
+        }
+        return largest;
+    }
+    [[nodiscard]] bool owns_address(std::uint32_t address) const noexcept {
+        return valid_ && address >= base_ &&
+            static_cast<std::uint64_t>(address) <
+                static_cast<std::uint64_t>(base_) + size_;
+    }
+
+    // Expensive diagnostic used by tests and debug builds. The free and
+    // allocated maps must partition the configured heap without overlap,
+    // gaps, out-of-range blocks, or adjacent unmerged free blocks.
+    [[nodiscard]] bool validate() const noexcept {
+        if (!valid_) return false;
+        std::uint64_t total = 0;
+        std::uint64_t previous_end = base_;
+        bool first_block = true;
+        auto free_it = free_.begin();
+        auto allocated_it = allocated_.begin();
+        while (free_it != free_.end() || allocated_it != allocated_.end()) {
+            const bool take_free = allocated_it == allocated_.end() ||
+                (free_it != free_.end() && free_it->first < allocated_it->first);
+            const std::uint64_t start = take_free ? free_it->first : allocated_it->first;
+            const std::uint64_t bytes = take_free ? free_it->second : allocated_it->second;
+            if (bytes == 0 || start < base_ ||
+                start + bytes > static_cast<std::uint64_t>(base_) + size_ ||
+                (!first_block && start != previous_end))
+                return false;
+            if (take_free && !first_block && previous_was_free) return false;
+            previous_end = start + bytes;
+            total += bytes;
+            first_block = false;
+            previous_was_free = take_free;
+            if (take_free) ++free_it;
+            else ++allocated_it;
+        }
+        return total == size_ && previous_end ==
+            static_cast<std::uint64_t>(base_) + size_;
     }
 
     // Alignment must be a power of two. Allocation is first-fit and returns
