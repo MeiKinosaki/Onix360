@@ -62,5 +62,20 @@ int main() {
     check(fetch_and_execute_with_exception_delivery(state,callbacks)==StepResult::MemoryFault &&
           state.exception_pending && state.pc==0x400U && state.srr0==0x80001000U,
           "instruction storage exception records faulting PC");
+    // RFI restores the saved instruction address and machine state,
+    // then clears the pending exception marker.
+    state.reset(0x700U);
+    state.srr0 = 0x12345678U;
+    state.srr1 = 0x0000000000009030ULL;
+    state.msr = 0;
+    state.exception_pending = true;
+    state.exception_vector = 0x300U;
+    check(execute_with_exception_delivery(state, 0x4C000064U) == StepResult::Executed,
+          "RFI instruction executes from exception handler");
+    check(state.pc == 0x12345678U && state.msr == 0x9030U,
+          "RFI restores SRR0 into PC and SRR1 into MSR");
+    check(!state.exception_pending && state.exception_vector == 0,
+          "RFI clears pending exception state");
+
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
