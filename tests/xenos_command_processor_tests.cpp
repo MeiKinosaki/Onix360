@@ -82,6 +82,25 @@ int main() {
           "PM4 software triangle reaches framebuffer");
     draw_packet.payload = std::span<const std::uint32_t>(tri.data(), 6);
     check(!draw.execute_packet(draw_packet), "rejects malformed software draw packet");
+    XenosCommandProcessor texture_gpu;
+    check(texture_gpu.configure_framebuffer(8, 8), "configures texture command framebuffer");
+    const std::array<std::uint32_t, 10> texture_command{
+        2U, 2U, 1U, 1U, 4U, 4U,
+        0xFF000001U, 0xFF000002U, 0xFF000003U, 0xFF000004U};
+    Pm4PacketView texture_packet{Pm4PacketType::Type3,
+        XenosCommandProcessor::wx360_texture_blit_opcode, 0, false,
+        texture_command, texture_command.size() + 1U};
+    check(texture_gpu.execute_packet(texture_packet),
+          "executes bounded software texture blit packet");
+    check(texture_gpu.framebuffer().pixels()[1U * 8U + 1U] == 0xFF000001U &&
+          texture_gpu.framebuffer().pixels()[4U * 8U + 4U] == 0xFF000004U,
+          "texture packet writes scaled texels to framebuffer");
+    const std::array<std::uint32_t, 7> invalid_texture{
+        3U, 3U, 0U, 0U, 4U, 4U, 0xFFFFFFFFU};
+    texture_packet.payload = invalid_texture;
+    check(!texture_gpu.execute_packet(texture_packet),
+          "rejects texture packet with inconsistent pixel payload");
+
     XenosCommandProcessor stream_gpu;
     check(stream_gpu.configure_framebuffer(8, 8), "configures stream framebuffer");
     const std::array<std::uint32_t, 4> clear_present{
