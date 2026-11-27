@@ -19,28 +19,28 @@ int main() {
     const auto id_c = scheduler.create(c, 24);
     check(id_a && id_b && id_c, "creates guest threads within capacity");
     check(!scheduler.create(a), "rejects thread creation beyond capacity");
-    check(scheduler.schedule(live) && live.pc == 0x3000 &&
-          scheduler.current_id() == id_c, "dispatches highest-priority ready guest thread");
+    check(scheduler.schedule(live) && live.pc == 0x2000 &&
+          scheduler.current_id() == id_b, "dispatches first highest-priority thread in FIFO order");
 
-    live.pc = 0x3010; live.gpr[3] = 333;
-    check(scheduler.yield(live) && live.pc == 0x2000,
-          "yield saves context and selects next-highest-priority thread");
-    check(scheduler.find(*id_c)->context.pc == 0x3010 &&
-          scheduler.find(*id_c)->context.gpr[3] == 333,
+    live.pc = 0x2010; live.gpr[3] = 222;
+    check(scheduler.yield(live) && live.pc == 0x3000,
+          "yield saves context and selects the next equal-priority thread");
+    check(scheduler.find(*id_b)->context.pc == 0x2010 &&
+          scheduler.find(*id_b)->context.gpr[3] == 222,
           "preserves full guest register context across yield");
 
-    live.pc = 0x2020;
-    check(scheduler.block_current(live) && live.pc == 0x3010 &&
-          scheduler.find(*id_b)->status == kernel::ThreadStatus::Blocked,
+    live.pc = 0x3020;
+    check(scheduler.block_current(live) && live.pc == 0x2010 &&
+          scheduler.find(*id_c)->status == kernel::ThreadStatus::Blocked,
           "blocking current thread schedules another ready thread");
     check(!scheduler.unblock(*id_a), "cannot unblock a non-blocked thread");
-    check(scheduler.unblock(*id_b), "unblocks a blocked guest thread");
+    check(scheduler.unblock(*id_c), "unblocks a blocked guest thread");
 
     check(scheduler.terminate_current(live) &&
-          scheduler.find(*id_c)->status == kernel::ThreadStatus::Terminated &&
-          live.pc == 0x2020,
+          scheduler.find(*id_b)->status == kernel::ThreadStatus::Terminated &&
+          live.pc == 0x3020,
           "terminates current thread and schedules unblocked higher-priority thread");
-    check(scheduler.current_id() == id_b, "unblocked thread resumes by priority");
+    check(scheduler.current_id() == id_c, "unblocked thread resumes by priority");
     check(scheduler.terminate_current(live) && live.pc == 0x1000,
           "terminates unblocked thread and dispatches remaining ready thread");
     check(scheduler.find(*id_a)->status == kernel::ThreadStatus::Running,
