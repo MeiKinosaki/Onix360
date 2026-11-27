@@ -1102,6 +1102,22 @@ int main() {
           s.pc == 0x61B0U,
           "MFSPR rejects unimplemented time-base SPR without changing PC");
 
+    // MFTB reads TBL (268) and TBU (269), using the XFX split TBR field.
+    s.reset(0x61C0);
+    s.timebase_ticks = 0x89ABCDEF12345678ULL;
+    check(execute(s, xfx_spr(15, 268, 371)) == StepResult::Executed &&
+          s.gpr[15] == 0x12345678U && s.pc == 0x61C4U,
+          "MFTB reads lower time-base word");
+    s.reset(0x61D0);
+    s.timebase_ticks = 0x89ABCDEF12345678ULL;
+    check(execute(s, xfx_spr(16, 269, 371)) == StepResult::Executed &&
+          s.gpr[16] == 0x89ABCDEFU && s.pc == 0x61D4U,
+          "MFTB reads upper time-base word");
+    s.reset(0x61E0);
+    check(execute(s, xfx_spr(17, 270, 371)) == StepResult::UnsupportedInstruction &&
+          s.pc == 0x61E0U,
+          "MFTB rejects unsupported TBR without changing PC");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
