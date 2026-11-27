@@ -51,6 +51,9 @@ public:
         return threads_.unblock(id);
     }
     [[nodiscard]] bool terminate_guest_thread(cpu::XenonThreadState& live) noexcept {
+        const auto current = threads_.current_id();
+        if (!current) return false;
+        synchronization_.cancel_thread(*current);
         return threads_.terminate_current(live);
     }
     [[nodiscard]] const KernelThreadScheduler& thread_scheduler() const noexcept {
