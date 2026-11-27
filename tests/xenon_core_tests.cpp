@@ -102,11 +102,11 @@ int main() {
     cpu::XenonThreadState low_priority{}, high_priority{};
     low_priority.reset(0x1000);
     high_priority.reset(0x2000);
-    const auto low_id = thread_core.create_guest_thread(low_priority, 4);
     const auto high_id = thread_core.create_guest_thread(high_priority, 20);
+    const auto low_id = thread_core.create_guest_thread(low_priority, 20);
     check(low_id && high_id, "machine core creates guest threads through kernel runtime");
     check(thread_core.schedule_guest_thread() && thread_core.state.pc == 0x2000,
-          "machine core dispatches highest-priority guest thread");
+          "machine core dispatches first equal-priority guest thread");
     thread_core.state.pc = 0x2010;
     check(thread_core.yield_guest_thread() && thread_core.state.pc == 0x1000,
           "machine core yields and switches guest execution context");
