@@ -1159,4 +1159,23 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
     return StepResult::Executed;
 }
 
+// Architectural exception delivery wrapper for the interpreter. The low-level
+// execute() API remains useful for tests/debuggers that want fault results
+// without changing PC; guest execution should use this wrapper to enter the
+// PowerPC data-storage (0x300) or alignment (0x600) exception vector.
+[[nodiscard]] inline StepResult execute_with_exception_delivery(
+    XenonThreadState& state, std::uint32_t instruction,
+    std::span<std::uint8_t> memory = {},
+    std::uint64_t* fault_address = nullptr,
+    const MemoryAccess* bus = nullptr) noexcept {
+    std::uint64_t local_fault = 0;
+    auto* fault = fault_address ? fault_address : &local_fault;
+    const auto result = execute(state, instruction, memory, fault, bus);
+    if (result == StepResult::MemoryFault)
+        state.raise_exception(0x300U, *fault);
+    else if (result == StepResult::AlignmentFault)
+        state.raise_exception(0x600U, *fault);
+    return result;
+}
+
 } // namespace wx360::cpu
