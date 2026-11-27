@@ -23,6 +23,8 @@ struct XenonThreadState {
  std::uint64_t reservation_address{0};
  // PowerPC DEC register; decremented by explicit emulated timebase ticks.
  std::uint32_t decrementer{0xFFFFFFFFU};
+ // Monotonic emulated PowerPC time-base counter; frequency is configured by the machine.
+ std::uint64_t timebase_ticks{0};
  std::uint32_t exception_vector{0};
  void raise_exception(std::uint32_t vector,std::uint64_t fault_address=0) noexcept {
   srr0=pc;srr1=msr;dar=fault_address;exception_vector=vector;exception_pending=true;msr=0;pc=vector;
@@ -31,6 +33,20 @@ struct XenonThreadState {
  void request_external_interrupt() noexcept { external_interrupt_pending = true; }
  void request_decrementer_interrupt() noexcept { decrementer_interrupt_pending = true; }
  void write_decrementer(std::uint32_t value) noexcept { decrementer = value; }
+ void advance_timebase(std::uint64_t ticks) noexcept { timebase_ticks += ticks; }
+ [[nodiscard]] std::uint32_t read_timebase_lower() const noexcept {
+  return static_cast<std::uint32_t>(timebase_ticks);
+ }
+ [[nodiscard]] std::uint32_t read_timebase_upper() const noexcept {
+  return static_cast<std::uint32_t>(timebase_ticks >> 32U);
+ }
+ void write_timebase_lower(std::uint32_t value) noexcept {
+  timebase_ticks = (timebase_ticks & 0xFFFFFFFF00000000ULL) | value;
+ }
+ void write_timebase_upper(std::uint32_t value) noexcept {
+  timebase_ticks = (static_cast<std::uint64_t>(value) << 32U) |
+                   (timebase_ticks & 0xFFFFFFFFULL);
+ }
  void advance_decrementer(std::uint32_t ticks) noexcept {
   if (ticks == 0) return;
   const std::uint32_t previous = decrementer;
@@ -52,7 +68,7 @@ struct XenonThreadState {
  }
  void set_fpscr_exception(std::uint32_t mask) noexcept { fpscr |= mask; }
  void clear_fpscr_exceptions() noexcept { fpscr &= ~0xF8U; }
- void reset(std::uint64_t entry_point=0) noexcept {gpr.fill(0);fpr.fill(0);for(auto& v:vr)v.lane.fill(0);pc=entry_point;lr=ctr=xer=msr=0;cr=fpscr=0;srr0=srr1=dar=0;clear_exception();external_interrupt_pending=false;decrementer_interrupt_pending=false;decrementer=0xFFFFFFFFU;reservation_valid=false;reservation_address=0;}
+ void reset(std::uint64_t entry_point=0) noexcept {gpr.fill(0);fpr.fill(0);for(auto& v:vr)v.lane.fill(0);pc=entry_point;lr=ctr=xer=msr=0;cr=fpscr=0;srr0=srr1=dar=0;clear_exception();external_interrupt_pending=false;decrementer_interrupt_pending=false;decrementer=0xFFFFFFFFU;timebase_ticks=0;reservation_valid=false;reservation_address=0;}
  [[nodiscard]] std::uint8_t condition_field(unsigned field)const noexcept{return field>=8?0:static_cast<std::uint8_t>((cr>>(28U-field*4U))&0xFU);}
  void set_condition_field(unsigned field,std::uint8_t value)noexcept{if(field>=8)return;unsigned shift=28U-field*4U;std::uint32_t mask=0xFU<<shift;cr=(cr&~mask)|((static_cast<std::uint32_t>(value)&0xFU)<<shift);}
 };
