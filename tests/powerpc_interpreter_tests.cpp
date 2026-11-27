@@ -1169,6 +1169,20 @@ int main() {
     check(s.segment_registers[4] == 0,
           "thread reset clears all segment registers");
 
+    // Segment-register N bit prevents instruction fetch from its 256 MiB segment.
+    s.reset(0x7000);
+    s.segment_registers[0] = 0;
+    check(segment_allows_instruction_fetch(s, 0x01234567U),
+          "segment with N clear permits instruction fetch");
+    s.segment_registers[1] = segment_no_execute_mask;
+    check(!segment_allows_instruction_fetch(s, 0x11234567U),
+          "segment N bit blocks instruction fetch");
+    check(segment_allows_instruction_fetch(s, 0x01234567U),
+          "N bit in one segment does not block another segment");
+    s.segment_registers[15] = segment_no_execute_mask;
+    check(!segment_allows_instruction_fetch(s, 0xF0000000U),
+          "segment 15 no-execute protection is selected by EA high nibble");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
