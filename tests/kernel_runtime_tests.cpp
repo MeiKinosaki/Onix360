@@ -57,5 +57,25 @@ int main() {
        "SC 2 dispatches host service using the guest thunk address");
  check(core.step(ram)==machine::RunResult::Executed && core.state.pc==0x3000,
        "kernel import thunk BLR returns to guest caller through LR");
+ // Event wait blocks the current guest thread; signaling makes it ready again.
+ cpu::XenonThreadState waiter{}, worker{}, live{};
+ waiter.reset(0x500); worker.reset(0x600);
+ const auto waiter_id=runtime.create_guest_thread(waiter,10);
+ const auto worker_id=runtime.create_guest_thread(worker,10);
+ const auto event_id=runtime.create_guest_event(true,false);
+ check(waiter_id && worker_id && event_id,"creates guest threads and a manual-reset event");
+ check(runtime.schedule_guest_thread(live) && live.pc==0x500,
+       "starts first guest thread for synchronization test");
+ check(runtime.wait_guest_event(*event_id,live)==kernel::WaitResult::Blocked &&
+       live.pc==0x600,"event wait blocks current guest and schedules worker");
+ check(runtime.set_guest_event(*event_id),"event signal releases queued guest waiter");
+ check(runtime.terminate_guest_thread(live) && live.pc==0x500,
+       "worker termination resumes event waiter");
+ check(runtime.thread_scheduler().current_id()==waiter_id,
+       "event waiter becomes current after signal");
+ const auto sem_id=runtime.create_guest_semaphore(0,2);
+ check(sem_id && runtime.wait_guest_semaphore(*sem_id,live)==kernel::WaitResult::Blocked,
+       "semaphore wait queues current guest thread");
+ check(runtime.release_guest_semaphore(*sem_id),"semaphore release wakes guest waiter");
  return failures==0?EXIT_SUCCESS:EXIT_FAILURE;
 }
