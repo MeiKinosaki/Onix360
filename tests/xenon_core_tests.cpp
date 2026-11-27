@@ -114,7 +114,7 @@ int main() {
           "machine core exposes current scheduled guest thread");
     check(thread_core.terminate_guest_thread() && thread_core.state.pc == 0x2010,
           "machine core terminates thread and resumes ready context");
-    check(thread_core.thread_scheduler().current_id() == high_id,
+    check(thread_runtime.thread_scheduler().current_id() == high_id,
           "terminated guest thread is no longer current");
 
     // XEX launch authorization is covered by xex_synthetic_boot_tests,
