@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wx360/memory/physical_memory.hpp"
+#include "wx360/memory/address_space.hpp"
 
 #include <algorithm>\n#include <cstddef>
 #include <cstdint>
@@ -118,6 +119,53 @@ public:
             return address;
         }
         return std::nullopt;
+    }
+
+    // Allocate page-granular backing and install a guest virtual mapping.
+    // Mapping is committed only after the physical allocation succeeds;
+    // a failed map rolls the allocation back.
+    [[nodiscard]] std::optional<std::uint32_t> allocate_mapped_pages(
+        memory::AddressSpace& address_space, std::uint64_t virtual_base,
+        std::uint32_t bytes, std::uint8_t permissions = 3U) {
+        if (bytes == 0 || (bytes % memory::PhysicalMemory::page_size) != 0 ||
+            (virtual_base % memory::PhysicalMemory::page_size) != 0)
+            return std::nullopt;
+        const auto physical = allocate(bytes,
+            static_cast<std::uint32_t>(memory::PhysicalMemory::page_size));
+        if (!physical) return std::nullopt;
+        std::vector<memory::AddressSpace::PageMapping> mappings;
+        try {
+            mappings.reserve(bytes / memory::PhysicalMemory::page_size);
+            for (std::uint32_t offset = 0; offset < bytes;
+                 offset += static_cast<std::uint32_t>(memory::PhysicalMemory::page_size))
+                mappings.push_back({virtual_base + offset,
+                    static_cast<std::uint64_t>(*physical) + offset, permissions});
+        } catch (...) {
+            (void)release(*physical);
+            return std::nullopt;
+        }
+        if (address_space.map_pages(mappings) != memory::MemoryResult::Ok) {
+            (void)release(*physical);
+            return std::nullopt;
+        }
+        return physical;
+    }
+
+    // Unmap all virtual pages before returning backing memory to the heap.
+    [[nodiscard]] bool release_mapped_pages(memory::AddressSpace& address_space,
+        std::uint64_t virtual_base, std::uint32_t physical_base,
+        std::uint32_t bytes) {
+        if (bytes == 0 || (bytes % memory::PhysicalMemory::page_size) != 0 ||
+            (virtual_base % memory::PhysicalMemory::page_size) != 0 ||
+            !allocated_.contains(physical_base) || allocated_.at(physical_base) != bytes)
+            return false;
+        for (std::uint32_t offset = 0; offset < bytes;
+             offset += static_cast<std::uint32_t>(memory::PhysicalMemory::page_size))
+            if (!address_space.has_page_mapping(virtual_base + offset)) return false;
+        for (std::uint32_t offset = 0; offset < bytes;
+             offset += static_cast<std::uint32_t>(memory::PhysicalMemory::page_size))
+            address_space.unmap_page(virtual_base + offset);
+        return release(physical_base);
     }
 
     // Only the exact base of a live allocation may be released.
