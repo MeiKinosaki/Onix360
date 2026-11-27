@@ -1201,6 +1201,14 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
     return StepResult::Executed;
 }
 
+// Forward declaration: the fetch wrapper delegates to the exception-delivery
+// executor defined immediately below it.
+[[nodiscard]] inline StepResult execute_with_exception_delivery(
+    XenonThreadState& state, std::uint32_t instruction,
+    std::span<std::uint8_t> memory,
+    std::uint64_t* fault_address,
+    const MemoryAccess* bus) noexcept;
+
 [[nodiscard]] inline StepResult fetch_and_execute_with_exception_delivery(
     XenonThreadState& state, const MemoryAccess& bus) noexcept {
     std::uint32_t instruction=0;
