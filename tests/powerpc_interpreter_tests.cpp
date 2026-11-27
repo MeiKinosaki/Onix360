@@ -89,6 +89,32 @@ int main() {
     check(execute(s, fdiv_zero) == StepResult::Executed, "FDIV by zero executes with FPSCR status");
     check((s.fpscr & 0x84000000U) == 0x84000000U, "FDIV by zero sets sticky FX and ZX flags");
 
+    // VMX vector maximum XO encodings (VX form).
+    const auto vx_form = [](unsigned vd, unsigned va, unsigned vb, unsigned xo) {
+        return (4U << 26U) | (vd << 21U) | (va << 16U) |
+               (vb << 11U) | (xo << 1U);
+    };
+    s.vr[1].lane = {0x01020304U, 0x7F80FF00U, 0x80000001U, 0xFFFFFFFFU};
+    s.vr[2].lane = {0x04030201U, 0x0101FE01U, 0x7F000002U, 0x00000000U};
+    check(execute(s, vx_form(3, 1, 2, 514U)) == StepResult::Executed,
+          "VMX VMAXUB executes");
+    check(s.vr[3].lane[0] == 0x04030304U &&
+          s.vr[3].lane[1] == 0x7F80FE01U,
+          "VMAXUB compares each byte as unsigned");
+    check(execute(s, vx_form(4, 1, 2, 642U)) == StepResult::Executed,
+          "VMX VMAXUW executes");
+    check(s.vr[4].lane[0] == 0x04030201U &&
+          s.vr[4].lane[2] == 0x80000001U,
+          "VMAXUW compares unsigned words");
+    check(execute(s, vx_form(5, 1, 2, 770U)) == StepResult::Executed,
+          "VMX VMAXSB executes");
+    check(s.vr[5].lane[0] == 0x04030304U,
+          "VMAXSB compares signed byte lanes");
+    check(execute(s, vx_form(6, 1, 2, 898U)) == StepResult::Executed,
+          "VMX VMAXSW executes");
+    check(s.vr[6].lane[2] == 0x7F000002U,
+          "VMAXSW compares signed words");
+
     s.reset(0x1000); // Keep the legacy integer tests independent of FPU PC changes.
     s.gpr[3] = 10;
     check(execute(s, d_form(14, 4, 3, 5)) == StepResult::Executed, "ADDI executes");
