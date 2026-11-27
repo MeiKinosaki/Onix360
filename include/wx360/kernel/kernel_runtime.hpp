@@ -3,6 +3,7 @@
 #include "wx360/kernel/xex_import_resolver.hpp"
 #include "wx360/kernel/kernel_heap.hpp"
 #include "wx360/kernel/kernel_thread_scheduler.hpp"
+#include "wx360/kernel/kernel_synchronization.hpp"
 #include "wx360/kernel/xbox360_export_metadata.hpp"
 #include "wx360/memory/physical_memory.hpp"
 #include "wx360/memory/address_space.hpp"
@@ -53,6 +54,51 @@ public:
     }
     [[nodiscard]] const KernelThreadScheduler& thread_scheduler() const noexcept {
         return threads_;
+    }
+
+    [[nodiscard]] std::optional<std::uint32_t> create_guest_event(
+        bool manual_reset, bool initially_signaled = false) {
+        return synchronization_.create_event(manual_reset, initially_signaled);
+    }
+    [[nodiscard]] std::optional<std::uint32_t> create_guest_semaphore(
+        std::uint32_t initial_count, std::uint32_t maximum_count) {
+        return synchronization_.create_semaphore(initial_count, maximum_count);
+    }
+    [[nodiscard]] WaitResult wait_guest_event(
+        std::uint32_t event_id, cpu::XenonThreadState& live) {
+        const auto current = threads_.current_id();
+        if (!current) return WaitResult::InvalidObject;
+        const auto result = synchronization_.wait_event(event_id, *current);
+        if (result == WaitResult::Blocked)
+            (void)threads_.block_current(live);
+        return result;
+    }
+    [[nodiscard]] bool set_guest_event(std::uint32_t event_id) {
+        const auto released = synchronization_.set_event(event_id);
+        if (released.empty()) return false;
+        bool ok = true;
+        for (const auto id : released) ok = threads_.unblock(id) && ok;
+        return ok;
+    }
+    [[nodiscard]] bool reset_guest_event(std::uint32_t event_id) noexcept {
+        return synchronization_.reset_event(event_id);
+    }
+    [[nodiscard]] WaitResult wait_guest_semaphore(
+        std::uint32_t semaphore_id, cpu::XenonThreadState& live) {
+        const auto current = threads_.current_id();
+        if (!current) return WaitResult::InvalidObject;
+        const auto result = synchronization_.wait_semaphore(semaphore_id, *current);
+        if (result == WaitResult::Blocked)
+            (void)threads_.block_current(live);
+        return result;
+    }
+    [[nodiscard]] bool release_guest_semaphore(
+        std::uint32_t semaphore_id, std::uint32_t count = 1) {
+        const auto released = synchronization_.release_semaphore(semaphore_id, count);
+        if (!released) return false;
+        bool ok = true;
+        for (const auto id : *released) ok = threads_.unblock(id) && ok;
+        return ok;
     }
     // Register a host implementation and its guest-callable export as one
     // operation. If trampoline creation fails, roll back the service entry so
@@ -236,6 +282,7 @@ private:
 
     KernelHeap* heap_{};
     KernelThreadScheduler threads_{};
+    KernelSynchronization synchronization_{};
     std::uint16_t allocate_pool_service_{};
     std::uint16_t free_pool_service_{};
     std::map<std::uint16_t,Handler> services_;
