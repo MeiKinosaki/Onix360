@@ -12,7 +12,7 @@ int main() {
     };
     GuestFileSystem fs;
     const std::array<std::uint8_t,5> initial{1,2,3,4,5};
-    check(fs.mount_file("Game:\\Content\\Data.BIN", initial),
+    check(fs.mount_file("Game\\Content\\Data.BIN", initial),
           "mounts frontend-provided guest file");
     check(!fs.mount_file("../outside.bin", initial),
           "rejects traversal path during mount");
