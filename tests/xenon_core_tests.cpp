@@ -427,6 +427,21 @@ int main() {
           dec_core.state.srr1 == 0x8000U &&
           !dec_core.state.decrementer_interrupt_pending,
           "enabled decrementer interrupt enters vector 0x900 and saves context");
+    // DEC underflow latches the decrementer exception request.
+    cpu::XenonThreadState timer_state{};
+    timer_state.reset(0x700);
+    timer_state.write_decrementer(3U);
+    timer_state.advance_decrementer(2U);
+    check(timer_state.decrementer == 1U &&
+          !timer_state.decrementer_interrupt_pending,
+          "decrementer counts down without premature interrupt");
+    timer_state.advance_decrementer(2U);
+    check(timer_state.decrementer == 0xFFFFFFFFU &&
+          timer_state.decrementer_interrupt_pending,
+          "decrementer underflow latches interrupt request");
+    timer_state.write_decrementer(10U);
+    check(timer_state.decrementer_interrupt_pending,
+          "writing DEC does not silently discard a latched request");
     dec_core.state.request_decrementer_interrupt();
     dec_core.state.reset(0x600);
     check(!dec_core.state.decrementer_interrupt_pending,
