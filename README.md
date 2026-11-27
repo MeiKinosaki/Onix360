@@ -81,7 +81,9 @@ O interpretador inicial contém suporte experimental para:
 - A validação verifica cobertura integral do intervalo, ausência de sobreposição/lacunas, limites do heap e coalescência de blocos livres adjacentes.
 - A API `owns_address` verifica pertencimento usando intervalo semiaberto.
 - Testes sintéticos exercitam estado inicial, alocações alinhadas, liberação, coalescência, restauração do espaço e heap inválido.
-- **Limite:** é um alocador experimental de memória física para o runtime; não implementa todas as semânticas, flags ou pools do Xbox Kernel. Nenhum XEX real é executado nesta etapa.
+- O `KernelRuntime` liga os ordinais de metadados `ExAllocatePool` (0x0009) e `ExFreePool` (0x000F) a serviços internos e trampolins guest, com IDs de serviço escolhidos pelo emulador.
+- Testes de runtime verificam despacho sintético, retorno de endereço físico, rejeição de tipo de pool não suportado, liberação e integridade do heap.
+- **Limite:** essa ponte é experimental e não equivale à implementação completa das APIs/pools do Xbox Kernel. Nenhum XEX real é executado nesta etapa.
 
 ## Biblioteca Xbox 360 Content/GOD (identificação inicial)
 
