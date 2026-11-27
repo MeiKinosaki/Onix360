@@ -1,6 +1,7 @@
 #pragma once
 #include "wx360/cpu/xenon_state.hpp"
 #include "wx360/kernel/xex_import_resolver.hpp"
+#include "wx360/kernel/kernel_heap.hpp"
 #include "wx360/kernel/xbox360_export_metadata.hpp"
 #include "wx360/memory/physical_memory.hpp"
 #include "wx360/memory/address_space.hpp"
@@ -25,6 +26,25 @@ public:
     }
     [[nodiscard]] bool dispatch(cpu::XenonThreadState& state) const noexcept {
         const auto id = static_cast<std::uint16_t>(state.gpr[0] & 0xFFFFU);
+        if (heap_ && id == allocate_pool_service_) {
+            // Xbox PPC ABI: ExAllocatePool(PoolType, NumberOfBytes).
+            // This early runtime has one guest heap, so supported pool types
+            // share the same bounded arena; unknown types fail closed.
+            const auto pool_type = state.gpr[3];
+            const auto bytes = state.gpr[4];
+            if (pool_type > 1U || bytes > UINT32_MAX) {
+                state.gpr[3] = 0;
+                return true;
+            }
+            const auto result = heap_->allocate(static_cast<std::uint32_t>(bytes), 16);
+            state.gpr[3] = result ? *result : 0U;
+            return true;
+        }
+        if (heap_ && id == free_pool_service_) {
+            // ExFreePool(P); invalid/double frees are ignored safely.
+            (void)heap_->release(static_cast<std::uint32_t>(state.gpr[3]));
+            return true;
+        }
         const auto it = services_.find(id);
         if (it == services_.end()) return false;
         it->second(state);
@@ -89,7 +109,32 @@ public:
         if (thunk == thunk_services_.end()) return false;
         const auto service = services_.find(thunk->second);
         if (service == services_.end()) return false;
-        service->second(state);
+        return dispatch(state);
+    }
+
+    // Register the source-listed pool exports against a bounded guest heap.
+    // Export ordinals are metadata-checked; service IDs are emulator-internal.
+    [[nodiscard]] bool register_kernel_heap_exports(
+        KernelHeap& heap, std::uint16_t allocate_service,
+        std::uint16_t free_service, std::uint32_t allocate_thunk,
+        std::uint32_t free_thunk, memory::PhysicalMemory& ram) {
+        if (!heap.valid() || allocate_service == free_service || heap_)
+            return false;
+        heap_ = &heap;
+        allocate_pool_service_ = allocate_service;
+        free_pool_service_ = free_service;
+        const auto noop = +[](cpu::XenonThreadState&) noexcept {};
+        if (!register_known_function_export("xboxkrnl.exe", 0x0009,
+                allocate_service, allocate_thunk, noop, ram) ||
+            !register_known_function_export("xboxkrnl.exe", 0x000F,
+                free_service, free_thunk, noop, ram)) {
+            heap_ = nullptr;
+            services_.erase(allocate_service);
+            services_.erase(free_service);
+            export_services_.erase(make_export_key("xboxkrnl.exe", 0x0009));
+            export_services_.erase(make_export_key("xboxkrnl.exe", 0x000F));
+            return false;
+        }
         return true;
     }
 
@@ -158,6 +203,9 @@ private:
         return key;
     }
 
+    KernelHeap* heap_{};
+    std::uint16_t allocate_pool_service_{};
+    std::uint16_t free_pool_service_{};
     std::map<std::uint16_t,Handler> services_;
     std::map<std::string,std::uint16_t> export_services_;
     std::map<std::uint32_t,std::uint16_t> thunk_services_;
