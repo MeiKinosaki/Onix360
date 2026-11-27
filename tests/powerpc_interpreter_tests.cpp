@@ -1183,6 +1183,34 @@ int main() {
     check(!segment_allows_instruction_fetch(s, 0xF0000000U),
           "segment 15 no-execute protection is selected by EA high nibble");
 
+    // End-to-end synthetic fetch through AddressSpaceMemoryBus and SR protection.
+    {
+        wx360::memory::PhysicalMemory ram(8192);
+        wx360::memory::AddressSpace mmu;
+        check(mmu.map_page(0x1000, 0x0000, 5U) == wx360::memory::MemoryResult::Ok,
+              "maps executable guest page for segment fetch test");
+        ram.raw_bytes()[0] = 0x60U; ram.raw_bytes()[1] = 0x00U;
+        ram.raw_bytes()[2] = 0x00U; ram.raw_bytes()[3] = 0x00U;
+        s.reset(0x1000);
+        wx360::cpu::AddressSpaceMemoryBus bus{&mmu, &ram, &s};
+        const auto callbacks = bus.callbacks();
+        std::uint32_t fetched_word = 0;
+        std::array<std::uint8_t,4> fetched_bytes{};
+        s.segment_registers[0] = wx360::cpu::segment_no_execute_mask;
+        check(!callbacks.fetch(callbacks.context, 0x1000, fetched_bytes),
+              "bus denies instruction fetch when segment N bit is set");
+        s.segment_registers[0] = 0;
+        check(callbacks.fetch(callbacks.context, 0x1000, fetched_bytes) &&
+              fetched_bytes[0] == 0x60U && fetched_bytes[3] == 0x00U,
+              "bus fetch succeeds after segment execute permission is restored");
+        fetched_word = (static_cast<std::uint32_t>(fetched_bytes[0]) << 24U) |
+                       (static_cast<std::uint32_t>(fetched_bytes[1]) << 16U) |
+                       (static_cast<std::uint32_t>(fetched_bytes[2]) << 8U) |
+                       fetched_bytes[3];
+        check(fetched_word == 0x60000000U,
+              "segment-protected bus preserves big-endian instruction bytes");
+    }
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
