@@ -56,6 +56,24 @@ public:
         synchronization_.cancel_thread(*current);
         return threads_.terminate_current(live);
     }
+    struct PoolTagStatistics {
+        std::uint32_t tag{};
+        std::size_t live_allocations{};
+        std::uint64_t live_bytes{};
+    };
+    [[nodiscard]] PoolTagStatistics pool_tag_statistics(std::uint32_t tag) const noexcept {
+        PoolTagStatistics stats{};
+        stats.tag = tag;
+        for (const auto& [address, allocation] : tagged_allocations_) {
+            (void)address;
+            if (allocation.second == tag) {
+                ++stats.live_allocations;
+                stats.live_bytes += allocation.first;
+            }
+        }
+        return stats;
+    }
+
     [[nodiscard]] const KernelThreadScheduler& thread_scheduler() const noexcept {
         return threads_;
     }
@@ -303,11 +321,14 @@ private:
                 return true;
             }
             const auto result = heap_->allocate(static_cast<std::uint32_t>(bytes), 16);
+            if (result) tagged_allocations_.emplace(*result,
+                std::pair<std::uint32_t,std::uint32_t>{static_cast<std::uint32_t>(bytes), state.gpr[5]});
             state.gpr[3] = result ? *result : 0U;
             return true;
         }
         if (heap_ && id == free_pool_service_) {
-            (void)heap_->release(static_cast<std::uint32_t>(state.gpr[3]));
+            const auto address = static_cast<std::uint32_t>(state.gpr[3]);
+            if (heap_->release(address)) tagged_allocations_.erase(address);
             return true;
         }
         const auto it = services_.find(id);
@@ -335,6 +356,8 @@ private:
     std::uint16_t allocate_pool_service_{};
     std::uint16_t free_pool_service_{};
     std::optional<std::uint16_t> tagged_allocate_pool_service_{};
+    // address -> (allocation size, caller-supplied pool tag)
+    std::map<std::uint32_t,std::pair<std::uint32_t,std::uint32_t>> tagged_allocations_;
     std::map<std::uint16_t,Handler> services_;
     std::map<std::string,std::uint16_t> export_services_;
     std::map<std::uint32_t,std::uint16_t> thunk_services_;
