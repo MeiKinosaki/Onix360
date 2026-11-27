@@ -1118,6 +1118,26 @@ int main() {
           s.pc == 0x61E0U,
           "MFTB rejects unsupported TBR without changing PC");
 
+    s.reset(0x61F0);
+    s.timebase_ticks = 0x1122334455667788ULL;
+    s.gpr[18] = 0xAABBCCDDU;
+    check(execute(s, xfx_spr(18, 284, 467)) == StepResult::Executed &&
+          s.timebase_ticks == 0x11223344AABBCCDDULL,
+          "MTSPR writes TBL while preserving TBU");
+    s.reset(0x6200);
+    s.timebase_ticks = 0x1122334455667788ULL;
+    s.gpr[19] = 0xDEADBEEFU;
+    check(execute(s, xfx_spr(19, 285, 467)) == StepResult::Executed &&
+          s.timebase_ticks == 0xDEADBEEF55667788ULL,
+          "MTSPR writes TBU while preserving TBL");
+    s.reset(0x6210);
+    s.msr = 0x4000U;
+    s.gpr[20] = 0x12345678U;
+    check(execute_with_exception_delivery(s, xfx_spr(20, 284, 467)) == StepResult::ProgramException &&
+          s.exception_pending && s.exception_vector == 0x700U &&
+          s.timebase_ticks == 0,
+          "MTSPR TBL write is rejected in problem state");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
