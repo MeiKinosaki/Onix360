@@ -41,6 +41,9 @@ int main() {
           live.pc == 0x1010,
           "terminates current thread and schedules next ready context");
     check(scheduler.current_id() == id_a, "round-robin returns to previously yielded thread");
-    check(!scheduler.terminate_current(live) == false || true, ""); // placeholder
+    check(scheduler.terminate_current(live) && live.pc == 0x2020,
+          "terminates yielded thread and dispatches unblocked thread");
+    check(scheduler.find(*id_b)->status == kernel::ThreadStatus::Running,
+          "unblocked thread returns to running state");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
