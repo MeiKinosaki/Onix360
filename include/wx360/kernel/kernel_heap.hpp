@@ -62,6 +62,7 @@ public:
         std::uint64_t total = 0;
         std::uint64_t previous_end = base_;
         bool first_block = true;
+        bool previous_was_free = false;
         auto free_it = free_.begin();
         auto allocated_it = allocated_.begin();
         while (free_it != free_.end() || allocated_it != allocated_.end()) {
