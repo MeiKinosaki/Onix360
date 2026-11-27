@@ -47,5 +47,20 @@ int main() {
     check(execute_with_exception_delivery(state,d_form(36,3,4,0),{},nullptr,&callbacks)==StepResult::MemoryFault && state.pc==0x300U,"read-only virtual page rejects store");
     state.reset(0x6000); state.gpr[4]=0x80001000;
     check(execute_with_exception_delivery(state,d_form(32,5,4,0),{},nullptr,&callbacks)==StepResult::Executed,"read-only virtual page allows load");
+    // Instruction fetch is separately permission-checked (execute bit = 4).
+    check(address_space.map_page(0x80002000,0x4000,5U)==wx360::memory::MemoryResult::Ok,
+          "maps readable executable code page");
+    const std::array<std::uint8_t,4> nop{0x60,0x00,0x00,0x00};
+    check(physical.write(0x4000,nop)==wx360::memory::MemoryResult::Ok,
+          "writes synthetic instruction bytes to physical RAM");
+    std::uint32_t fetched=0;
+    check(fetch_virtual_instruction(0x80002000,callbacks,fetched)==StepResult::Executed &&
+          fetched==0x60000000U,"fetches big-endian instruction through executable mapping");
+    check(fetch_virtual_instruction(0x80001000,callbacks,fetched)==StepResult::MemoryFault,
+          "rejects instruction fetch from non-executable page");
+    state.reset(0x80001000);
+    check(fetch_and_execute_with_exception_delivery(state,callbacks)==StepResult::MemoryFault &&
+          state.exception_pending && state.pc==0x400U && state.srr0==0x80001000U,
+          "instruction storage exception records faulting PC");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
