@@ -311,13 +311,13 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         writes_result = true;
         break;
     }
-    case 14: // addi
-        result = state.gpr[d.ra] +
+    case 14: // addi: RA=0 denotes literal zero, not GPR[0].
+        result = (d.ra == 0 ? 0U : state.gpr[d.ra]) +
                  static_cast<std::uint64_t>(static_cast<std::int64_t>(d.immediate));
         writes_result = true;
         break;
-    case 15: // addis
-        result = state.gpr[d.ra] +
+    case 15: // addis: RA=0 denotes literal zero, not GPR[0].
+        result = (d.ra == 0 ? 0U : state.gpr[d.ra]) +
                  (static_cast<std::uint64_t>(static_cast<std::int64_t>(d.immediate)) << 16U);
         writes_result = true;
         break;
