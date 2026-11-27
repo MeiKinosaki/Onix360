@@ -392,7 +392,7 @@ int main(){
     wx360::memory::PhysicalMemory known_export_ram(0x2000);
     wx360::kernel::KernelRuntime known_export_runtime;
     if (!known_export_runtime.register_known_function_export(
-            "xboxkrnl.exe", 0x0003, 0x41, 0x400,
+            "XBOXKRNL.EXE", 0x0003, 0x41, 0x400,
             &test_kernel_service, known_export_ram)) {
         std::cerr << "Could not bind implemented DbgPrint metadata to handler\\n";
         return EXIT_FAILURE;
