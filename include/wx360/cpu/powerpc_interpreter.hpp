@@ -826,26 +826,6 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             state.set_condition_field(bf, field | ((state.xer >> 31U) & 1U));
             break;
         }
-        case 28: case 60: case 124: case 284:
-        case 316: case 412: case 444: case 476: { // Integer logical X-form operations.
-            const std::uint64_t a = state.gpr[d.rt];
-            const std::uint64_t b = state.gpr[d.rb];
-            switch (d.xo) {
-            case 28:  result = a & b; break;          // and
-            case 60:  result = a & ~b; break;         // andc
-            case 124: result = ~(a | b); break;       // nor
-            case 284: result = ~(a ^ b); break;       // eqv
-            case 316: result = a ^ b; break;          // xor
-            case 412: result = a | ~b; break;         // orc
-            case 444: result = a | b; break;          // or
-            case 476: result = ~(a & b); break;       // nand
-            default: return StepResult::UnsupportedInstruction;
-            }
-            destination = d.ra;
-            writes_result = true;
-            if (d.record) update_cr0(state, result, std::uint64_t{1} << 63U);
-            break;
-        }
         case 24: { // slw: shift left word; RB[5] forces zero
             const std::uint32_t value = static_cast<std::uint32_t>(state.gpr[d.rt]);
             const unsigned shift = static_cast<unsigned>(state.gpr[d.rb] & 0x3FU);
@@ -948,6 +928,21 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             break;
         case 124: // nor
             result = ~(state.gpr[d.rt] | state.gpr[d.rb]);
+            destination = d.ra;
+            writes_result = true;
+            break;
+        case 284: // eqv
+            result = ~(state.gpr[d.rt] ^ state.gpr[d.rb]);
+            destination = d.ra;
+            writes_result = true;
+            break;
+        case 412: // orc
+            result = state.gpr[d.rt] | ~state.gpr[d.rb];
+            destination = d.ra;
+            writes_result = true;
+            break;
+        case 476: // nand
+            result = ~(state.gpr[d.rt] & state.gpr[d.rb]);
             destination = d.ra;
             writes_result = true;
             break;
