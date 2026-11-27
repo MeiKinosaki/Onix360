@@ -1201,25 +1201,6 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
     return StepResult::Executed;
 }
 
-// Forward declaration: the fetch wrapper delegates to the exception-delivery
-// executor defined immediately below it.
-[[nodiscard]] inline StepResult execute_with_exception_delivery(
-    XenonThreadState& state, std::uint32_t instruction,
-    std::span<std::uint8_t> memory,
-    std::uint64_t* fault_address,
-    const MemoryAccess* bus) noexcept;
-
-[[nodiscard]] inline StepResult fetch_and_execute_with_exception_delivery(
-    XenonThreadState& state, const MemoryAccess& bus) noexcept {
-    std::uint32_t instruction=0;
-    const auto fetched=fetch_virtual_instruction(state.pc,bus,instruction);
-    if (fetched!=StepResult::Executed) {
-        state.raise_exception(0x400U,state.pc);
-        return StepResult::MemoryFault;
-    }
-    return execute_with_exception_delivery(state,instruction,{},nullptr,&bus);
-}
-
 // Architectural exception delivery wrapper for the interpreter. The low-level
 // execute() API remains useful for tests/debuggers that want fault results
 // without changing PC; guest execution should use this wrapper to enter the
@@ -1238,5 +1219,17 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         state.raise_exception(0x600U, *fault);
     return result;
 }
+
+[[nodiscard]] inline StepResult fetch_and_execute_with_exception_delivery(
+    XenonThreadState& state, const MemoryAccess& bus) noexcept {
+    std::uint32_t instruction=0;
+    const auto fetched=fetch_virtual_instruction(state.pc,bus,instruction);
+    if (fetched!=StepResult::Executed) {
+        state.raise_exception(0x400U,state.pc);
+        return StepResult::MemoryFault;
+    }
+    return execute_with_exception_delivery(state,instruction,{},nullptr,&bus);
+}
+
 
 } // namespace wx360::cpu
