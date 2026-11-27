@@ -1,0 +1,111 @@
+#pragma once
+
+#include "wx360/memory/physical_memory.hpp"
+
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <map>
+#include <optional>
+
+namespace wx360::kernel {
+
+// Deterministic guest-physical heap for early xboxkrnl memory services.
+// The heap owns only its configured RAM interval; it never grows host RAM.
+class KernelHeap {
+public:
+    KernelHeap(memory::PhysicalMemory& ram, std::uint32_t base,
+               std::uint32_t size) noexcept
+        : ram_(&ram), base_(base), size_(size) {
+        if (size == 0 || base > ram.size() ||
+            size > ram.size() - static_cast<std::size_t>(base)) {
+            valid_ = false;
+            return;
+        }
+        free_.emplace(base, size);
+        valid_ = true;
+    }
+
+    [[nodiscard]] bool valid() const noexcept { return valid_; }
+    [[nodiscard]] std::uint32_t base() const noexcept { return base_; }
+    [[nodiscard]] std::uint32_t size() const noexcept { return size_; }
+    [[nodiscard]] std::size_t allocation_count() const noexcept {
+        return allocated_.size();
+    }
+
+    // Alignment must be a power of two. Allocation is first-fit and returns
+    // a guest physical address; zero is never returned as a valid block.
+    [[nodiscard]] std::optional<std::uint32_t> allocate(
+        std::uint32_t bytes, std::uint32_t alignment = 16) {
+        if (!valid_ || bytes == 0 || alignment == 0 ||
+            (alignment & (alignment - 1U)) != 0)
+            return std::nullopt;
+
+        for (auto it = free_.begin(); it != free_.end(); ++it) {
+            const std::uint64_t start = it->first;
+            const std::uint64_t end = start + it->second;
+            const std::uint64_t aligned =
+                (start + alignment - 1U) & ~static_cast<std::uint64_t>(alignment - 1U);
+            if (aligned > end || bytes > end - aligned ||
+                aligned > std::numeric_limits<std::uint32_t>::max())
+                continue;
+
+            const auto block_start = it->first;
+            const auto block_size = it->second;
+            free_.erase(it);
+            if (aligned > block_start)
+                free_.emplace(block_start, static_cast<std::uint32_t>(aligned - block_start));
+            const auto allocation_end = aligned + bytes;
+            if (allocation_end < static_cast<std::uint64_t>(block_start) + block_size)
+                free_.emplace(static_cast<std::uint32_t>(allocation_end),
+                    static_cast<std::uint32_t>(static_cast<std::uint64_t>(block_start) +
+                                               block_size - allocation_end));
+            const auto address = static_cast<std::uint32_t>(aligned);
+            allocated_.emplace(address, bytes);
+            return address;
+        }
+        return std::nullopt;
+    }
+
+    // Only the exact base of a live allocation may be released.
+    [[nodiscard]] bool release(std::uint32_t address) {
+        if (!valid_) return false;
+        const auto allocation = allocated_.find(address);
+        if (allocation == allocated_.end()) return false;
+        const auto bytes = allocation->second;
+        allocated_.erase(allocation);
+
+        auto next = free_.lower_bound(address);
+        auto previous = next;
+        bool has_previous = previous != free_.begin();
+        if (has_previous) --previous;
+
+        std::uint32_t merged_start = address;
+        std::uint64_t merged_size = bytes;
+        if (has_previous &&
+            static_cast<std::uint64_t>(previous->first) + previous->second == address) {
+            merged_start = previous->first;
+            merged_size += previous->second;
+            free_.erase(previous);
+        }
+        next = free_.lower_bound(address);
+        if (next != free_.end() && merged_size + merged_start == next->first) {
+            merged_size += next->second;
+            free_.erase(next);
+        }
+        if (merged_size > std::numeric_limits<std::uint32_t>::max())
+            return false;
+        free_.emplace(merged_start, static_cast<std::uint32_t>(merged_size));
+        return true;
+    }
+
+private:
+    memory::PhysicalMemory* ram_{};
+    std::uint32_t base_{};
+    std::uint32_t size_{};
+    bool valid_{};
+    std::map<std::uint32_t, std::uint32_t> free_;
+    std::map<std::uint32_t, std::uint32_t> allocated_;
+};
+
+} // namespace wx360::kernel
