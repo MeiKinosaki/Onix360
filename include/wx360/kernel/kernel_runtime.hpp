@@ -74,8 +74,8 @@ public:
         return result;
     }
     [[nodiscard]] bool set_guest_event(std::uint32_t event_id) {
+        if (!synchronization_.has_event(event_id)) return false;
         const auto released = synchronization_.set_event(event_id);
-        if (released.empty()) return false;
         bool ok = true;
         for (const auto id : released) ok = threads_.unblock(id) && ok;
         return ok;
