@@ -802,6 +802,21 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             }
             break;
         }
+        case 595: { // mfsr: read one of the sixteen segment registers.
+            constexpr std::uint64_t msr_pr = std::uint64_t{1} << 14U;
+            if ((state.msr & msr_pr) != 0) return StepResult::ProgramException;
+            const unsigned sr = (instruction >> 16U) & 0xFU;
+            result = state.segment_registers[sr];
+            writes_result = true;
+            break;
+        }
+        case 210: { // mtsr: write one of the sixteen segment registers.
+            constexpr std::uint64_t msr_pr = std::uint64_t{1} << 14U;
+            if ((state.msr & msr_pr) != 0) return StepResult::ProgramException;
+            const unsigned sr = (instruction >> 16U) & 0xFU;
+            state.segment_registers[sr] = static_cast<std::uint32_t>(state.gpr[d.rt]);
+            break;
+        }
         case 83: { // mfmsr: privileged read of the machine state register.
             constexpr std::uint64_t msr_pr = std::uint64_t{1} << 14U;
             if ((state.msr & msr_pr) != 0) return StepResult::ProgramException;
