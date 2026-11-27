@@ -26,6 +26,10 @@ int main() {
           sync.wait_event(*manual, 12) == WaitResult::Blocked,
           "manual event remains signaled until reset");
 
+    sync.cancel_thread(12);
+    check(sync.set_event(*manual).empty(),
+          "terminated guest thread is removed from event wait queue");
+
     check(sync.wait_event(*automatic, 20) == WaitResult::Blocked &&
           sync.wait_event(*automatic, 21) == WaitResult::Blocked,
           "queues waiters on auto-reset event");
