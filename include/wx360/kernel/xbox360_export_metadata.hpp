@@ -38,10 +38,25 @@ inline constexpr std::array<ExportMetadata, 16> kKnownExportMetadata{{
     {"xam.xex", 0x0006, "NetDll_ioctlsocket", ExportMetadataKind::Function},
 }};
 
+[[nodiscard]] constexpr char export_ascii_lower(char ch) noexcept {
+    return ch >= 'A' && ch <= 'Z' ? static_cast<char>(ch + ('a' - 'A')) : ch;
+}
+
+[[nodiscard]] constexpr bool export_library_equal(
+    std::string_view left, std::string_view right) noexcept {
+    if (left.size() != right.size()) return false;
+    for (std::size_t i = 0; i < left.size(); ++i) {
+        if (export_ascii_lower(left[i]) != export_ascii_lower(right[i]))
+            return false;
+    }
+    return true;
+}
+
 [[nodiscard]] constexpr const ExportMetadata* find_export_metadata(
     std::string_view library, std::uint16_t ordinal) noexcept {
     for (const auto& item : kKnownExportMetadata) {
-        if (item.library == library && item.ordinal == ordinal) return &item;
+        if (export_library_equal(item.library, library) &&
+            item.ordinal == ordinal) return &item;
     }
     return nullptr;
 }
