@@ -20,8 +20,9 @@ struct KernelThread {
     cpu::XenonThreadState context{};
 };
 
-// Deterministic cooperative scheduler. Contexts are guest CPU states; this
-// class does not create host threads or claim preemptive Xbox scheduling.
+// Deterministic priority-based cooperative scheduler. Equal-priority threads
+// retain FIFO order. Contexts are guest CPU states; this class does not create
+// host threads or claim preemptive Xbox scheduling.
 class KernelThreadScheduler {
 public:
     explicit KernelThreadScheduler(std::size_t capacity = 256) noexcept
@@ -60,14 +61,28 @@ public:
     [[nodiscard]] bool schedule(cpu::XenonThreadState& live_context) noexcept {
         if (current_) return false;
         while (!ready_.empty()) {
-            const auto id = ready_.front();
-            ready_.pop_front();
-            auto it = threads_.find(id);
-            if (it == threads_.end() || it->second.status != ThreadStatus::Ready)
-                continue;
-            it->second.status = ThreadStatus::Running;
+            auto selected = ready_.end();
+            std::uint8_t best_priority = 0;
+            for (auto it = ready_.begin(); it != ready_.end(); ++it) {
+                const auto thread = threads_.find(*it);
+                if (thread == threads_.end() ||
+                    thread->second.status != ThreadStatus::Ready) continue;
+                if (selected == ready_.end() ||
+                    thread->second.priority > best_priority) {
+                    selected = it;
+                    best_priority = thread->second.priority;
+                }
+            }
+            if (selected == ready_.end()) {
+                ready_.clear();
+                return false;
+            }
+            const auto id = *selected;
+            ready_.erase(selected);
+            auto thread = threads_.find(id);
+            thread->second.status = ThreadStatus::Running;
             current_ = id;
-            live_context = it->second.context;
+            live_context = thread->second.context;
             return true;
         }
         return false;
