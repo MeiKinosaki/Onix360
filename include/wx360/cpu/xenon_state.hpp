@@ -47,6 +47,8 @@ struct XenonThreadState {
   timebase_ticks = (static_cast<std::uint64_t>(value) << 32U) |
                    (timebase_ticks & 0xFFFFFFFFULL);
  }
+ // TBL/TBU writes are exposed through privileged mtspr encodings.
+
  void advance_decrementer(std::uint32_t ticks) noexcept {
   if (ticks == 0) return;
   const std::uint32_t previous = decrementer;
