@@ -1,4 +1,5 @@
 #include "wx360/gpu/xenos_framebuffer.hpp"
+#include <array>
 #include <cstdlib>
 #include <iostream>
 int main(){
