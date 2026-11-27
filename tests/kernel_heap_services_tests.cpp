@@ -12,7 +12,7 @@ int main() {
     kernel::KernelRuntime runtime;
     int failures = 0;
     const auto check = [&](bool value, const char* message) {
-        if (!value) { std::cerr << "FAIL: " << message << '\\n'; ++failures; }
+        if (!value) { std::cerr << "FAIL: " << message << '\n'; ++failures; }
     };
 
     check(runtime.register_kernel_heap_exports(heap, 0x100, 0x101,
