@@ -828,6 +828,30 @@ int main() {
           "ordinary store executes while reservation is active");
     check(!s.reservation_valid, "overlapping ordinary store invalidates reservation");
 
+    // X-form integer logical instructions, including Rc/CR0 behavior.
+    s.reset(0x4800);
+    s.gpr[3] = 0xF0F00FF0F0F00FF0ULL;
+    s.gpr[4] = 0x0FF0FF0F0FF0FF0FULL;
+    check(execute(s, x_form(3, 5, 4, 28)) == StepResult::Executed &&
+          s.gpr[5] == (s.gpr[3] & s.gpr[4]), "AND computes register bitwise intersection");
+    check(execute(s, x_form(3, 6, 4, 60)) == StepResult::Executed &&
+          s.gpr[6] == (s.gpr[3] & ~s.gpr[4]), "ANDC computes A AND NOT B");
+    check(execute(s, x_form(3, 7, 4, 444)) == StepResult::Executed &&
+          s.gpr[7] == (s.gpr[3] | s.gpr[4]), "OR computes register bitwise union");
+    check(execute(s, x_form(3, 8, 4, 316)) == StepResult::Executed &&
+          s.gpr[8] == (s.gpr[3] ^ s.gpr[4]), "XOR computes register exclusive-or");
+    check(execute(s, x_form(3, 9, 4, 124)) == StepResult::Executed &&
+          s.gpr[9] == ~(s.gpr[3] | s.gpr[4]), "NOR computes complement of OR");
+    check(execute(s, x_form(3, 10, 4, 284)) == StepResult::Executed &&
+          s.gpr[10] == ~(s.gpr[3] ^ s.gpr[4]), "EQV computes complement of XOR");
+    check(execute(s, x_form(3, 11, 4, 412)) == StepResult::Executed &&
+          s.gpr[11] == (s.gpr[3] | ~s.gpr[4]), "ORC computes A OR NOT B");
+    check(execute(s, x_form(3, 12, 4, 476)) == StepResult::Executed &&
+          s.gpr[12] == ~(s.gpr[3] & s.gpr[4]), "NAND computes complement of AND");
+    check(execute(s, x_form(3, 13, 4, 28, true)) == StepResult::Executed &&
+          s.gpr[13] == (s.gpr[3] & s.gpr[4]) &&
+          s.condition_field(0) == 0x4U, "AND. updates CR0 for positive nonzero result");
+
     // XL-form BCLR: branch through LR, with BO/BI condition handling.
     s.reset(0x5000);
     s.lr = 0x2347;
