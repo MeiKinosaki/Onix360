@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <span>
 #include <array>
+#include <vector>
 #include <bit>
 #include "wx360/gpu/xenos_framebuffer.hpp"
 
@@ -125,7 +126,9 @@ public:
         return Pm4DecodeResult::Ok;
     }
 private:
-    std::array<std::uint32_t, 0x8000> registers_{};
+    // Keep the 128 KiB MMIO register file off the host stack. XenonCore embeds
+    // this processor and many machine instances can coexist in frontend/tests.
+    std::vector<std::uint32_t> registers_ = std::vector<std::uint32_t>(0x8000U, 0U);
     XenosFramebuffer framebuffer_{};
 };
 
