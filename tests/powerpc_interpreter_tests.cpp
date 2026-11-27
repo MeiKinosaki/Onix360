@@ -1164,6 +1164,11 @@ int main() {
           s.segment_registers[7] == 0,
           "MTSR is privileged and does not modify SR in problem state");
 
+    s.segment_registers[4] = 0xFFFFFFFFU;
+    s.reset(0x6260);
+    check(s.segment_registers[4] == 0,
+          "thread reset clears all segment registers");
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
