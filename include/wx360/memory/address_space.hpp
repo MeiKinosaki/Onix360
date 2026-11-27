@@ -35,9 +35,26 @@ public:
         return MemoryResult::Ok;
     }
 
+    [[nodiscard]] bool has_page_mapping(std::uint64_t va) const noexcept {
+        if (va & (page_size - 1U)) return false;
+        const auto vpn = va / page_size;
+        for (const auto& entry : entries_) if (entry.vpn == vpn) return true;
+        for (const auto& bat : bats_)
+            if (bat.valid && va >= bat.virtual_base && va - bat.virtual_base < bat.size)
+                return true;
+        return false;
+    }
+
     // Install a complete loader-produced page map atomically after validating
     // every entry. This is a software page table, not the Xenon hardware TLB.
     [[nodiscard]] MemoryResult map_pages(std::span<const PageMapping> mappings) noexcept {
+        for (std::size_t i = 0; i < mappings.size(); ++i) {
+            if (has_page_mapping(mappings[i].virtual_address))
+                return MemoryResult::PermissionDenied;
+            for (std::size_t j = 0; j < i; ++j)
+                if (mappings[j].virtual_address == mappings[i].virtual_address)
+                    return MemoryResult::PermissionDenied;
+        }
         for (const auto& mapping : mappings) {
             if ((mapping.virtual_address & (page_size - 1U)) ||
                 (mapping.physical_address & (page_size - 1U)))
