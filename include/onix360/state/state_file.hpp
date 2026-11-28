@@ -1,5 +1,5 @@
 #pragma once
-#include "wx360/cpu/xenon_state.hpp"
+#include "onix360/cpu/xenon_state.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -9,7 +9,7 @@
 #include <vector>
 #include <utility>
 
-namespace wx360::state {
+namespace onix360::state {
 struct Snapshot {
  cpu::XenonThreadState cpu;
  std::vector<std::uint8_t> ram;
@@ -41,7 +41,7 @@ public:
   put8(payload,snapshot.cpu.decrementer_interrupt_pending);
   put8(payload,snapshot.cpu.reservation_valid);
   payload.insert(payload.end(),snapshot.ram.begin(),snapshot.ram.end());
-  out.write("WX360ST\0",8); write32(out,kVersion);write64(out,snapshot.ram.size());write64(out,payload.size());
+  out.write("Onix360ST\0",8); write32(out,kVersion);write64(out,snapshot.ram.size());write64(out,payload.size());
   write64(out,checksum(payload));
   out.write(reinterpret_cast<const char*>(payload.data()),static_cast<std::streamsize>(payload.size()));
   if(!out)return fail(error,"failed while writing save-state data");
@@ -49,7 +49,7 @@ public:
  }
  static bool load(const std::string& path,Snapshot& destination,std::string* error=nullptr) {
   std::ifstream in(path,std::ios::binary);if(!in)return fail(error,"cannot open save-state file");
-  char magic[8]{};in.read(magic,8);if(!in||std::string(magic,8)!=std::string("WX360ST\0",8))return fail(error,"invalid save-state signature");
+  char magic[8]{};in.read(magic,8);if(!in||std::string(magic,8)!=std::string("Onix360ST\0",8))return fail(error,"invalid save-state signature");
   std::uint32_t version=0;std::uint64_t ram_size=0,payload_size=0,expected=0;
   if(!read32(in,version)||!read64(in,ram_size)||!read64(in,payload_size)||!read64(in,expected))return fail(error,"truncated save-state header");
   if(version!=1U&&version!=kVersion)return fail(error,"unsupported save-state version");

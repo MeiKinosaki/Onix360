@@ -1,15 +1,15 @@
 #pragma once
-#include "wx360/state/state_file.hpp"
+#include "onix360/state/state_file.hpp"
 #include <cstdio>
 #include <filesystem>
 #include <string>
-namespace wx360::state {
+namespace onix360::state {
 class StateSlots {
 public:
  static constexpr unsigned kSlotCount=10;
  explicit StateSlots(std::filesystem::path directory):directory_(std::move(directory)){}
  static bool valid_slot(unsigned slot) noexcept{return slot<kSlotCount;}
- std::filesystem::path path_for(unsigned slot)const{return directory_/("slot_"+std::to_string(slot)+".wx360");}
+ std::filesystem::path path_for(unsigned slot)const{return directory_/("slot_"+std::to_string(slot)+".onix360");}
  bool exists(unsigned slot)const{return valid_slot(slot)&&std::filesystem::is_regular_file(path_for(slot));}
  bool save(unsigned slot,const Snapshot& snapshot,std::string* error=nullptr)const{
   if(!valid_slot(slot))return fail(error,"save-state slot is out of range");

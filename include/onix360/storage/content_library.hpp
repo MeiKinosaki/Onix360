@@ -7,9 +7,9 @@
 #include <system_error>
 #include <vector>
 #include <utility>
-#include "wx360/storage/stfs_package.hpp"
+#include "onix360/storage/stfs_package.hpp"
 
-namespace wx360::storage {
+namespace onix360::storage {
 
 enum class ContentKind { GamesOnDemand, XboxLiveArcade, DownloadableContent, TitleUpdate, StfsPackage };
 
@@ -107,4 +107,4 @@ public:
     }
 };
 
-} // namespace wx360::storage
+} // namespace onix360::storage
