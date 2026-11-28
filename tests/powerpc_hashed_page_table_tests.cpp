@@ -22,6 +22,25 @@ int main() {
           "walks primary PTE and preserves page offset and PP");
     check(table.lookup(vsid + 1U, ea, ram).result == MemoryResult::Unmapped,
           "rejects PTE with mismatched VSID");
+    check(table.mark_access(hit, Access::Read, ram) == MemoryResult::Ok,
+          "marks a read reference in PTE1");
+    std::array<std::uint8_t,4> pte1_bytes{};
+    check(ram.read(hit.pte_address + 4U, pte1_bytes) == MemoryResult::Ok &&
+          (pte1_bytes[2] & 0x08U) != 0U &&
+          (pte1_bytes[2] & 0x04U) == 0U,
+          "read sets R but leaves C clear");
+    check(table.mark_access(hit, Access::Write, ram) == MemoryResult::Ok,
+          "marks a write change in PTE1");
+    check(ram.read(hit.pte_address + 4U, pte1_bytes) == MemoryResult::Ok &&
+          (pte1_bytes[2] & 0x0CU) == 0x0CU,
+          "write preserves R and sets C");
+    PowerPcHashedPageTable sdr1_table;
+    check(sdr1_table.configure_from_sdr1(0x00010000U, ram) == MemoryResult::Ok &&
+          sdr1_table.group_count() == 1024,
+          "decodes SDR1 origin and minimum HTAB size");
+    check(sdr1_table.configure_from_sdr1(0x00010003U, ram) ==
+              MemoryResult::AlignmentFault,
+          "rejects non-contiguous SDR1 HTAB mask");
     check(table.insert(vsid, ea + 1U, 0x9001, 2, ram) == MemoryResult::AlignmentFault,
           "rejects unaligned physical page");
 
