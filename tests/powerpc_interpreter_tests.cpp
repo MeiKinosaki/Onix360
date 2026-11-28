@@ -131,6 +131,17 @@ int main() {
     s.fpscr = 0x50000000U;
     check(execute(s, single_fp(7, 1, 2, 21, 0, true)) == StepResult::Executed &&
           s.condition_field(1) == 0x5U, "FADDS. copies FPSCR summary to CR1");
+    s.fpr[1] = std::bit_cast<std::uint64_t>(2.0);
+    s.fpr[2] = std::bit_cast<std::uint64_t>(4.0);
+    s.fpr[3] = std::bit_cast<std::uint64_t>(3.0);
+    check(execute(s, single_fp(14,1,2,29,3)) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[14]) == 10.0, "FMADDS uses fused single-precision multiply-add");
+    check(execute(s, single_fp(15,1,2,28,3)) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[15]) == 2.0, "FMSUBS uses fused single-precision multiply-subtract");
+    check(execute(s, single_fp(16,1,2,31,3)) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[16]) == -10.0, "FNMADDS negates fused single-precision multiply-add");
+    check(execute(s, single_fp(17,1,2,30,3)) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[17]) == -2.0, "FNMSUBS negates fused single-precision multiply-subtract");
 
     // FPU memory transfers and compare/conversion coverage.
     std::array<std::uint8_t, 64> fpu_ram{};
