@@ -27,7 +27,7 @@ int main() {
 
     const auto hash = PowerPcHashedPageTable::page_hash(vsid, ea);
     const auto primary_group = 0x10000U +
-        (hash & 7U) * PowerPcHashedPageTable::entries_per_group *
+        (hash & 1023U) * PowerPcHashedPageTable::entries_per_group *
         PowerPcHashedPageTable::pte_size;
     for (std::size_t i = 0; i < 8; ++i) {
         const std::uint32_t valid = 0x80000000U | static_cast<std::uint32_t>(i + 1U);
@@ -39,8 +39,8 @@ int main() {
     }
     constexpr std::uint64_t secondary_ea = 0x23456DEFULL;
     const auto secondary_hash = PowerPcHashedPageTable::page_hash(vsid, secondary_ea);
-    const auto secondary_primary_group = 0x1000U +
-        (secondary_hash & 7U) * PowerPcHashedPageTable::entries_per_group *
+    const auto secondary_primary_group = 0x10000U +
+        (secondary_hash & 1023U) * PowerPcHashedPageTable::entries_per_group *
         PowerPcHashedPageTable::pte_size;
     for (std::size_t i = 0; i < 8; ++i) {
         const std::uint32_t valid = 0x80000000U | static_cast<std::uint32_t>(i + 1U);
