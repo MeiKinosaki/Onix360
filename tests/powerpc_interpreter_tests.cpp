@@ -1350,6 +1350,20 @@ int main() {
         check(callbacks.read(callbacks.context, effective, readback) &&
               readback == replacement,
               "data read resolves the same translated physical page");
+        s.segment_registers[0] =
+            segment_translation_mask | segment_key_problem_mask | vsid;
+        s.msr = (1ULL << 14U); // Problem state selects Kp.
+        check(!callbacks.read(callbacks.context, effective, readback),
+              "user key is denied by PP=00");
+        constexpr std::uint64_t user_rw_ea = 0x1234U;
+        check(htab.insert(vsid, user_rw_ea, 0x9000, 2, ram) ==
+                  wx360::memory::MemoryResult::Ok,
+              "inserts user read-write PTE");
+        check(callbacks.write(callbacks.context, user_rw_ea, replacement),
+              "user key with PP=10 is granted read-write access");
+        check(callbacks.read(callbacks.context, user_rw_ea, readback) &&
+              readback == replacement,
+              "user key can read PP=10 mapping");
         s.segment_registers[0] = vsid; // T clear: use the software loader map.
         check(!callbacks.fetch(callbacks.context, effective, fetched),
               "T-clear segment does not silently use the HTAB mapping");
