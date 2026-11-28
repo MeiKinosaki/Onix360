@@ -1,5 +1,6 @@
 #pragma once
 #include "wx360/gpu/renderer_backend.hpp"
+#include <algorithm>
 #include <cstdint>
 #include <span>
 #include <vector>
