@@ -27,5 +27,11 @@ int main() {
     check(classify_xenon_address(0xE0000000U).region == XenonAddressRegion::Physical4K &&
           classify_xenon_address(0xFFFFFFFFU).physical_alias,
           "classifies physical 4 KiB alias window through address-space end");
+    check(xenon_physical_alias_address(0xA0001234U) == 0x1234U &&
+          xenon_physical_alias_address(0xC0001234U) == 0x1234U &&
+          xenon_physical_alias_address(0xE0001234U) == 0x1234U,
+          "translates each physical alias window to the same backing offset");
+    check(!xenon_physical_alias_address(0x90001234U),
+          "does not classify XEX virtual image windows as physical aliases");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
