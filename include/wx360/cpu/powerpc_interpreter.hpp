@@ -58,7 +58,7 @@ struct AddressSpaceMemoryBus {
             +[](void* c, std::uint64_t a, std::span<std::uint8_t> out) noexcept {
                 auto& b=*static_cast<AddressSpaceMemoryBus*>(c);
                 if(!b.address_space||!b.physical_memory) return false;
-                if(b.thread_state && !segment_allows_instruction_fetch(*b.thread_state,a)) return false;
+                if(!b.thread_state || !segment_allows_instruction_fetch(*b.thread_state,a)) return false;
                 const auto p=b.address_space->translate_range(a,out.size(),memory::Access::Execute,*b.physical_memory);
                 return p.result==memory::MemoryResult::Ok && b.physical_memory->read(p.physical_address,out)==memory::MemoryResult::Ok;
             }};
