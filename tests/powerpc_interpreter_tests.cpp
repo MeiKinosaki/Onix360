@@ -830,6 +830,30 @@ int main() {
     check(execute(s, vx_form(3, 1, 2, 130)) == StepResult::Executed &&
           s.vr[3].lane[1] == 0x7FFFFFFFU &&
           s.vr[3].lane[2] == 0U, "VMX VMINUW compares 32-bit lanes as unsigned");
+    s.vr[1].lane = {0x01030507U, 0x00020004U, 0x00000002U, 0xFEFCFAF8U};
+    s.vr[2].lane = {0x02040608U, 0x00040006U, 0x00000004U, 0x00020406U};
+    check(execute(s, vx_form(3, 1, 2, 4)) == StepResult::Executed &&
+          s.vr[3].lane[0] == 0x02040608U,
+          "VMX VAVGUB rounds unsigned byte averages upward");
+    check(execute(s, vx_form(3, 1, 2, 68)) == StepResult::Executed &&
+          s.vr[3].lane[1] == 0x00030005U,
+          "VMX VAVGUH rounds unsigned halfword averages upward");
+    check(execute(s, vx_form(3, 1, 2, 132)) == StepResult::Executed &&
+          s.vr[3].lane[2] == 0x00000003U,
+          "VMX VAVGUW rounds unsigned word averages upward");
+    check(execute(s, vx_form(3, 1, 2, 260)) == StepResult::Executed &&
+          s.vr[3].lane[3] == 0xFFFFFFFFU,
+          "VMX VAVGSB rounds signed byte averages toward positive infinity");
+    s.vr[1].lane[1] = 0xFFFEFFFCU;
+    s.vr[2].lane[1] = 0x00020004U;
+    check(execute(s, vx_form(3, 1, 2, 324)) == StepResult::Executed &&
+          s.vr[3].lane[1] == 0U,
+          "VMX VAVGSH handles negative and positive halfword lanes");
+    s.vr[1].lane[2] = 0xFFFFFFFEU;
+    s.vr[2].lane[2] = 0U;
+    check(execute(s, vx_form(3, 1, 2, 388)) == StepResult::Executed &&
+          s.vr[3].lane[2] == 0xFFFFFFFFU,
+          "VMX VAVGSW rounds negative odd word averages correctly");
     check(execute(s, vx_form(3, 1, 2, 386)) == StepResult::Executed &&
           s.vr[3].lane[0] == 0xFF0180FEU &&
           s.vr[3].lane[1] == 0x80000001U &&
