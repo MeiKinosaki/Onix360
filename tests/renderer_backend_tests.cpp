@@ -1,5 +1,6 @@
 #include "wx360/gpu/renderer_backend.hpp"
 #include "wx360/gpu/renderer_interface.hpp"
+#include <array>
 #include <cstdlib>
 #include <iostream>
 using namespace wx360::gpu;
