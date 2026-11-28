@@ -104,6 +104,8 @@ struct XenonCore {
     audio::AudioEngine audio{};
     memory::AddressSpace address_space{};
     bool mmu_enabled{false};
+    // Experimental generic 32-bit PowerPC OEA HTAB path. This is not yet
+    // the Xbox 360's custom hypervisor/L2 address-translation mechanism.
     memory::PowerPcHashedPageTable hashed_page_table{};
     bool hashed_mmu_enabled{false};
 
