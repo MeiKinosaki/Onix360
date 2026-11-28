@@ -562,6 +562,17 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         auto& out = state.vr[vd];
         const auto& a = state.vr[va];
         const auto& b = state.vr[vb];
+        // VA-form instructions use a six-bit XO and a third vector operand.
+        // vsel selects each result bit from VA or VB using the corresponding VC bit.
+        const unsigned va_xo = instruction & 0x3FU;
+        if (va_xo == 42U) { // vsel
+            const unsigned vc = (instruction >> 6U) & 0x1FU;
+            const auto& c = state.vr[vc];
+            for (unsigned lane = 0; lane < 4; ++lane)
+                out.lane[lane] = (a.lane[lane] & ~c.lane[lane]) |
+                                 (b.lane[lane] & c.lane[lane]);
+            break;
+        }
         // VX-form VMX encodings carry an 11-bit extended opcode including bit 0.
         const unsigned xo = instruction & 0x7FFU;
         if (xo == 0U || xo == 1024U) { // vaddubm / vsububm
