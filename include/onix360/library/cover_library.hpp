@@ -5,7 +5,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-namespace wx360::covers {
+namespace onix360::covers {
 struct CoverRecord { std::string game_id; std::string title; std::string image_url; };
 class CoverLibrary {
 public:

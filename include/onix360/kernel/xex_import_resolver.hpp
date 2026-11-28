@@ -1,7 +1,7 @@
 #pragma once
 
-#include "wx360/memory/physical_memory.hpp"
-#include "wx360/memory/address_space.hpp"
+#include "onix360/memory/physical_memory.hpp"
+#include "onix360/memory/address_space.hpp"
 
 #include <array>
 #include <algorithm>
@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 
-namespace wx360::kernel {
+namespace onix360::kernel {
 
 // The kind is taken from the decoded XEX import record, never guessed from
 // the ordinal. Function addresses must be registered Xenon guest trampolines;
@@ -142,7 +142,7 @@ public:
                 // special call by the guest thunk PC, not by an invented
                 // direct branch to a host address.
                 const std::array<std::uint32_t, 4> code{
-                    0x44000042U, // sc 2 (WX360 kernel-import dispatch)
+                    0x44000042U, // sc 2 (Onix360 kernel-import dispatch)
                     0x4E800020U, // blr
                     0x60000000U, // nop
                     0x60000000U  // nop
@@ -202,4 +202,4 @@ private:
     std::map<std::string, ExportTarget> exports_;
 };
 
-} // namespace wx360::kernel
+} // namespace onix360::kernel

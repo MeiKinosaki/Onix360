@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <string_view>
 
-namespace wx360::kernel {
+namespace onix360::kernel {
 
 // Names, ordinals and kinds transcribed from Xenia's public export tables.
 // This is metadata only: an entry is NOT a callable implementation until a
@@ -61,4 +61,4 @@ inline constexpr std::array<ExportMetadata, 16> kKnownExportMetadata{{
     return nullptr;
 }
 
-} // namespace wx360::kernel
+} // namespace onix360::kernel
