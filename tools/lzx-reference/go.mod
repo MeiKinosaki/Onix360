@@ -1,4 +1,4 @@
-module wx360-lzx-reference
+module onix360-lzx-reference
 
 go 1.25
 
