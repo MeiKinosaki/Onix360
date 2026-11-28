@@ -250,7 +250,9 @@ struct XenonCore {
         }
         if (ram.fetch_u32(fetch_address, first_instruction) != memory::MemoryResult::Ok)
             return LaunchResult::EntryPointNotExecutable;
+        const auto configured_segments = state.segment_registers;
         state.reset(guest_entry);
+        if (hashed_mmu_enabled) state.segment_registers = configured_segments;
         return LaunchResult::Started;
     }
 
