@@ -81,6 +81,18 @@ struct AddressSpaceMemoryBus {
     XenonThreadState* thread_state{};
     memory::PowerPcHashedPageTable* hashed_page_table{};
 
+    [[nodiscard]] static constexpr bool pte_allows_access(
+        std::uint8_t pp, bool key, memory::Access access) noexcept {
+        if (pp > 3U) return false;
+        if (!key) {
+            if (access == memory::Access::Write) return pp != 3U;
+            return true;
+        }
+        if (pp == 0U) return false;
+        if (access == memory::Access::Write) return pp == 2U;
+        return true;
+    }
+
     [[nodiscard]] memory::AddressSpace::Translation translate(
         std::uint64_t effective_address, std::size_t length,
         memory::Access access) const noexcept {
@@ -100,6 +112,10 @@ struct AddressSpaceMemoryBus {
                 fields.vsid, effective_address, *physical_memory);
             if (pte.result != memory::MemoryResult::Ok)
                 return {pte.result, 0};
+            const bool problem_state = (thread_state->msr & (1ULL << 14U)) != 0;
+            const bool key = problem_state ? fields.key_problem : fields.key_supervisor;
+            if (!pte_allows_access(pte.pp, key, access))
+                return {memory::MemoryResult::PermissionDenied, 0};
             const auto permission = physical_memory->check_access(
                 pte.physical_address, length, access);
             if (permission != memory::MemoryResult::Ok)
