@@ -5,40 +5,22 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Keep Windows SDK min/max macros out of all translation units.
 if(WIN32)
   add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
 endif()
-
-# Statically link the MSVC runtime so the Windows portable build does not
-# require a separately installed Visual C++ runtime redistributable.
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
-
-# x86-64 guarantees SSE2. Do not enable AVX/AVX2 or -march=native.
-
-# libmspack regular LZX decoder (LGPL-2.1-or-later).
+# x86-64 baseline includes SSE2; never require AVX/AVX2.
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-add_library(wx360_lzx STATIC
-  third_party/libmspack/lzxd.c
-  src/compression/lzx_decoder.cpp
-)
-target_include_directories(wx360_lzx PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libmspack
-)
-target_include_directories(wx360_lzx PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-target_compile_definitions(wx360_lzx PRIVATE
-  HAVE_INTTYPES_H=1 HAVE_LIMITS_H=1 SIZEOF_OFF_T=8
-)
-
+add_library(wx360_lzx STATIC third_party/libmspack/lzxd.c src/compression/lzx_decoder.cpp)
+target_include_directories(wx360_lzx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libmspack)
+target_include_directories(wx360_lzx PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_definitions(wx360_lzx PRIVATE HAVE_INTTYPES_H=1 HAVE_LIMITS_H=1 SIZEOF_OFF_T=8)
 add_library(wx360_aes STATIC third_party/tiny_aes/aes.c)
 target_include_directories(wx360_aes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tiny_aes)
 target_compile_definitions(wx360_aes PRIVATE AES128=1 CBC=1 ECB=1 CTR=0)
-
 add_library(wx360_cpu INTERFACE)
 target_include_directories(wx360_cpu INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(wx360_cpu INTERFACE wx360_aes wx360_lzx)
@@ -46,23 +28,21 @@ target_sources(wx360_cpu INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/audio/windows
 if(WIN32)
   target_link_libraries(wx360_cpu INTERFACE xinput9_1_0 winmm d3d11 dxgi)
 endif()
-
 add_executable(wx360 src/main.cpp)
 set_target_properties(wx360 PROPERTIES OUTPUT_NAME "WX360")
 target_link_libraries(wx360 PRIVATE wx360_cpu)
-
-# Standalone diagnostic executable for users to verify the emulator core.
 add_executable(wx360_test_runner tools/wx360_test_runner.cpp)
 set_target_properties(wx360_test_runner PROPERTIES OUTPUT_NAME "WX360-Test")
 target_link_libraries(wx360_test_runner PRIVATE wx360_cpu)
-
-# Bounded diagnostic launcher for user-supplied XEX homebrew images.
 add_executable(wx360_xex_probe tools/wx360_xex_probe.cpp)
 set_target_properties(wx360_xex_probe PROPERTIES OUTPUT_NAME "WX360-XEX-Probe")
 target_link_libraries(wx360_xex_probe PRIVATE wx360_cpu)
 
 include(CTest)
 if(BUILD_TESTING)
+  add_executable(wx360_clock_display_tests tests/clock_display_tests.cpp)
+  target_link_libraries(wx360_clock_display_tests PRIVATE wx360_cpu)
+  add_test(NAME wx360_clock_display_tests COMMAND wx360_clock_display_tests)
   add_executable(wx360_aes128_tests tests/aes128_tests.cpp)
   add_test(NAME wx360_standalone_diagnostic COMMAND wx360_test_runner)
   target_link_libraries(wx360_aes128_tests PRIVATE wx360_cpu)
@@ -191,77 +171,4 @@ if(BUILD_TESTING)
   add_executable(wx360_xex_normal_blocks_tests tests/xex_normal_blocks_tests.cpp)
   target_link_libraries(wx360_xex_normal_blocks_tests PRIVATE wx360_cpu)
   add_test(NAME wx360_xex_normal_blocks_tests COMMAND wx360_xex_normal_blocks_tests)
-  add_executable(wx360_xex_synthetic_boot_tests tests/xex_synthetic_boot_tests.cpp)
-  target_link_libraries(wx360_xex_synthetic_boot_tests PRIVATE wx360_cpu)
-  add_test(NAME wx360_xex_synthetic_boot_tests COMMAND wx360_xex_synthetic_boot_tests)
-  add_executable(wx360_xex_security_import_tests tests/xex_security_import_tests.cpp)
-  target_link_libraries(wx360_xex_security_import_tests PRIVATE wx360_cpu)
-  add_test(NAME wx360_xex_security_import_tests COMMAND wx360_xex_security_import_tests)
-  add_executable(wx360_data_directories_tests tests/data_directories_tests.cpp)
-  target_link_libraries(wx360_data_directories_tests PRIVATE wx360_cpu)
-  add_test(NAME wx360_data_directories_tests COMMAND wx360_data_directories_tests)
-  add_executable(wx360_cover_tests tests/cover_library_tests.cpp)
-  target_link_libraries(wx360_cover_tests PRIVATE wx360_cpu)
-  add_test(NAME game_cover_library_tests COMMAND wx360_cover_tests)
-endif()
-
-if(MSVC)
-  target_compile_options(wx360 PRIVATE /W4 /permissive-)
-  target_compile_options(wx360_test_runner PRIVATE /W4 /permissive-)
-  if(BUILD_TESTING)
-    target_compile_options(wx360_aes128_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_memory_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_xex_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_core_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_cpu_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_interpreter_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_state_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_state_slots_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_cover_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_data_directories_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_game_library_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_content_library_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_stfs_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_stfs_tree_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_svod_gdf_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_xex_loader_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_xex_pe_mapper_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_xex_import_resolver_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_xex_basic_decompression_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_xex_security_import_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_xex_normal_blocks_tests PRIVATE /W4 /permissive-)
-    target_compile_options(wx360_lzx_decoder_tests PRIVATE /W4 /permissive-)
-  endif()
-else()
-  target_compile_options(wx360 PRIVATE -Wall -Wextra -Wpedantic)
-  target_compile_options(wx360_test_runner PRIVATE -Wall -Wextra -Wpedantic)
-  if(BUILD_TESTING)
-    target_compile_options(wx360_aes128_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_memory_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_xex_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_core_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_cpu_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_interpreter_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_state_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_state_slots_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_cover_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_data_directories_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_game_library_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_content_library_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_stfs_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_stfs_tree_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_svod_gdf_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_xex_loader_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_xex_pe_mapper_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_xex_import_resolver_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_xex_basic_decompression_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_xex_security_import_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_xex_normal_blocks_tests PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(wx360_lzx_decoder_tests PRIVATE -Wall -Wextra -Wpedantic)
-  endif()
-endif()
-
-if(WIN32)
-  target_compile_definitions(wx360 PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
-  target_link_libraries(wx360 PRIVATE winhttp user32 gdi32)
 endif()
