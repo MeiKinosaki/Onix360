@@ -33,5 +33,20 @@ int main() {
           "explicit available backend is selected");
     check(renderer_name(RendererBackend::Software) == "Software Renderer",
           "backend exposes readable software renderer name");
+    SoftwareRendererBackend software;
+    check(software.backend() == RendererBackend::Software,
+          "software presentation adapter identifies its backend");
+    check(software.initialize(2, 2), "software presentation target initializes bounded frame");
+    const std::array<std::uint32_t,4> pixels{
+        0xFF000001U, 0xFF000002U, 0xFF000003U, 0xFF000004U};
+    check(software.present({2, 2, pixels}), "software backend presents RGBA8 frame");
+    check(software.front_buffer().size() == 4 &&
+          software.front_buffer()[2] == 0xFF000003U &&
+          software.present_count() == 1,
+          "software backend retains presented pixels and frame count");
+    check(!software.present({1, 4, pixels}),
+          "software backend rejects mismatched frame dimensions");
+    check(!software.initialize(0, 2),
+          "software backend rejects zero-sized target");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
