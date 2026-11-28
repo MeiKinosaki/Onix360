@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <optional>
 
 namespace wx360::memory {
 
@@ -26,6 +27,12 @@ struct XenonAddressRegionInfo {
 // Software-visible Xbox 360 guest address-space windows, as modelled by Xenia.
 // These ranges describe emulator mapping policy, not the hidden Xenon
 // hypervisor/L2 physical-address translation table.
+[[nodiscard]] constexpr std::optional<std::uint32_t>
+xenon_physical_alias_address(std::uint32_t address) noexcept {
+    if (address < 0xA0000000U) return std::nullopt;
+    return address & 0x1FFFFFFFU;
+}
+
 [[nodiscard]] constexpr XenonAddressRegionInfo classify_xenon_address(
     std::uint32_t address) noexcept {
     if (address < 0x40000000U)
