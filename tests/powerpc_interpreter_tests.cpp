@@ -1330,7 +1330,7 @@ int main() {
         wx360::memory::PowerPcHashedPageTable htab;
         constexpr std::uint32_t vsid = 0x12345U;
         constexpr std::uint64_t effective = 0x234U;
-        check(htab.configure(0x1000, 8, ram) == wx360::memory::MemoryResult::Ok,
+        check(htab.configure(0x10000, 1024, ram) == wx360::memory::MemoryResult::Ok,
               "configures HTAB for bus integration");
         check(htab.insert(vsid, effective, 0x8000, 0, ram) ==
                   wx360::memory::MemoryResult::Ok,
