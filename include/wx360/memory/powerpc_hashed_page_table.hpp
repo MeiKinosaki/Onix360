@@ -22,6 +22,9 @@ public:
     static constexpr std::uint32_t secondary_hash_bit = 0x40U;
     static constexpr std::uint32_t vsid_mask = 0x00FFFFFFU;
     static constexpr std::uint32_t rpn_mask = 0xFFFFF000U;
+    // PTE1 R/C bits in the big-endian 32-bit PTE1 word.
+    static constexpr std::uint32_t referenced_bit = 0x00000800U;
+    static constexpr std::uint32_t changed_bit = 0x00000400U;
 
     struct Lookup {
         MemoryResult result{MemoryResult::Unmapped};
