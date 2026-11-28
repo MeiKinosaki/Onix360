@@ -618,6 +618,25 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         const double a = std::bit_cast<double>(state.fpr[d.ra]);
         const double b = std::bit_cast<double>(state.fpr[d.rb]);
         const unsigned fp_xo = (instruction >> 1U) & 0x1FU;
+        if (d.xo == 583U) { // mffs
+            state.fpr[d.rt] = static_cast<std::uint64_t>(state.fpscr);
+            if ((instruction & 1U) != 0)
+                state.set_condition_field(1, static_cast<std::uint8_t>((state.fpscr >> 28U) & 0xFU));
+            break;
+        }
+        if (d.xo == 711U) { // mtfsf
+            const unsigned field_mask = (instruction >> 17U) & 0xFFU;
+            const auto source = static_cast<std::uint32_t>(state.fpr[d.rb]);
+            for (unsigned field = 0; field < 8; ++field) {
+                if ((field_mask & (1U << (7U - field))) == 0U) continue;
+                const unsigned shift = 28U - field * 4U;
+                const std::uint32_t mask = 0xFU << shift;
+                state.fpscr = (state.fpscr & ~mask) | (source & mask);
+            }
+            if ((instruction & 1U) != 0)
+                state.set_condition_field(1, static_cast<std::uint8_t>((state.fpscr >> 28U) & 0xFU));
+            break;
+        }
         if (d.xo == 0U || d.xo == 32U) { // fcmpu / fcmpo
             const unsigned bf = (instruction >> 23U) & 7U;
             std::uint8_t field = 0x1U;
