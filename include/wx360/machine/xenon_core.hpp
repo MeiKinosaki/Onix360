@@ -134,6 +134,16 @@ struct XenonCore {
         memory::PhysicalMemory* ram{};
     };
 
+    [[nodiscard]] static std::uint64_t resolve_untranslated_guest_address(
+        std::uint64_t guest_address) noexcept {
+        if (guest_address <= 0xFFFFFFFFULL) {
+            const auto alias = memory::xenon_physical_alias_address(
+                static_cast<std::uint32_t>(guest_address));
+            if (alias) return *alias;
+        }
+        return guest_address;
+    }
+
     [[nodiscard]] static bool interpreter_read(
         void* opaque, std::uint64_t guest_address,
         std::span<std::uint8_t> output) noexcept {
@@ -141,7 +151,8 @@ struct XenonCore {
         auto& core = *context.core;
         auto& ram = *context.ram;
         if (!core.mmu_enabled && !core.hashed_mmu_enabled)
-            return ram.read(guest_address, output, memory::Access::Read) == memory::MemoryResult::Ok;
+            return ram.read(resolve_untranslated_guest_address(guest_address), output,
+                            memory::Access::Read) == memory::MemoryResult::Ok;
         cpu::AddressSpaceMemoryBus bus{&core.address_space, &ram, &core.state,
             core.hashed_mmu_enabled ? &core.hashed_page_table : nullptr};
         const auto callbacks = bus.callbacks();
@@ -155,7 +166,8 @@ struct XenonCore {
         auto& core = *context.core;
         auto& ram = *context.ram;
         if (!core.mmu_enabled && !core.hashed_mmu_enabled)
-            return ram.write(guest_address, input) == memory::MemoryResult::Ok;
+            return ram.write(resolve_untranslated_guest_address(guest_address), input) ==
+                memory::MemoryResult::Ok;
         cpu::AddressSpaceMemoryBus bus{&core.address_space, &ram, &core.state,
             core.hashed_mmu_enabled ? &core.hashed_page_table : nullptr};
         const auto callbacks = bus.callbacks();
@@ -169,8 +181,8 @@ struct XenonCore {
         auto& core = *context.core;
         auto& ram = *context.ram;
         if (!core.mmu_enabled && !core.hashed_mmu_enabled)
-            return ram.read(guest_address, output, memory::Access::Execute) ==
-                memory::MemoryResult::Ok;
+            return ram.read(resolve_untranslated_guest_address(guest_address), output,
+                            memory::Access::Execute) == memory::MemoryResult::Ok;
         cpu::AddressSpaceMemoryBus bus{&core.address_space, &ram, &core.state,
             core.hashed_mmu_enabled ? &core.hashed_page_table : nullptr};
         const auto callbacks = bus.callbacks();
@@ -202,7 +214,7 @@ struct XenonCore {
             if (translated.result != memory::MemoryResult::Ok) return translated.result;
             return ram.read(translated.physical_address, output, memory::Access::Read);
         }
-        std::uint64_t physical_address = guest_address;
+        std::uint64_t physical_address = resolve_untranslated_guest_address(guest_address);
         if (mmu_enabled) {
             const auto translated = address_space.translate_range(
                 guest_address, output.size(), memory::Access::Read, ram);
@@ -224,7 +236,7 @@ struct XenonCore {
             if (translated.result != memory::MemoryResult::Ok) return translated.result;
             return ram.write(translated.physical_address, input);
         }
-        std::uint64_t physical_address = guest_address;
+        std::uint64_t physical_address = resolve_untranslated_guest_address(guest_address);
         if (mmu_enabled) {
             const auto translated = address_space.translate_range(
                 guest_address, input.size(), memory::Access::Write, ram);
