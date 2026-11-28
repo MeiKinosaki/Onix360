@@ -95,6 +95,22 @@ int main() {
     const std::uint32_t fmul = (63U << 26U) | (7U << 21U) | (1U << 16U) | (6U << 6U) | (25U << 1U);
     check(execute(s, fmul) == StepResult::Executed, "FMUL double executes");
     check(std::bit_cast<double>(s.fpr[7]) == 6.0, "FMUL uses FRC operand");
+    s.fpr[1] = std::bit_cast<std::uint64_t>(2.0);
+    s.fpr[2] = std::bit_cast<std::uint64_t>(4.0);
+    s.fpr[3] = std::bit_cast<std::uint64_t>(3.0);
+    const auto double_fma = [](unsigned frt, unsigned fra, unsigned frb,
+                               unsigned frc, unsigned xo) {
+        return (63U << 26U) | (frt << 21U) | (fra << 16U) |
+               (frb << 11U) | (frc << 6U) | (xo << 1U);
+    };
+    check(execute(s, double_fma(10,1,2,3,29)) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[10]) == 10.0, "FMADD uses fused multiply-add");
+    check(execute(s, double_fma(11,1,2,3,28)) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[11]) == 2.0, "FMSUB uses fused multiply-subtract");
+    check(execute(s, double_fma(12,1,2,3,31)) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[12]) == -10.0, "FNMADD negates fused multiply-add");
+    check(execute(s, double_fma(13,1,2,3,30)) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[13]) == -2.0, "FNMSUB negates fused multiply-subtract");
 
     // Single-precision arithmetic opcodes use IEEE-754 single rounding.
     const auto single_fp = [](unsigned frt, unsigned fra, unsigned frb, unsigned xo,
