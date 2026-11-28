@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <optional>
 
-namespace wx360::memory {
+namespace onix360::memory {
 
 enum class XenonAddressRegion : std::uint8_t {
     Virtual4K,
@@ -52,4 +52,4 @@ xenon_physical_alias_address(std::uint32_t address) noexcept {
     return {XenonAddressRegion::Physical4K, 0x1000U, false, true, false};
 }
 
-} // namespace wx360::memory
+} // namespace onix360::memory

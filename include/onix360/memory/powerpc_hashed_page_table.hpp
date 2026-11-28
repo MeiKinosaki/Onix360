@@ -1,13 +1,13 @@
 #pragma once
 
-#include "wx360/memory/physical_memory.hpp"
+#include "onix360/memory/physical_memory.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
 
-namespace wx360::memory {
+namespace onix360::memory {
 
 // First-stage 32-bit PowerPC hashed-page-table walker for 4 KiB pages.
 // The table is stored in guest physical memory as big-endian PTE0/PTE1 pairs.
@@ -217,4 +217,4 @@ private:
     bool configured_{};
 };
 
-} // namespace wx360::memory
+} // namespace onix360::memory

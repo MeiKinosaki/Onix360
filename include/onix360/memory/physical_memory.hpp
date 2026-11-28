@@ -7,7 +7,7 @@
 #include <span>
 #include <vector>
 
-namespace wx360::memory {
+namespace onix360::memory {
 
 enum class Access : std::uint8_t { Read = 1, Write = 2, Execute = 4 };
 
@@ -116,4 +116,4 @@ private:
     std::vector<std::uint8_t> page_permissions_;
 };
 
-} // namespace wx360::memory
+} // namespace onix360::memory
