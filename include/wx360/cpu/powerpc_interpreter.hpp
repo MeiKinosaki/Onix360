@@ -112,28 +112,39 @@ struct AddressSpaceMemoryBus {
             thread_state->segment_registers[segment]);
         if (fields.direct_store) return {memory::MemoryResult::Unmapped, 0};
         if (hashed_page_table && hashed_page_table->configured()) {
-            if (!hashed_page_table || !hashed_page_table->configured() ||
-                length == 0 ||
-                length > memory::PhysicalMemory::page_size -
-                         static_cast<std::size_t>(effective_address & 0xFFFU))
-                return {memory::MemoryResult::Unmapped, 0};
-            const auto pte = hashed_page_table->lookup(
-                fields.vsid, effective_address, *physical_memory);
-            if (pte.result != memory::MemoryResult::Ok)
-                return {pte.result, 0};
+            if (length == 0 ||
+                length - 1U > std::numeric_limits<std::uint64_t>::max() -
+                                  effective_address)
+                return {memory::MemoryResult::OutOfRange, 0};
             const bool problem_state = (thread_state->msr & (1ULL << 14U)) != 0;
             const bool key = problem_state ? fields.key_problem : fields.key_supervisor;
-            if (!pte_allows_access(pte.pp, key, access))
-                return {memory::MemoryResult::PermissionDenied, 0};
-            const auto permission = physical_memory->check_access(
-                pte.physical_address, length, access);
-            if (permission != memory::MemoryResult::Ok)
-                return {permission, 0};
-            const auto reference_status = hashed_page_table->mark_access(
-                pte, access, *physical_memory);
-            if (reference_status != memory::MemoryResult::Ok)
-                return {reference_status, 0};
-            return {memory::MemoryResult::Ok, pte.physical_address};
+            std::uint64_t first_physical = 0;
+            std::size_t completed = 0;
+            while (completed < length) {
+                const auto current_ea = effective_address + completed;
+                const auto pte = hashed_page_table->lookup(
+                    fields.vsid, current_ea, *physical_memory);
+                if (pte.result != memory::MemoryResult::Ok)
+                    return {pte.result, 0};
+                if (!pte_allows_access(pte.pp, key, access))
+                    return {memory::MemoryResult::PermissionDenied, 0};
+                const auto page_remaining = memory::PhysicalMemory::page_size -
+                    static_cast<std::size_t>(current_ea & 0xFFFU);
+                const auto chunk = (std::min)(length - completed, page_remaining);
+                if (completed == 0) first_physical = pte.physical_address;
+                else if (pte.physical_address != first_physical + completed)
+                    return {memory::MemoryResult::Unmapped, 0};
+                const auto permission = physical_memory->check_access(
+                    pte.physical_address, chunk, access);
+                if (permission != memory::MemoryResult::Ok)
+                    return {permission, 0};
+                const auto reference_status = hashed_page_table->mark_access(
+                    pte, access, *physical_memory);
+                if (reference_status != memory::MemoryResult::Ok)
+                    return {reference_status, 0};
+                completed += chunk;
+            }
+            return {memory::MemoryResult::Ok, first_physical};
         }
         return address_space->translate_range(
             effective_address, length, access, *physical_memory);
