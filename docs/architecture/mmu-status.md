@@ -13,6 +13,10 @@ The repository contains an opt-in 32-bit PowerPC OEA hashed-page-table model:
 
 This is a generic PowerPC OEA compatibility model. It is not proof that the Xbox 360 Xenon uses the same SDR1/HTAB mechanism.
 
+## Guest address-space windows
+
+A separate classifier now models the software-visible 32-bit guest address windows used by Xenia: 4 KiB/64 KiB virtual ranges, XEX image ranges (including the encrypted window), and physical aliases using 64 KiB, 16 MiB and 4 KiB windows. This is a guest mapping policy reference; it does not replace the Xenon hypervisor page table.
+
 ## Xbox 360-specific gap
 
 The Xenon is a 64-bit PowerPC processor that executes Xbox 360 software in 32-bit mode. Public Xbox 360 architecture research describes a console-specific hypervisor MMU and a 64-bit physical-address representation whose upper half carries encryption/integrity flags. The hypervisor maintains its own private page table and executable-page permissions.
