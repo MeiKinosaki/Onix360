@@ -1385,8 +1385,10 @@ int main() {
               "data read resolves the same translated physical page");
         constexpr std::uint64_t crossing_ea = 0x2FFCU;
         check(htab.insert(vsid, 0x2000U, 0xA000U, 0, ram) ==
+                  wx360::memory::MemoryResult::Ok &&
+              htab.insert(vsid, 0x3000U, 0xB000U, 0, ram) ==
                   wx360::memory::MemoryResult::Ok,
-              "maps adjacent virtual page to adjacent physical page");
+              "maps adjacent virtual pages to adjacent physical pages");
         const auto crossing = bus.translate(
             crossing_ea, 8, wx360::memory::Access::Read);
         check(crossing.result == wx360::memory::MemoryResult::Ok &&
