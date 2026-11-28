@@ -6,9 +6,9 @@
 #include <string>
 #include <system_error>
 #include <vector>
-#include "wx360/xex/xex_image_loader.hpp"
+#include "onix360/xex/xex_image_loader.hpp"
 
-namespace wx360::storage {
+namespace onix360::storage {
 
 struct GameFile {
     std::filesystem::path path;
@@ -63,4 +63,4 @@ public:
     }
 };
 
-} // namespace wx360::storage
+} // namespace onix360::storage

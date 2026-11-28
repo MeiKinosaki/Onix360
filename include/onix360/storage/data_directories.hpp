@@ -4,7 +4,7 @@
 #include <system_error>
 #include <utility>
 
-namespace wx360::storage {
+namespace onix360::storage {
 class DataDirectories {
 public:
  explicit DataDirectories(std::filesystem::path root):root_(std::move(root)){}
@@ -30,10 +30,10 @@ public:
   std::error_code ec;
   const auto absolute=std::filesystem::absolute(executable,ec);
   const auto resolved=ec?executable:absolute;
-  return resolved.parent_path()/"WX360-data";
+  return resolved.parent_path()/"Onix360-data";
  }
  static std::filesystem::path default_root(){
-  return portable_root(std::filesystem::current_path()/"WX360.exe");
+  return portable_root(std::filesystem::current_path()/"Onix360.exe");
  }
 private:
  std::filesystem::path root_;

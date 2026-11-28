@@ -1,10 +1,10 @@
 #pragma once
 
-#include "wx360/storage/stfs_package.hpp"
-#include "wx360/storage/stfs_tree.hpp"
-#include "wx360/storage/svod_gdf.hpp"
-#include "wx360/xex/xex_image_loader.hpp"
-#include "wx360/xex/xex_header.hpp"
+#include "onix360/storage/stfs_package.hpp"
+#include "onix360/storage/stfs_tree.hpp"
+#include "onix360/storage/svod_gdf.hpp"
+#include "onix360/xex/xex_image_loader.hpp"
+#include "onix360/xex/xex_header.hpp"
 
 #include <algorithm>
 #include <array>
@@ -14,7 +14,7 @@
 #include <optional>
 #include <string>
 
-namespace wx360::storage {
+namespace onix360::storage {
 
 // Loader helpers deliberately stop before emulation: XEX decryption,
 // decompression, PE mapping, imports, and kernel startup are separate stages.
@@ -123,4 +123,4 @@ public:
 
 };
 
-} // namespace wx360::storage
+} // namespace onix360::storage
