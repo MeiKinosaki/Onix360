@@ -515,6 +515,14 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
             value = a * static_cast<float>(std::bit_cast<double>(state.fpr[frc]));
             break;
         }
+        case 28: case 29: case 30: case 31: {
+            const unsigned frc = (instruction >> 6U) & 0x1FU;
+            const float c = static_cast<float>(std::bit_cast<double>(state.fpr[frc]));
+            const float product_addend = fp_xo == 28U || fp_xo == 30U ? -b : b;
+            value = std::fma(a, c, product_addend);
+            if (fp_xo == 30U || fp_xo == 31U) value = -value;
+            break;
+        }
         default: return StepResult::UnsupportedInstruction;
         }
         const double rounded = static_cast<double>(value);
