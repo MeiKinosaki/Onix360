@@ -1,5 +1,5 @@
 #pragma once
-#include "wx360/crypto/sha1.hpp"
+#include "onix360/crypto/sha1.hpp"
 #include <algorithm>
 #include <array>
 #include <utility>
@@ -7,7 +7,7 @@
 #include <span>
 #include <vector>
 
-namespace wx360::xex {
+namespace onix360::xex {
 struct PageDescriptor {
     std::uint32_t raw{};
     std::uint32_t type{};
@@ -123,4 +123,4 @@ inline constexpr std::uint32_t kXexImagePageSize4Kb = 0x10000000u;
                                   : PageHashResult::ImageSizeMismatch;
 }
 
-} // namespace wx360::xex
+} // namespace onix360::xex

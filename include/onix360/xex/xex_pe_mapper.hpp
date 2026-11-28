@@ -1,7 +1,7 @@
 #pragma once
 
-#include "wx360/memory/physical_memory.hpp"
-#include "wx360/memory/address_space.hpp"
+#include "onix360/memory/physical_memory.hpp"
+#include "onix360/memory/address_space.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -9,7 +9,7 @@
 #include <span>
 #include <vector>
 
-namespace wx360::xex {
+namespace onix360::xex {
 
 enum class PeMapError : std::uint8_t {
     None, TooSmall, BadDosSignature, BadPeSignature, WrongMachine,
@@ -204,4 +204,4 @@ private:
     }
 };
 
-} // namespace wx360::xex
+} // namespace onix360::xex
