@@ -1,8 +1,8 @@
-#include "wx360/memory/powerpc_hashed_page_table.hpp"
+#include "onix360/memory/powerpc_hashed_page_table.hpp"
 #include <array>
 #include <cstdlib>
 #include <iostream>
-using namespace wx360::memory;
+using namespace onix360::memory;
 int main() {
     PhysicalMemory ram(1U << 20U);
     PowerPcHashedPageTable table;

@@ -1,11 +1,11 @@
-#include "wx360/cpu/powerpc_interpreter.hpp"
+#include "onix360/cpu/powerpc_interpreter.hpp"
 
 #include <array>
 #include <cstdlib>
 #include <iostream>
 
 int main() {
-    using namespace wx360::cpu;
+    using namespace onix360::cpu;
     int failures = 0;
     const auto check = [&](bool ok, const char* label) {
         if (!ok) { std::cerr << "FAIL: " << label << '\n'; ++failures; }
@@ -35,11 +35,11 @@ int main() {
           StepResult::Executed && !state.exception_pending && state.pc == 0x3004U,
           "successful memory access does not raise an exception");
 
-    wx360::memory::PhysicalMemory physical(0x10000);
-    wx360::memory::AddressSpace address_space;
-    check(address_space.map_page(0x80000000,0x2000,3U)==wx360::memory::MemoryResult::Ok,"maps writable virtual page");
-    check(address_space.map_page(0x80001000,0x3000,1U)==wx360::memory::MemoryResult::Ok,"maps read-only virtual page");
-    wx360::cpu::AddressSpaceMemoryBus bus{&address_space,&physical};
+    onix360::memory::PhysicalMemory physical(0x10000);
+    onix360::memory::AddressSpace address_space;
+    check(address_space.map_page(0x80000000,0x2000,3U)==onix360::memory::MemoryResult::Ok,"maps writable virtual page");
+    check(address_space.map_page(0x80001000,0x3000,1U)==onix360::memory::MemoryResult::Ok,"maps read-only virtual page");
+    onix360::cpu::AddressSpaceMemoryBus bus{&address_space,&physical};
     const auto callbacks=bus.callbacks();
     state.reset(0x4000); state.gpr[3]=0x12345678;
     check(execute_with_exception_delivery(state,d_form(36,3,0,0x8000),{},nullptr,&callbacks)==StepResult::MemoryFault,"unmapped virtual store faults");
@@ -48,10 +48,10 @@ int main() {
     state.reset(0x6000); state.gpr[4]=0x80001000;
     check(execute_with_exception_delivery(state,d_form(32,5,4,0),{},nullptr,&callbacks)==StepResult::Executed,"read-only virtual page allows load");
     // Instruction fetch is separately permission-checked (execute bit = 4).
-    check(address_space.map_page(0x80002000,0x4000,5U)==wx360::memory::MemoryResult::Ok,
+    check(address_space.map_page(0x80002000,0x4000,5U)==onix360::memory::MemoryResult::Ok,
           "maps readable executable code page");
     const std::array<std::uint8_t,4> nop{0x60,0x00,0x00,0x00};
-    check(physical.write(0x4000,nop)==wx360::memory::MemoryResult::Ok,
+    check(physical.write(0x4000,nop)==onix360::memory::MemoryResult::Ok,
           "writes synthetic instruction bytes to physical RAM");
     std::uint32_t fetched=0;
     check(fetch_virtual_instruction(0x80002000,callbacks,fetched)==StepResult::Executed &&

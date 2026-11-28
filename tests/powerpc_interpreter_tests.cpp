@@ -1,4 +1,4 @@
-#include "wx360/cpu/powerpc_interpreter.hpp"
+#include "onix360/cpu/powerpc_interpreter.hpp"
 
 #include <array>
 #include <bit>
@@ -39,7 +39,7 @@ int main() {
         return (4U << 26U) | (vd << 21U) | (va << 16U) |
                (vb << 11U) | (xo & 0x7FFU);
     };
-    using namespace wx360::cpu;
+    using namespace onix360::cpu;
     constexpr std::uint64_t xer_ca = std::uint64_t{1} << 29U;
     XenonThreadState s;
     s.reset(0x1000);
@@ -1329,25 +1329,25 @@ int main() {
 
     // End-to-end synthetic fetch through AddressSpaceMemoryBus and SR protection.
     {
-        wx360::memory::PhysicalMemory ram(8192);
-        wx360::memory::AddressSpace mmu;
-        check(mmu.map_page(0x1000, 0x0000, 5U) == wx360::memory::MemoryResult::Ok,
+        onix360::memory::PhysicalMemory ram(8192);
+        onix360::memory::AddressSpace mmu;
+        check(mmu.map_page(0x1000, 0x0000, 5U) == onix360::memory::MemoryResult::Ok,
               "maps executable guest page for segment fetch test");
         ram.raw_bytes()[0] = 0x60U; ram.raw_bytes()[1] = 0x00U;
         ram.raw_bytes()[2] = 0x00U; ram.raw_bytes()[3] = 0x00U;
         s.reset(0x1000);
-        wx360::cpu::AddressSpaceMemoryBus bus{&mmu, &ram, &s};
+        onix360::cpu::AddressSpaceMemoryBus bus{&mmu, &ram, &s};
         const auto callbacks = bus.callbacks();
         std::uint32_t fetched_word = 0;
         std::array<std::uint8_t,4> fetched_bytes{};
-        s.segment_registers[0] = wx360::cpu::segment_no_execute_mask;
+        s.segment_registers[0] = onix360::cpu::segment_no_execute_mask;
         check(!callbacks.fetch(callbacks.context, 0x1000, fetched_bytes),
               "bus denies instruction fetch when segment N bit is set");
         s.segment_registers[0] = 0;
         check(callbacks.fetch(callbacks.context, 0x1000, fetched_bytes) &&
               fetched_bytes[0] == 0x60U && fetched_bytes[3] == 0x00U,
               "bus fetch succeeds after segment execute permission is restored");
-        wx360::cpu::AddressSpaceMemoryBus unbound_bus{&mmu, &ram, nullptr};
+        onix360::cpu::AddressSpaceMemoryBus unbound_bus{&mmu, &ram, nullptr};
         const auto unbound_callbacks = unbound_bus.callbacks();
         check(!unbound_callbacks.fetch(unbound_callbacks.context, 0x1000, fetched_bytes),
               "bus fails closed when no thread state is bound for segment permission checks");
@@ -1361,15 +1361,15 @@ int main() {
 
     // End-to-end segment T-bit translation through the guest HTAB/PTE walker.
     {
-        wx360::memory::PhysicalMemory ram(1U << 20U);
-        wx360::memory::AddressSpace software_mmu;
-        wx360::memory::PowerPcHashedPageTable htab;
+        onix360::memory::PhysicalMemory ram(1U << 20U);
+        onix360::memory::AddressSpace software_mmu;
+        onix360::memory::PowerPcHashedPageTable htab;
         constexpr std::uint32_t vsid = 0x12345U;
         constexpr std::uint64_t effective = 0x234U;
-        check(htab.configure(0x10000, 1024, ram) == wx360::memory::MemoryResult::Ok,
+        check(htab.configure(0x10000, 1024, ram) == onix360::memory::MemoryResult::Ok,
               "configures HTAB for bus integration");
         check(htab.insert(vsid, effective, 0x8000, 0, ram) ==
-                  wx360::memory::MemoryResult::Ok,
+                  onix360::memory::MemoryResult::Ok,
               "inserts segment translation PTE");
         ram.raw_bytes()[0x8234] = 0x60U;
         ram.raw_bytes()[0x8235] = 0x00U;
@@ -1378,10 +1378,10 @@ int main() {
         s.reset(effective);
         s.segment_registers[0] =
             vsid;
-        wx360::cpu::AddressSpaceMemoryBus bus{
+        onix360::cpu::AddressSpaceMemoryBus bus{
             &software_mmu, &ram, &s, &htab};
         check(bus.configure_htab_from_sdr1(0x00010000U) ==
-                  wx360::memory::MemoryResult::Ok,
+                  onix360::memory::MemoryResult::Ok,
               "configures integrated HTAB through guest SDR1 value");
         const auto callbacks = bus.callbacks();
         std::array<std::uint8_t,4> fetched{};
@@ -1397,13 +1397,13 @@ int main() {
               "data read resolves the same translated physical page");
         constexpr std::uint64_t crossing_ea = 0x2FFCU;
         check(htab.insert(vsid, 0x2000U, 0xA000U, 0, ram) ==
-                  wx360::memory::MemoryResult::Ok &&
+                  onix360::memory::MemoryResult::Ok &&
               htab.insert(vsid, 0x3000U, 0xB000U, 0, ram) ==
-                  wx360::memory::MemoryResult::Ok,
+                  onix360::memory::MemoryResult::Ok,
               "maps adjacent virtual pages to adjacent physical pages");
         const auto crossing = bus.translate(
-            crossing_ea, 8, wx360::memory::Access::Read);
-        check(crossing.result == wx360::memory::MemoryResult::Ok &&
+            crossing_ea, 8, onix360::memory::Access::Read);
+        check(crossing.result == onix360::memory::MemoryResult::Ok &&
               crossing.physical_address == 0xAFFCU,
               "hashed MMU translates an access spanning adjacent pages");
         s.segment_registers[0] =
@@ -1413,7 +1413,7 @@ int main() {
               "user key is denied by PP=00");
         constexpr std::uint64_t user_rw_ea = 0x1234U;
         check(htab.insert(vsid, user_rw_ea, 0x9000, 2, ram) ==
-                  wx360::memory::MemoryResult::Ok,
+                  onix360::memory::MemoryResult::Ok,
               "inserts user read-write PTE");
         check(callbacks.write(callbacks.context, user_rw_ea, replacement),
               "user key with PP=10 is granted read-write access");
@@ -1425,6 +1425,6 @@ int main() {
               "direct-store segment is rejected instead of treated as hashed-page translation");
     }
 
-    if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
+    if (failures == 0) std::cout << "Onix360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
