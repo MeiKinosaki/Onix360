@@ -49,5 +49,13 @@ int main() {
           "software backend rejects mismatched frame dimensions");
     check(!software.initialize(0, 2),
           "software backend rejects zero-sized target");
+    XenosFramebuffer framebuffer;
+    check(framebuffer.resize(2, 2), "Xenos software framebuffer initializes");
+    framebuffer.clear(0xFF336699U);
+    check(software.present(framebuffer),
+          "software renderer consumes Xenos framebuffer directly");
+    check(software.front_buffer()[0] == 0xFF336699U &&
+          software.present_count() == 2,
+          "Xenos framebuffer contents reach software presentation buffer");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
