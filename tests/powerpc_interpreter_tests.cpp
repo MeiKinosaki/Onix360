@@ -1193,6 +1193,19 @@ int main() {
     s.segment_registers[0] = 0;
     check(segment_allows_instruction_fetch(s, 0x01234567U),
           "segment with N clear permits instruction fetch");
+    const auto segment_fields = decode_segment_register(
+        0xA1234567U | segment_no_execute_mask);
+    check(segment_fields.vsid == (0xA1234567U & segment_vsid_mask),
+          "segment register decoder extracts the 24-bit VSID field");
+    check(segment_fields.key_supervisor && segment_fields.key_problem,
+          "segment register decoder extracts both protection key bits");
+    check(segment_fields.no_execute && segment_fields.translation_enabled,
+          "segment register decoder extracts N and translation-enable bits");
+    const auto plain_segment = decode_segment_register(0x00123456U);
+    check(plain_segment.vsid == 0x00123456U &&
+          !plain_segment.key_supervisor && !plain_segment.key_problem &&
+          !plain_segment.no_execute && !plain_segment.translation_enabled,
+          "segment register decoder handles a plain VSID");
     s.segment_registers[1] = segment_no_execute_mask;
     check(!segment_allows_instruction_fetch(s, 0x11234567U),
           "segment N bit blocks instruction fetch");
