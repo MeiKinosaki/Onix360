@@ -1,6 +1,7 @@
 #pragma once
 #include "wx360/cpu/xenon_state.hpp"
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <limits>
