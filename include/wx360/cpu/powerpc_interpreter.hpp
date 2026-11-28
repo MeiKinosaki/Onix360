@@ -55,8 +55,8 @@ struct SegmentRegisterFields {
             (value & segment_translation_mask) != 0};
 }
 
-// Hashed-page-table hash inputs for 4 KiB PowerPC pages. These helpers
-// intentionally do not perform HTAB lookup or PTE permission checks yet.
+// Hashed-page-table hash inputs for 4 KiB PowerPC pages. Full PTE walking
+// is implemented by PowerPcHashedPageTable and the memory-bus integration below.
 [[nodiscard]] constexpr std::uint32_t segment_page_index(
     std::uint64_t effective_address) noexcept {
     return static_cast<std::uint32_t>((effective_address >> 12U) & 0xFFFFU);
