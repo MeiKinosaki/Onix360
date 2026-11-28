@@ -1292,7 +1292,7 @@ int main() {
     check(segment_allows_instruction_fetch(s, 0x01234567U),
           "segment with N clear permits instruction fetch");
     const auto segment_fields = decode_segment_register(
-        0xA1234567U | segment_no_execute_mask);
+        0xE1234567U | segment_no_execute_mask);
     check(segment_fields.vsid == (0xA1234567U & segment_vsid_mask),
           "segment register decoder extracts the 24-bit VSID field");
     check(segment_fields.key_supervisor && segment_fields.key_problem,
