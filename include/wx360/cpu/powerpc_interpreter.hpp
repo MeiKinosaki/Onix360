@@ -734,6 +734,44 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
                 out.lane[lane] = std::bit_cast<std::uint32_t>(
                     xo == 10U ? x + y : x - y);
             }
+        } else if (xo == 4U || xo == 68U || xo == 132U ||
+                   xo == 260U || xo == 324U || xo == 388U) {
+            // VMX rounded averages: unsigned/signed byte, halfword and word.
+            const bool signed_lanes = xo >= 260U;
+            const unsigned width = (xo == 4U || xo == 260U) ? 8U :
+                                   (xo == 68U || xo == 324U) ? 16U : 32U;
+            const std::uint64_t lane_mask = width == 32U
+                ? 0xFFFFFFFFULL : ((std::uint64_t{1} << width) - 1U);
+            const unsigned lanes_per_word = 32U / width;
+            for (unsigned word = 0; word < 4; ++word) {
+                std::uint32_t packed = 0;
+                for (unsigned element = 0; element < lanes_per_word; ++element) {
+                    const unsigned shift = 32U - width * (element + 1U);
+                    const auto raw_a = (a.lane[word] >> shift) & lane_mask;
+                    const auto raw_b = (b.lane[word] >> shift) & lane_mask;
+                    std::uint64_t result{};
+                    if (signed_lanes) {
+                        const std::int64_t x = width == 8U
+                            ? std::bit_cast<std::int8_t>(static_cast<std::uint8_t>(raw_a))
+                            : width == 16U
+                                ? std::bit_cast<std::int16_t>(static_cast<std::uint16_t>(raw_a))
+                                : std::bit_cast<std::int32_t>(static_cast<std::uint32_t>(raw_a));
+                        const std::int64_t y = width == 8U
+                            ? std::bit_cast<std::int8_t>(static_cast<std::uint8_t>(raw_b))
+                            : width == 16U
+                                ? std::bit_cast<std::int16_t>(static_cast<std::uint16_t>(raw_b))
+                                : std::bit_cast<std::int32_t>(static_cast<std::uint32_t>(raw_b));
+                        const std::int64_t sum = x + y + 1;
+                        const std::int64_t average = sum >= 0
+                            ? sum / 2 : -(((-sum) + 1) / 2);
+                        result = static_cast<std::uint64_t>(average) & lane_mask;
+                    } else {
+                        result = (raw_a + raw_b + 1U) >> 1U;
+                    }
+                    packed |= static_cast<std::uint32_t>(result << shift);
+                }
+                out.lane[word] = packed;
+            }
         } else if (xo == 2U || xo == 130U || xo == 258U || xo == 386U) {
             // vminub, vminuw, vminsb and vminsw. Compare lanes at their
             // architectural element width; vector words are stored big-endian.
