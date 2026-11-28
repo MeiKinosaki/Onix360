@@ -1,10 +1,10 @@
-#include "wx360/kernel/kernel_thread_scheduler.hpp"
+#include "onix360/kernel/kernel_thread_scheduler.hpp"
 
 #include <cstdlib>
 #include <iostream>
 
 int main() {
-    using namespace wx360;
+    using namespace onix360;
     int failures = 0;
     const auto check = [&](bool ok, const char* label) {
         if (!ok) { std::cerr << "FAIL: " << label << '\n'; ++failures; }

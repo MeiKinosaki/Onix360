@@ -1,4 +1,4 @@
-#include "wx360/memory/physical_memory.hpp"
+#include "onix360/memory/physical_memory.hpp"
 
 #include <array>
 #include <cstdlib>
@@ -12,7 +12,7 @@ void check(bool value, const char* message) {
 }
 
 int main() {
-    using namespace wx360::memory;
+    using namespace onix360::memory;
     PhysicalMemory ram(PhysicalMemory::page_size * 2U);
     const std::array<std::uint8_t, 4> instruction{0x38, 0x60, 0x00, 0x01};
     check(ram.write(0x100, instruction) == MemoryResult::Ok,
@@ -41,6 +41,6 @@ int main() {
           "reject read crossing physical RAM boundary");
     check(ram.write(ram.size(), instruction) == MemoryResult::OutOfRange,
           "reject write at end of physical RAM");
-    if (failures == 0) std::cout << "WX360 physical memory tests passed\n";
+    if (failures == 0) std::cout << "Onix360 physical memory tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
