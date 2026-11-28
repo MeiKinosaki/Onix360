@@ -1,7 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
-namespace wx360::cpu {
+namespace onix360::cpu {
 struct XenonThreadState {
  std::array<std::uint64_t,32> gpr{};
  std::array<std::uint64_t,32> fpr{}; // IEEE-754 binary64 bit patterns

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "wx360/cpu/xenon_state.hpp"
-#include "wx360/memory/address_space.hpp"
-#include "wx360/memory/powerpc_hashed_page_table.hpp"
+#include "onix360/cpu/xenon_state.hpp"
+#include "onix360/memory/address_space.hpp"
+#include "onix360/memory/powerpc_hashed_page_table.hpp"
 
 #include <array>
 #include <bit>
@@ -12,7 +12,7 @@
 #include <limits>
 #include <algorithm>
 
-namespace wx360::cpu {
+namespace onix360::cpu {
 
 enum class StepResult {
     Executed,
@@ -1535,4 +1535,4 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
 }
 
 
-} // namespace wx360::cpu
+} // namespace onix360::cpu

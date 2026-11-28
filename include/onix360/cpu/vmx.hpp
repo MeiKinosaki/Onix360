@@ -1,10 +1,10 @@
 #pragma once
-#include "wx360/cpu/xenon_state.hpp"
+#include "onix360/cpu/xenon_state.hpp"
 #include <bit>
 #include <cmath>
 #include <cstdint>
 
-namespace wx360::cpu::vmx {
+namespace onix360::cpu::vmx {
 using Vector = XenonThreadState::VectorRegister;
 [[nodiscard]] inline Vector bit_xor(const Vector& a,const Vector& b) noexcept {
  Vector r{}; for(unsigned i=0;i<4;++i) r.lane[i]=a.lane[i]^b.lane[i]; return r;
@@ -148,4 +148,4 @@ using Vector = XenonThreadState::VectorRegister;
   r.lane[i]=std::bit_cast<std::uint32_t>(std::fmax(x,y));
  } return r;
 }
-} // namespace wx360::cpu::vmx
+} // namespace onix360::cpu::vmx
