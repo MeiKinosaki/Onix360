@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace wx360::storage {
+namespace onix360::storage {
 
 enum class StfsPackageType { ConsoleSigned, XboxLiveSigned, MicrosoftSigned };
 enum class StfsVolumeType { Stfs, Svod };
@@ -409,4 +409,4 @@ private:
     }
 };
 
-} // namespace wx360::storage
+} // namespace onix360::storage

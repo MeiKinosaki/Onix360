@@ -11,7 +11,7 @@
 #include <string_view>
 #include <vector>
 
-namespace wx360::storage {
+namespace onix360::storage {
 
 enum class GuestFileMode : std::uint8_t { ReadOnly, ReadWrite };
 enum class GuestSeekOrigin : std::uint8_t { Begin, Current, End };
@@ -155,4 +155,4 @@ private:
     std::map<std::uint32_t, OpenFile> open_files_;
 };
 
-} // namespace wx360::storage
+} // namespace onix360::storage

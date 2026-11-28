@@ -1,12 +1,12 @@
 #pragma once
 
-#include "wx360/storage/stfs_package.hpp"
+#include "onix360/storage/stfs_package.hpp"
 
 #include <filesystem>
 #include <string>
 #include <vector>
 
-namespace wx360::storage {
+namespace onix360::storage {
 
 struct StfsTreeEntry {
     std::size_t entry_index{};
@@ -134,4 +134,4 @@ public:
     }
 };
 
-} // namespace wx360::storage
+} // namespace onix360::storage
