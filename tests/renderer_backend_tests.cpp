@@ -9,6 +9,13 @@ int main() {
     auto check = [&](bool ok, const char* label) {
         if (!ok) { std::cerr << "FAIL: " << label << '\n'; ++failures; }
     };
+    const auto compiled = compiled_renderer_availability();
+    check(compiled.software, "software renderer is always compiled");
+#ifdef _WIN32
+    check(compiled.direct3d11, "Direct3D 11 backend is compiled on Windows");
+#else
+    check(!compiled.direct3d11, "Direct3D 11 is not advertised on non-Windows hosts");
+#endif
     const RendererAvailability software_only{};
     auto selected = select_renderer(RendererBackend::Automatic, software_only);
     check(selected.available && selected.selected == RendererBackend::Software &&
