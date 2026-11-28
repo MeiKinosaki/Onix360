@@ -111,6 +111,18 @@ int main() {
           std::bit_cast<double>(s.fpr[12]) == -10.0, "FNMADD negates fused multiply-add");
     check(execute(s, double_fma(13,1,2,3,30)) == StepResult::Executed &&
           std::bit_cast<double>(s.fpr[13]) == -2.0, "FNMSUB negates fused multiply-subtract");
+    s.fpscr = 0xA1234567U;
+    const std::uint32_t mffs = (63U << 26U) | (18U << 21U) | (583U << 1U) | 1U;
+    check(execute(s, mffs) == StepResult::Executed &&
+          s.fpr[18] == 0xA1234567U && s.condition_field(1) == 0xAU,
+          "MFFS copies FPSCR to FPR and updates CR1 when Rc is set");
+    s.fpscr = 0x01234567U;
+    s.fpr[19] = 0xF000000AULL;
+    const std::uint32_t mtfsf = (63U << 26U) | (0x81U << 17U) |
+        (19U << 11U) | (711U << 1U) | 1U;
+    check(execute(s, mtfsf) == StepResult::Executed &&
+          s.fpscr == 0xF123456AU && s.condition_field(1) == 0xFU,
+          "MTFSF updates only selected FPSCR fields");
 
     // Single-precision arithmetic opcodes use IEEE-754 single rounding.
     const auto single_fp = [](unsigned frt, unsigned fra, unsigned frb, unsigned xo,
