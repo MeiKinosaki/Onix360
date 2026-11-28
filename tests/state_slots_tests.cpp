@@ -1,11 +1,11 @@
-#include "wx360/state/state_slots.hpp"
+#include "onix360/state/state_slots.hpp"
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
 namespace {int failures=0;void check(bool v,const char*m){if(!v){std::cerr<<"FAIL: "<<m<<'\n';++failures;}}}
 int main(){
- using namespace wx360::state;
- const std::filesystem::path dir="wx360_slots_test";
+ using namespace onix360::state;
+ const std::filesystem::path dir="onix360_slots_test";
  std::error_code ec;std::filesystem::remove_all(dir,ec);
  StateSlots slots(dir);std::string error;Snapshot first;first.cpu.pc=0x1111;first.ram={1,2,3};
  Snapshot second;second.cpu.pc=0x2222;second.ram={4,5,6,7};

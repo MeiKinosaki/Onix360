@@ -1,5 +1,5 @@
-#include "wx360/storage/stfs_package.hpp"
-#include "wx360/storage/content_loader.hpp"
+#include "onix360/storage/stfs_package.hpp"
+#include "onix360/storage/content_loader.hpp"
 
 #include <array>
 #include <cstdlib>
@@ -39,7 +39,7 @@ void put_utf16be(std::vector<std::uint8_t>& b, std::size_t o, const char* s) {
 
 int main() {
     int failures=0;
-    const auto path=std::filesystem::temp_directory_path()/"wx360_stfs_header_test.con";
+    const auto path=std::filesystem::temp_directory_path()/"onix360_stfs_header_test.con";
     std::vector<std::uint8_t> bytes(0xE000,0);
     bytes[0]='C';bytes[1]='O';bytes[2]='N';bytes[3]=' ';
     put_be32(bytes,0x340,0x971A);
@@ -70,14 +70,14 @@ int main() {
         std::ofstream out(path,std::ios::binary);
         out.write(reinterpret_cast<const char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()));
     }
-    auto parsed=wx360::storage::StfsPackageParser::parse(path);
-    if(!parsed || parsed.header.package_type!=wx360::storage::StfsPackageType::ConsoleSigned ||
+    auto parsed=onix360::storage::StfsPackageParser::parse(path);
+    if(!parsed || parsed.header.package_type!=onix360::storage::StfsPackageType::ConsoleSigned ||
        parsed.header.content_type!=0x7000 || parsed.header.title_id!=0x4D5307E6 ||
        parsed.header.file_table_block_count!=1 || parsed.header.allocated_block_count!=10 ||
        parsed.header.title_name!="Test Game" || parsed.header.publisher_name!="Publisher") {
         std::cerr<<"Valid synthetic STFS metadata was not parsed\n";++failures;
     }
-    auto file_table=wx360::storage::StfsPackageParser::read_file_table(path,parsed.header);
+    auto file_table=onix360::storage::StfsPackageParser::read_file_table(path,parsed.header);
     if(!file_table || file_table.entries.size()!=1 ||
        file_table.entries[0].name!="default.xex" ||
        file_table.entries[0].parent_directory_index!=0xFFFFu ||
@@ -105,25 +105,25 @@ int main() {
         std::ofstream out(path,std::ios::binary|std::ios::trunc);
         out.write(reinterpret_cast<const char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()));
     }
-    const auto chained_header=wx360::storage::StfsPackageParser::parse(path);
-    const auto chained_table=wx360::storage::StfsPackageParser::read_file_table(path,chained_header.header);
+    const auto chained_header=onix360::storage::StfsPackageParser::parse(path);
+    const auto chained_table=onix360::storage::StfsPackageParser::read_file_table(path,chained_header.header);
     if(!chained_header || !chained_table || chained_table.entries.size()!=2 ||
        chained_table.entries[1].name!="second.bin") {
         std::cerr<<"STFS file table block chain was not followed\\n";++failures;
     }
 
     // Read an individual file through its contiguous data-block mapping.
-    wx360::storage::StfsParseError read_error{};
-    const auto extracted_bytes = wx360::storage::StfsPackageParser::read_file(
+    onix360::storage::StfsParseError read_error{};
+    const auto extracted_bytes = onix360::storage::StfsPackageParser::read_file(
         path, chained_header.header, chained_table.entries[1], read_error);
-    if (read_error != wx360::storage::StfsParseError::None ||
+    if (read_error != onix360::storage::StfsParseError::None ||
         std::string(extracted_bytes.begin(), extracted_bytes.end()) != "second.bin") {
         std::cerr << "STFS file data block was not read correctly\\n"; ++failures;
     }
-    const auto extract_dir = std::filesystem::temp_directory_path() / "wx360_stfs_extract_test";
+    const auto extract_dir = std::filesystem::temp_directory_path() / "onix360_stfs_extract_test";
     std::error_code extract_ec;
     std::filesystem::remove_all(extract_dir, extract_ec);
-    if (!wx360::storage::StfsPackageParser::extract_file(
+    if (!onix360::storage::StfsPackageParser::extract_file(
             path, chained_header.header, chained_table.entries[1], extract_dir, read_error)) {
         std::cerr << "Safe STFS single-file extraction failed\\n"; ++failures;
     } else {
@@ -135,7 +135,7 @@ int main() {
     }
     auto unsafe_entry = chained_table.entries[1];
     unsafe_entry.name = "../escape.bin";
-    if (wx360::storage::StfsPackageParser::extract_file(
+    if (onix360::storage::StfsPackageParser::extract_file(
             path, chained_header.header, unsafe_entry, extract_dir, read_error)) {
         std::cerr << "STFS path traversal was not rejected\\n"; ++failures;
     }
@@ -146,7 +146,7 @@ int main() {
         std::ofstream out(path,std::ios::binary|std::ios::trunc);
         out.write(reinterpret_cast<const char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()));
     }
-    if(wx360::storage::StfsPackageParser::parse(path).error!=wx360::storage::StfsParseError::InvalidMagic) {
+    if(onix360::storage::StfsPackageParser::parse(path).error!=onix360::storage::StfsParseError::InvalidMagic) {
         std::cerr<<"Invalid magic was not rejected\n";++failures;
     }
 
@@ -157,8 +157,8 @@ int main() {
         std::ofstream out(path,std::ios::binary|std::ios::trunc);
         out.write(reinterpret_cast<const char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()));
     }
-    const auto svod = wx360::storage::StfsPackageParser::parse(path);
-    if(!svod || svod.header.volume_type != wx360::storage::StfsVolumeType::Svod ||
+    const auto svod = onix360::storage::StfsPackageParser::parse(path);
+    if(!svod || svod.header.volume_type != onix360::storage::StfsVolumeType::Svod ||
        svod.header.svod_data_block_count != 1) {
         std::cerr<<"SVOD descriptor metadata was not parsed\n";++failures;
     }
