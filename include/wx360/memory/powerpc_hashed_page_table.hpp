@@ -54,6 +54,23 @@ public:
     [[nodiscard]] bool configured() const noexcept { return configured_; }
     [[nodiscard]] std::size_t group_count() const noexcept { return groups_; }
 
+    // Decode the 32-bit OEA SDR1 layout: HTABORG[0:15], HTABMASK[23:31].
+    [[nodiscard]] MemoryResult configure_from_sdr1(
+        std::uint32_t sdr1, const PhysicalMemory& ram) noexcept {
+        const std::uint32_t mask = sdr1 & 0x1FFU;
+        unsigned extra_bits = 0;
+        bool saw_zero = false;
+        for (unsigned bit = 0; bit < 9; ++bit) {
+            const bool set = (mask & (1U << bit)) != 0;
+            if (set && saw_zero) return MemoryResult::AlignmentFault;
+            if (set) ++extra_bits;
+            else saw_zero = true;
+        }
+        const std::size_t groups = std::size_t{1} << (10U + extra_bits);
+        const std::uint32_t base = sdr1 & 0xFFFF0000U;
+        return configure(base, groups, ram);
+    }
+
     [[nodiscard]] MemoryResult insert(std::uint32_t vsid,
                                       std::uint64_t effective_address,
                                       std::uint32_t physical_page,
