@@ -2,6 +2,7 @@
 
 #include "wx360/cpu/xenon_state.hpp"
 #include "wx360/memory/address_space.hpp"
+#include "wx360/memory/powerpc_hashed_page_table.hpp"
 
 #include <array>
 #include <bit>
@@ -78,26 +79,62 @@ struct AddressSpaceMemoryBus {
     memory::AddressSpace* address_space{};
     memory::PhysicalMemory* physical_memory{};
     XenonThreadState* thread_state{};
+    memory::PowerPcHashedPageTable* hashed_page_table{};
+
+    [[nodiscard]] memory::AddressSpace::Translation translate(
+        std::uint64_t effective_address, std::size_t length,
+        memory::Access access) const noexcept {
+        if (!address_space || !physical_memory || !thread_state)
+            return {memory::MemoryResult::Unmapped, 0};
+        const unsigned segment =
+            static_cast<unsigned>((effective_address >> 28U) & 0xFU);
+        const auto fields = decode_segment_register(
+            thread_state->segment_registers[segment]);
+        if (fields.translation_enabled) {
+            if (!hashed_page_table || !hashed_page_table->configured() ||
+                length == 0 ||
+                length > memory::PhysicalMemory::page_size -
+                         static_cast<std::size_t>(effective_address & 0xFFFU))
+                return {memory::MemoryResult::Unmapped, 0};
+            const auto pte = hashed_page_table->lookup(
+                fields.vsid, effective_address, *physical_memory);
+            if (pte.result != memory::MemoryResult::Ok)
+                return {pte.result, 0};
+            const auto permission = physical_memory->check_access(
+                pte.physical_address, length, access);
+            if (permission != memory::MemoryResult::Ok)
+                return {permission, 0};
+            return {memory::MemoryResult::Ok, pte.physical_address};
+        }
+        return address_space->translate_range(
+            effective_address, length, access, *physical_memory);
+    }
+
     [[nodiscard]] MemoryAccess callbacks() noexcept {
         return {this,
             +[](void* c, std::uint64_t a, std::span<std::uint8_t> out) noexcept {
-                auto& b=*static_cast<AddressSpaceMemoryBus*>(c);
-                if(!b.address_space||!b.physical_memory) return false;
-                const auto p=b.address_space->translate_range(a,out.size(),memory::Access::Read,*b.physical_memory);
-                return p.result==memory::MemoryResult::Ok && b.physical_memory->read(p.physical_address,out)==memory::MemoryResult::Ok;
+                auto& b = *static_cast<AddressSpaceMemoryBus*>(c);
+                const auto p = b.translate(a, out.size(), memory::Access::Read);
+                return p.result == memory::MemoryResult::Ok &&
+                    b.physical_memory->read(p.physical_address, out) ==
+                        memory::MemoryResult::Ok;
             },
             +[](void* c, std::uint64_t a, std::span<const std::uint8_t> in) noexcept {
-                auto& b=*static_cast<AddressSpaceMemoryBus*>(c);
-                if(!b.address_space||!b.physical_memory) return false;
-                const auto p=b.address_space->translate_range(a,in.size(),memory::Access::Write,*b.physical_memory);
-                return p.result==memory::MemoryResult::Ok && b.physical_memory->write(p.physical_address,in)==memory::MemoryResult::Ok;
+                auto& b = *static_cast<AddressSpaceMemoryBus*>(c);
+                const auto p = b.translate(a, in.size(), memory::Access::Write);
+                return p.result == memory::MemoryResult::Ok &&
+                    b.physical_memory->write(p.physical_address, in) ==
+                        memory::MemoryResult::Ok;
             },
             +[](void* c, std::uint64_t a, std::span<std::uint8_t> out) noexcept {
-                auto& b=*static_cast<AddressSpaceMemoryBus*>(c);
-                if(!b.address_space||!b.physical_memory) return false;
-                if(!b.thread_state || !segment_allows_instruction_fetch(*b.thread_state,a)) return false;
-                const auto p=b.address_space->translate_range(a,out.size(),memory::Access::Execute,*b.physical_memory);
-                return p.result==memory::MemoryResult::Ok && b.physical_memory->read(p.physical_address,out)==memory::MemoryResult::Ok;
+                auto& b = *static_cast<AddressSpaceMemoryBus*>(c);
+                if (!b.thread_state ||
+                    !segment_allows_instruction_fetch(*b.thread_state, a))
+                    return false;
+                const auto p = b.translate(a, out.size(), memory::Access::Execute);
+                return p.result == memory::MemoryResult::Ok &&
+                    b.physical_memory->read(p.physical_address, out,
+                        memory::Access::Execute) == memory::MemoryResult::Ok;
             }};
     }
 };
