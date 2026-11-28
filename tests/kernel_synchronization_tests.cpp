@@ -1,10 +1,10 @@
-#include "wx360/kernel/kernel_synchronization.hpp"
+#include "onix360/kernel/kernel_synchronization.hpp"
 
 #include <cstdlib>
 #include <iostream>
 
 int main() {
-    using namespace wx360::kernel;
+    using namespace onix360::kernel;
     int failures = 0;
     const auto check = [&](bool ok, const char* label) {
         if (!ok) { std::cerr << "FAIL: " << label << '\n'; ++failures; }

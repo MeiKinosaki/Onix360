@@ -1,15 +1,15 @@
-#include "wx360/kernel/kernel_runtime.hpp"
-#include "wx360/machine/xenon_core.hpp"
+#include "onix360/kernel/kernel_runtime.hpp"
+#include "onix360/machine/xenon_core.hpp"
 #include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <iostream>
 
 namespace {
-void service_increment(wx360::cpu::XenonThreadState& s) noexcept { ++s.gpr[3]; }
+void service_increment(onix360::cpu::XenonThreadState& s) noexcept { ++s.gpr[3]; }
 }
 int main() {
- using namespace wx360;
+ using namespace onix360;
  int failures=0;
  auto check=[&](bool ok,const char* msg){if(!ok){std::cerr<<"FAIL: "<<msg<<'\n';++failures;}};
  memory::PhysicalMemory ram(0x4000);

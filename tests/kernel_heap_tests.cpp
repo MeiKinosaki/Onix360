@@ -1,11 +1,11 @@
-#include "wx360/kernel/kernel_heap.hpp"
+#include "onix360/kernel/kernel_heap.hpp"
 
 #include <cstdlib>
 #include <iostream>
 
 int main() {
-    wx360::memory::PhysicalMemory ram(0x10000);
-    wx360::kernel::KernelHeap heap(ram, 0x2000, 0x4000);
+    onix360::memory::PhysicalMemory ram(0x10000);
+    onix360::kernel::KernelHeap heap(ram, 0x2000, 0x4000);
     int failures = 0;
     const auto check = [&](bool value, const char* message) {
         if (!value) { std::cerr << "FAIL: " << message << '\n'; ++failures; }
@@ -39,20 +39,20 @@ int main() {
     check(whole.has_value() && heap.release(*whole), "releases coalesced full heap");
     check(heap.validate(), "heap invariant holds after full allocation cycle");
 
-    wx360::memory::AddressSpace address_space;
+    onix360::memory::AddressSpace address_space;
     const auto mapped = heap.allocate_mapped_pages(address_space,0x80000000,0x2000,3U);
     check(mapped.has_value() && address_space.has_page_mapping(0x80000000) &&
           address_space.has_page_mapping(0x80001000),
           "allocates physical pages and maps guest virtual range");
     const auto translated = address_space.translate_range(0x80000020,16,
-        wx360::memory::Access::Read,ram);
-    check(mapped.has_value() && translated.result==wx360::memory::MemoryResult::Ok &&
+        onix360::memory::Access::Read,ram);
+    check(mapped.has_value() && translated.result==onix360::memory::MemoryResult::Ok &&
           translated.physical_address==static_cast<std::uint64_t>(*mapped)+0x20,
           "virtual heap mapping translates to allocated physical backing");
     check(mapped.has_value() && heap.release_mapped_pages(address_space,0x80000000,*mapped,0x2000) &&
           !address_space.has_page_mapping(0x80000000) && heap.validate(),
           "unmaps virtual pages before releasing backing allocation");
-    wx360::kernel::KernelHeap invalid(ram, 0xF000, 0x2000);
+    onix360::kernel::KernelHeap invalid(ram, 0xF000, 0x2000);
     check(!invalid.valid() && !invalid.allocate(16).has_value() &&
           !invalid.validate() && invalid.free_bytes() == 0,
           "rejects heap interval outside physical RAM");
