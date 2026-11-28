@@ -230,8 +230,18 @@ struct XenonCore {
         const xex::ValidatedXexImage& image, memory::PhysicalMemory& ram) noexcept {
         std::uint32_t first_instruction = 0;
         std::uint64_t fetch_address = image.entry_point();
-        const std::uint64_t guest_entry = mmu_enabled ? image.guest_entry_point() : image.entry_point();
-        if (mmu_enabled) {
+        const std::uint64_t guest_entry =
+            (mmu_enabled || hashed_mmu_enabled)
+                ? image.guest_entry_point() : image.entry_point();
+        if (hashed_mmu_enabled) {
+            cpu::AddressSpaceMemoryBus bus{&address_space, &ram, &state,
+                                            &hashed_page_table};
+            const auto translated = bus.translate(
+                guest_entry, 4, memory::Access::Execute);
+            if (translated.result != memory::MemoryResult::Ok)
+                return LaunchResult::EntryPointNotExecutable;
+            fetch_address = translated.physical_address;
+        } else if (mmu_enabled) {
             const auto translated = address_space.translate(
                 guest_entry, memory::Access::Execute, ram);
             if (translated.result != memory::MemoryResult::Ok)
