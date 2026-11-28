@@ -117,13 +117,20 @@ struct AddressSpaceMemoryBus {
                                   effective_address)
                 return {memory::MemoryResult::OutOfRange, 0};
             const bool problem_state = (thread_state->msr & (1ULL << 14U)) != 0;
-            const bool key = problem_state ? fields.key_problem : fields.key_supervisor;
             std::uint64_t first_physical = 0;
             std::size_t completed = 0;
             while (completed < length) {
                 const auto current_ea = effective_address + completed;
+                const unsigned current_segment =
+                    static_cast<unsigned>((current_ea >> 28U) & 0xFU);
+                const auto current_fields = decode_segment_register(
+                    thread_state->segment_registers[current_segment]);
+                if (current_fields.direct_store)
+                    return {memory::MemoryResult::Unmapped, 0};
+                const bool key = problem_state
+                    ? current_fields.key_problem : current_fields.key_supervisor;
                 const auto pte = hashed_page_table->lookup(
-                    fields.vsid, current_ea, *physical_memory);
+                    current_fields.vsid, current_ea, *physical_memory);
                 if (pte.result != memory::MemoryResult::Ok)
                     return {pte.result, 0};
                 if (!pte_allows_access(pte.pp, key, access))
