@@ -1,7 +1,7 @@
-#include "wx360/cpu/powerpc_interpreter.hpp"
-#include "wx360/kernel/xex_import_resolver.hpp"
-#include "wx360/machine/xenon_core.hpp"
-#include "wx360/memory/physical_memory.hpp"
+#include "onix360/cpu/powerpc_interpreter.hpp"
+#include "onix360/kernel/xex_import_resolver.hpp"
+#include "onix360/machine/xenon_core.hpp"
+#include "onix360/memory/physical_memory.hpp"
 
 #include <array>
 #include <cstdint>
@@ -17,8 +17,8 @@ void check(bool condition, std::string_view name) {
 }
 
 int main() {
-    using namespace wx360;
-    std::cout << "WX360 Emulator Diagnostic Runner\n"
+    using namespace onix360;
+    std::cout << "Onix360 Emulator Diagnostic Runner\n"
               << "Synthetic hardware/software tests only; no commercial XEX is launched.\n\n";
 
     cpu::XenonThreadState thread;

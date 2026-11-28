@@ -1,7 +1,7 @@
-#include "wx360/kernel/kernel_runtime.hpp"
-#include "wx360/machine/xenon_core.hpp"
-#include "wx360/memory/physical_memory.hpp"
-#include "wx360/xex/xex_image_loader.hpp"
+#include "onix360/kernel/kernel_runtime.hpp"
+#include "onix360/machine/xenon_core.hpp"
+#include "onix360/memory/physical_memory.hpp"
+#include "onix360/xex/xex_image_loader.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -23,9 +23,9 @@ std::uint32_t read_le32(const std::vector<std::uint8_t>& bytes, std::size_t at) 
 }
 
 int main(int argc, char** argv) {
-    using namespace wx360;
+    using namespace onix360;
     if (argc != 2) {
-        std::cerr << "Usage: WX360-XEX-Probe <homebrew.xex>\n";
+        std::cerr << "Usage: Onix360-XEX-Probe <homebrew.xex>\n";
         return 2;
     }
 
@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
         return 9;
     }
 
-    std::cout << "WX360 XEX execution probe\n"
+    std::cout << "Onix360 XEX execution probe\n"
               << "File: " << path.filename().string() << "\n"
               << "Entry: 0x" << std::hex << core.state.pc << std::dec << "\n"
               << "RAM: " << ram.size() / (1024U * 1024U) << " MiB\n"
