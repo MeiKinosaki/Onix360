@@ -49,6 +49,25 @@ int main() {
     const std::uint32_t fadd = (63U << 26U) | (3U << 21U) | (1U << 16U) | (2U << 11U) | (21U << 1U);
     check(execute(s, fadd) == StepResult::Executed, "FADD double executes");
     check(std::bit_cast<double>(s.fpr[3]) == 3.75, "FADD writes IEEE-754 result");
+
+    // Single-precision A-form operations round operands and results to binary32.
+    s.fpr[1] = std::bit_cast<std::uint64_t>(1.25);
+    s.fpr[2] = std::bit_cast<std::uint64_t>(2.5);
+    const std::uint32_t fadds = (59U << 26U) | (7U << 21U) |
+        (1U << 16U) | (2U << 11U) | (21U << 1U);
+    check(execute(s, fadds) == StepResult::Executed, "FADDS executes");
+    check(s.fpr[7] == std::bit_cast<std::uint64_t>(
+              static_cast<double>(static_cast<float>(3.75))),
+          "FADDS stores the binary32-rounded result in the FPR");
+
+    s.fpr[1] = std::bit_cast<std::uint64_t>(1.5);
+    s.fpr[2] = std::bit_cast<std::uint64_t>(2.25);
+    const std::uint32_t fmuls = (59U << 26U) | (8U << 21U) |
+        (1U << 16U) | (25U << 1U) | (2U << 6U);
+    check(execute(s, fmuls) == StepResult::Executed, "FMULS executes using FRC");
+    check(s.fpr[8] == std::bit_cast<std::uint64_t>(
+              static_cast<double>(static_cast<float>(3.375))),
+          "FMULS reads FRC and stores a binary32-rounded result");
     s.fpscr = 0xA0000000U;
     check(execute(s, fadd | 1U) == StepResult::Executed, "FADD. executes with Rc set");
     check(s.condition_field(1) == 0xA,
