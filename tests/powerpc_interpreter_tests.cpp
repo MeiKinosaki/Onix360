@@ -1229,6 +1229,16 @@ int main() {
           !plain_segment.key_supervisor && !plain_segment.key_problem &&
           !plain_segment.no_execute && !plain_segment.translation_enabled,
           "segment register decoder handles a plain VSID");
+    constexpr std::uint64_t hash_test_ea = 0x12345ABCULL;
+    static_assert(segment_page_index(hash_test_ea) == 0x2345U);
+    static_assert(segment_primary_hash(0x00123456U, hash_test_ea) == 0x00121713U);
+    static_assert(segment_secondary_hash(0x00123456U, hash_test_ea) == 0xFFEDE8ECU);
+    check(segment_page_index(hash_test_ea) == 0x2345U,
+          "PowerPC hashed-page-table page index uses EA bits 12 through 27");
+    check(segment_primary_hash(0x00123456U, hash_test_ea) == 0x00121713U,
+          "PowerPC primary page hash combines VSID and page index");
+    check(segment_secondary_hash(0x00123456U, hash_test_ea) == 0xFFEDE8ECU,
+          "PowerPC secondary page hash complements the primary hash");
     s.segment_registers[1] = segment_no_execute_mask;
     check(!segment_allows_instruction_fetch(s, 0x11234567U),
           "segment N bit blocks instruction fetch");
