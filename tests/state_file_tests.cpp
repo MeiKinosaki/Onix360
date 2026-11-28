@@ -2,6 +2,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <vector>
+#include <fstream>
 namespace { int failures=0; void check(bool ok,const char*m){if(!ok){std::cerr<<"FAIL: "<<m<<'\n';++failures;}} }
 int main(){
  using namespace wx360;
@@ -26,6 +28,25 @@ int main(){
  check(restored.cpu.reservation_valid&&restored.cpu.reservation_address==source.cpu.reservation_address,"restores reservation state");
  check(restored.cpu.decrementer==source.cpu.decrementer&&restored.cpu.timebase_ticks==source.cpu.timebase_ticks&&restored.cpu.exception_vector==source.cpu.exception_vector,"restores timebase and decrementer state");
  check(restored.ram==source.ram,"restores RAM bytes");
+ // Build a minimal legacy v1 file to preserve backward compatibility.
+ std::vector<std::uint8_t> legacy_payload;
+ auto put32=[](std::vector<std::uint8_t>& b,std::uint32_t v){for(unsigned i=0;i<4;++i)b.push_back(static_cast<std::uint8_t>(v>>(8*i)));};
+ auto put64=[](std::vector<std::uint8_t>& b,std::uint64_t v){for(unsigned i=0;i<8;++i)b.push_back(static_cast<std::uint8_t>(v>>(8*i)));};
+ for(unsigned i=0;i<32;++i)put64(legacy_payload,i==3?0xAABBCCDDU:0U);
+ put64(legacy_payload,0x12340000U);put64(legacy_payload,0x1000U);put64(legacy_payload,7U);put64(legacy_payload,9U);
+ put32(legacy_payload,0x12345678U);put64(legacy_payload,0x8000U);put32(legacy_payload,0xCAFEBABEU);
+ std::uint64_t hash=1469598103934665603ULL;
+ for(auto byte:legacy_payload){hash^=byte;hash*=1099511628211ULL;}
+ const char* legacy_path="wx360_state_v1_legacy.bin";
+ {std::ofstream out(legacy_path,std::ios::binary|std::ios::trunc);out.write("WX360ST\\0",8);
+  auto write32=[&](std::uint32_t v){for(unsigned i=0;i<4;++i)out.put(static_cast<char>(v>>(8*i)));};
+  auto write64=[&](std::uint64_t v){for(unsigned i=0;i<8;++i)out.put(static_cast<char>(v>>(8*i)));};
+  write32(1);write64(0);write64(legacy_payload.size());write64(hash);
+  out.write(reinterpret_cast<const char*>(legacy_payload.data()),static_cast<std::streamsize>(legacy_payload.size()));}
+ state::Snapshot legacy;check(state::StateFile::load(legacy_path,legacy,&error),"loads legacy version 1 save state");
+ check(legacy.cpu.gpr[3]==0xAABBCCDDU&&legacy.cpu.pc==0x12340000U&&legacy.cpu.fpscr==0xCAFEBABEU,
+       "restores legacy v1 CPU fields while defaulting new context");
+ std::remove(legacy_path);
  {FILE*f=std::fopen(path,"r+b");if(f){std::fseek(f,-1,SEEK_END);int v=std::fgetc(f);std::fseek(f,-1,SEEK_END);std::fputc(v^0xFF,f);std::fclose(f);}}
  check(!state::StateFile::load(path,restored,&error),"rejects corrupted snapshot checksum");
  std::remove(path);return failures?EXIT_FAILURE:EXIT_SUCCESS;
