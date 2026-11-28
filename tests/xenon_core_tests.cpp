@@ -1,11 +1,11 @@
-#include "wx360/machine/xenon_core.hpp"
+#include "onix360/machine/xenon_core.hpp"
 
 #include <array>
 #include <cstdlib>
 #include <iostream>
 
 namespace {
-void kernel_test_service(wx360::cpu::XenonThreadState& state) noexcept {
+void kernel_test_service(onix360::cpu::XenonThreadState& state) noexcept {
     state.gpr[3] = 0xBEEFU;
 }
 int failures = 0;
@@ -15,7 +15,7 @@ void check(bool value, const char* message) {
 }
 
 int main() {
-    using namespace wx360;
+    using namespace onix360;
     memory::PhysicalMemory ram(0x4000);
     const std::array<std::uint8_t, 4> addi{0x38, 0x60, 0x00, 0x2A};
     check(ram.write(0x100, addi) == memory::MemoryResult::Ok,
@@ -375,9 +375,9 @@ int main() {
     check(integrated_core.gpu.configure_framebuffer(4, 4),
           "configure integrated GPU framebuffer");
     const std::uint32_t clear_header = (3U << 30U) |
-        (static_cast<std::uint32_t>(gpu::XenosCommandProcessor::wx360_clear_opcode) << 8U);
+        (static_cast<std::uint32_t>(gpu::XenosCommandProcessor::onix360_clear_opcode) << 8U);
     const std::uint32_t present_header = (3U << 30U) |
-        (static_cast<std::uint32_t>(gpu::XenosCommandProcessor::wx360_present_opcode) << 8U);
+        (static_cast<std::uint32_t>(gpu::XenosCommandProcessor::onix360_present_opcode) << 8U);
     const std::array<std::uint32_t, 4> gpu_words{
         clear_header, 0xFF123456U, present_header, 0U};
     std::array<std::uint8_t, 16> gpu_bytes{};
@@ -418,7 +418,7 @@ int main() {
           execute_only_core.state.pc == 0x9004U,
           "XenonCore fetches and executes from Execute-only virtual page");
 
-    if (failures == 0) std::cout << "WX360 Xenon core integration tests passed\n";
+    if (failures == 0) std::cout << "Onix360 Xenon core integration tests passed\n";
     // External IRQ requests remain latched while MSR[EE] is disabled,
     // then enter vector 0x500 at the next instruction boundary.
     memory::PhysicalMemory irq_ram(0x4000);

@@ -1,9 +1,9 @@
-#include "wx360/memory/xenon_address_layout.hpp"
+#include "onix360/memory/xenon_address_layout.hpp"
 #include <cstdlib>
 #include <iostream>
 
 int main() {
-    using namespace wx360::memory;
+    using namespace onix360::memory;
     int failures = 0;
     auto check = [&](bool ok, const char* label) {
         if (!ok) { std::cerr << "FAIL: " << label << '\n'; ++failures; }

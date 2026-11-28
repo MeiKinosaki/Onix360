@@ -1,11 +1,11 @@
-#include "wx360/gpu/xenos_command_processor.hpp"
+#include "onix360/gpu/xenos_command_processor.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <array>
 #include <bit>
 
 int main() {
-    using namespace wx360::gpu;
+    using namespace onix360::gpu;
     int failures = 0;
     const auto check = [&](bool ok, const char* label) {
         if (!ok) { std::cerr << "FAIL: " << label << '\\n'; ++failures; }
@@ -67,7 +67,7 @@ int main() {
           Pm4DecodeResult::EndOfStream,
           "reports end of command stream");
 
-    // WX360-only software draw packet: 3 XY pairs (float bit patterns) + RGBA.
+    // Onix360-only software draw packet: 3 XY pairs (float bit patterns) + RGBA.
     XenosCommandProcessor draw;
     check(draw.configure_framebuffer(32, 32), "configures command processor framebuffer");
     const std::array<std::uint32_t, 7> tri{
@@ -76,8 +76,8 @@ int main() {
         std::bit_cast<std::uint32_t>(4.0F), std::bit_cast<std::uint32_t>(24.0F),
         0xFF55AA33U};
     Pm4PacketView draw_packet{Pm4PacketType::Type3,
-        XenosCommandProcessor::wx360_draw_triangle_opcode, 0, false, tri, 8};
-    check(draw.execute_packet(draw_packet), "executes WX360 software triangle packet");
+        XenosCommandProcessor::onix360_draw_triangle_opcode, 0, false, tri, 8};
+    check(draw.execute_packet(draw_packet), "executes Onix360 software triangle packet");
     check(draw.framebuffer().pixels()[10U * 32U + 10U] == 0xFF55AA33U,
           "PM4 software triangle reaches framebuffer");
     draw_packet.payload = std::span<const std::uint32_t>(tri.data(), 6);
@@ -88,7 +88,7 @@ int main() {
         2U, 2U, 1U, 1U, 4U, 4U,
         0xFF000001U, 0xFF000002U, 0xFF000003U, 0xFF000004U};
     Pm4PacketView texture_packet{Pm4PacketType::Type3,
-        XenosCommandProcessor::wx360_texture_blit_opcode, 0, false,
+        XenosCommandProcessor::onix360_texture_blit_opcode, 0, false,
         texture_command, texture_command.size() + 1U};
     check(texture_gpu.execute_packet(texture_packet),
           "executes bounded software texture blit packet");
