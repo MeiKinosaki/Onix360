@@ -1,6 +1,6 @@
-#include "wx360/cpu/powerpc_interpreter.hpp"
-#include "wx360/ui/aurora_window.hpp"
-#include "wx360/storage/data_directories.hpp"
+#include "onix360/cpu/powerpc_interpreter.hpp"
+#include "onix360/ui/aurora_window.hpp"
+#include "onix360/storage/data_directories.hpp"
 #if defined(_WIN32)
 #include <windows.h>
 #endif
@@ -44,34 +44,34 @@ int main(int argc, char** argv) {
     if (executable.empty() && argc > 0 && argv[0] != nullptr)
         executable = std::filesystem::absolute(argv[0]);
     if (executable.empty())
-        executable = std::filesystem::current_path() / "WX360.exe";
+        executable = std::filesystem::current_path() / "Onix360.exe";
 
-    wx360::storage::DataDirectories directories(
-        wx360::storage::DataDirectories::portable_root(executable));
+    onix360::storage::DataDirectories directories(
+        onix360::storage::DataDirectories::portable_root(executable));
     std::error_code directory_error;
     if (!directories.create(&directory_error)) {
-        std::cerr << "Unable to create portable WX360-data folders: "
+        std::cerr << "Unable to create portable Onix360-data folders: "
                   << directory_error.message() << "\n";
         return 3;
     }
-    std::cout << "WX360 - Windows Xbox 360 Emulator\n"
+    std::cout << "Onix360 - Windows Xbox 360 Emulator\n"
               << "Version: " << kVersion << "\n"
               << "CPU baseline: x86-64 / SSE2; AVX2 is not required.\n";
     if (!has_sse2()) {
         std::cerr << "This build requires an SSE2-capable CPU.\n";
         return 1;
     }
-    wx360::cpu::XenonThreadState thread;
+    onix360::cpu::XenonThreadState thread;
     thread.reset(0x10000);
-    const auto result = wx360::cpu::execute(thread, 0x38600001U); // addi r3,r0,1
+    const auto result = onix360::cpu::execute(thread, 0x38600001U); // addi r3,r0,1
     std::cout << "Interpreter smoke test: "
-              << (result == wx360::cpu::StepResult::Executed ? "instruction executed" : "unsupported")
+              << (result == onix360::cpu::StepResult::Executed ? "instruction executed" : "unsupported")
               << "; r3=" << thread.gpr[3] << "; PC=0x"
               << std::hex << thread.pc << std::dec << "\n"
               << "Status: limited PowerPC interpreter; not a complete Xenon CPU.\n";
-    if (result != wx360::cpu::StepResult::Executed || thread.gpr[3] != 1) return 2;
+    if (result != onix360::cpu::StepResult::Executed || thread.gpr[3] != 1) return 2;
 #if defined(_WIN32)
-    wx360::ui::AuroraWindow dashboard;
+    onix360::ui::AuroraWindow dashboard;
     return dashboard.run(GetModuleHandleW(nullptr), SW_SHOW, directories.roms());
 #else
     return 0;

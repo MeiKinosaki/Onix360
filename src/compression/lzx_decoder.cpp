@@ -1,4 +1,4 @@
-#include "wx360/compression/lzx_decoder.hpp"
+#include "onix360/compression/lzx_decoder.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -12,7 +12,7 @@ extern "C" {
 #include <lzx.h>
 }
 
-namespace wx360::compression {
+namespace onix360::compression {
 namespace {
 struct MemoryFile {
     mspack_file base{};
@@ -124,4 +124,4 @@ LzxError decode_lzx(std::span<const std::uint8_t> input,
     output = std::move(decoded);
     return LzxError::None;
 }
-} // namespace wx360::compression
+} // namespace onix360::compression

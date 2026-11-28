@@ -1,4 +1,4 @@
-#include "wx360/audio/windows_pcm_output.hpp"
+#include "onix360/audio/windows_pcm_output.hpp"
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -6,7 +6,7 @@
 
 #include <limits>
 
-namespace wx360::audio {
+namespace onix360::audio {
 
 bool WindowsPcmOutput::play(std::span<const std::int16_t> samples,
                             std::uint32_t sample_rate) noexcept {
@@ -73,13 +73,13 @@ bool WindowsPcmOutput::play(std::span<const std::int16_t> samples,
     return last_error_ == 0U && result == MMSYSERR_NOERROR;
 }
 
-} // namespace wx360::audio
+} // namespace onix360::audio
 #else
-namespace wx360::audio {
+namespace onix360::audio {
 bool WindowsPcmOutput::play(std::span<const std::int16_t>,
                             std::uint32_t) noexcept {
     last_error_ = 1U;
     return false;
 }
-} // namespace wx360::audio
+} // namespace onix360::audio
 #endif
