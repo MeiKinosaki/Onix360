@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wx360/input/controller_state.hpp"
+#include "onix360/input/controller_state.hpp"
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -13,7 +13,7 @@
 #include <Xinput.h>
 #endif
 
-namespace wx360::input {
+namespace onix360::input {
 
 // Polls the first XInput controller. Returns false when unavailable.
 // On non-Windows hosts this backend is deliberately inert so CI remains portable.
@@ -47,4 +47,4 @@ public:
     }
 };
 
-} // namespace wx360::input
+} // namespace onix360::input

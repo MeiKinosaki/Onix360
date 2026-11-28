@@ -1,7 +1,7 @@
 #pragma once
 
-#include "wx360/memory/physical_memory.hpp"
-#include "wx360/memory/address_space.hpp"
+#include "onix360/memory/physical_memory.hpp"
+#include "onix360/memory/address_space.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -10,7 +10,7 @@
 #include <map>
 #include <optional>
 
-namespace wx360::kernel {
+namespace onix360::kernel {
 
 // Deterministic guest-physical heap for early xboxkrnl memory services.
 // The heap owns only its configured RAM interval; it never grows host RAM.
@@ -210,4 +210,4 @@ private:
     std::map<std::uint32_t, std::uint32_t> allocated_;
 };
 
-} // namespace wx360::kernel
+} // namespace onix360::kernel

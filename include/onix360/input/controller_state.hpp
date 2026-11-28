@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <cstdlib>
 
-namespace wx360::input {
+namespace onix360::input {
 enum ControllerButton : std::uint16_t {
     DpadUp = 1U << 0U, DpadDown = 1U << 1U,
     DpadLeft = 1U << 2U, DpadRight = 1U << 3U,
