@@ -16,6 +16,8 @@ class PowerPcHashedPageTable {
 public:
     static constexpr std::size_t entries_per_group = 8;
     static constexpr std::size_t pte_size = 8;
+    static constexpr std::size_t minimum_group_count = 1024; // 64 KiB HTAB.
+    static constexpr std::size_t maximum_group_count = 524288; // 32 MiB HTAB.
     static constexpr std::uint32_t valid_bit = 0x80000000U;
     static constexpr std::uint32_t secondary_hash_bit = 0x40U;
     static constexpr std::uint32_t vsid_mask = 0x00FFFFFFU;
@@ -32,13 +34,16 @@ public:
     [[nodiscard]] MemoryResult configure(std::uint32_t physical_base,
                                          std::size_t group_count,
                                          const PhysicalMemory& ram) noexcept {
-        if (group_count == 0 || (group_count & (group_count - 1U)) != 0U ||
-            (physical_base & 0x3FU) != 0U)
+        if (group_count < minimum_group_count ||
+            group_count > maximum_group_count ||
+            (group_count & (group_count - 1U)) != 0U)
             return MemoryResult::AlignmentFault;
-        if (group_count > (ram.size() / (entries_per_group * pte_size)) ||
-            physical_base > ram.size() ||
-            group_count * entries_per_group * pte_size >
-                ram.size() - physical_base)
+        constexpr std::size_t bytes_per_group = entries_per_group * pte_size;
+        const std::size_t table_bytes = group_count * bytes_per_group;
+        if ((physical_base % table_bytes) != 0U)
+            return MemoryResult::AlignmentFault;
+        if (physical_base > ram.size() ||
+            table_bytes > ram.size() - physical_base)
             return MemoryResult::OutOfRange;
         base_ = physical_base;
         groups_ = group_count;
