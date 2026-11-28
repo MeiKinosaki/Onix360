@@ -10,7 +10,7 @@ int main() {
     auto check = [&](bool ok, const char* label) {
         if (!ok) { std::cerr << "FAIL: " << label << '\n'; ++failures; }
     };
-    check(table.configure(0x1000, 8, ram) == MemoryResult::Ok,
+    check(table.configure(0x10000, 1024, ram) == MemoryResult::Ok,
           "configures aligned power-of-two HTAB");
     constexpr std::uint32_t vsid = 0x123456U;
     constexpr std::uint64_t ea = 0x12345ABCULL;
@@ -26,7 +26,7 @@ int main() {
           "rejects unaligned physical page");
 
     const auto hash = PowerPcHashedPageTable::page_hash(vsid, ea);
-    const auto primary_group = 0x1000U +
+    const auto primary_group = 0x10000U +
         (hash & 7U) * PowerPcHashedPageTable::entries_per_group *
         PowerPcHashedPageTable::pte_size;
     for (std::size_t i = 0; i < 8; ++i) {
@@ -57,11 +57,11 @@ int main() {
           secondary.physical_address == 0xADEF &&
           secondary.secondary && secondary.pp == 1,
           "walks secondary PTEG and reports secondary match");
-    check(table.configure(0x1001, 8, ram) == MemoryResult::AlignmentFault,
+    check(table.configure(0x1001, 1024, ram) == MemoryResult::AlignmentFault,
           "rejects unaligned HTAB base");
-    check(table.configure(0x1000, 3, ram) == MemoryResult::AlignmentFault,
+    check(table.configure(0x10000, 1025, ram) == MemoryResult::AlignmentFault,
           "rejects non-power-of-two PTEG count");
-    check(table.configure(0xFFFC0, 8, ram) == MemoryResult::OutOfRange,
+    check(table.configure(0x100000, 1024, ram) == MemoryResult::OutOfRange,
           "rejects HTAB outside physical RAM");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
