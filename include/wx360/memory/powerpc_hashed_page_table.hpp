@@ -1,0 +1,176 @@
+#pragma once
+
+#include "wx360/memory/physical_memory.hpp"
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <span>
+
+namespace wx360::memory {
+
+// First-stage 32-bit PowerPC hashed-page-table walker for 4 KiB pages.
+// The table is stored in guest physical memory as big-endian PTE0/PTE1 pairs.
+// It resolves mappings only; segment-key and PP access checks are a separate stage.
+class PowerPcHashedPageTable {
+public:
+    static constexpr std::size_t entries_per_group = 8;
+    static constexpr std::size_t pte_size = 8;
+    static constexpr std::uint32_t valid_bit = 0x80000000U;
+    static constexpr std::uint32_t secondary_hash_bit = 0x40U;
+    static constexpr std::uint32_t vsid_mask = 0x00FFFFFFU;
+    static constexpr std::uint32_t rpn_mask = 0xFFFFF000U;
+
+    struct Lookup {
+        MemoryResult result{MemoryResult::Unmapped};
+        std::uint64_t physical_address{};
+        std::uint8_t pp{};
+        bool secondary{};
+        std::uint64_t pte_address{};
+    };
+
+    [[nodiscard]] MemoryResult configure(std::uint32_t physical_base,
+                                         std::size_t group_count,
+                                         const PhysicalMemory& ram) noexcept {
+        if (group_count == 0 || (group_count & (group_count - 1U)) != 0U ||
+            (physical_base & 0x3FU) != 0U)
+            return MemoryResult::AlignmentFault;
+        if (group_count > (ram.size() / (entries_per_group * pte_size)) ||
+            physical_base > ram.size() ||
+            group_count * entries_per_group * pte_size >
+                ram.size() - physical_base)
+            return MemoryResult::OutOfRange;
+        base_ = physical_base;
+        groups_ = group_count;
+        configured_ = true;
+        return MemoryResult::Ok;
+    }
+
+    [[nodiscard]] bool configured() const noexcept { return configured_; }
+    [[nodiscard]] std::size_t group_count() const noexcept { return groups_; }
+
+    [[nodiscard]] MemoryResult insert(std::uint32_t vsid,
+                                      std::uint64_t effective_address,
+                                      std::uint32_t physical_page,
+                                      std::uint8_t pp,
+                                      PhysicalMemory& ram) const noexcept {
+        if (!configured_) return MemoryResult::Unmapped;
+        if ((physical_page & 0xFFFU) != 0U || pp > 3U)
+            return MemoryResult::AlignmentFault;
+        const auto primary = page_hash(vsid, effective_address);
+        auto status = insert_in_group(primary, false, vsid, effective_address,
+                                       physical_page, pp, ram);
+        if (status == MemoryResult::Ok) return status;
+        if (status != MemoryResult::Unmapped) return status;
+        return insert_in_group(~primary, true, vsid, effective_address,
+                               physical_page, pp, ram);
+    }
+
+    [[nodiscard]] Lookup lookup(std::uint32_t vsid,
+                                std::uint64_t effective_address,
+                                const PhysicalMemory& ram) const noexcept {
+        if (!configured_) return {MemoryResult::Unmapped};
+        const auto primary = page_hash(vsid, effective_address);
+        auto found = lookup_group(primary, false, vsid, effective_address, ram);
+        if (found.result == MemoryResult::Ok) return found;
+        if (found.result != MemoryResult::Unmapped) return found;
+        return lookup_group(~primary, true, vsid, effective_address, ram);
+    }
+
+    [[nodiscard]] static constexpr std::uint32_t page_hash(
+        std::uint32_t vsid, std::uint64_t effective_address) noexcept {
+        const auto page_index =
+            static_cast<std::uint32_t>((effective_address >> 12U) & 0xFFFFU);
+        return (vsid & vsid_mask) ^ page_index;
+    }
+
+private:
+    [[nodiscard]] std::uint64_t group_address(std::uint32_t hash) const noexcept {
+        const auto group = static_cast<std::size_t>(hash) & (groups_ - 1U);
+        return static_cast<std::uint64_t>(base_) +
+               group * entries_per_group * pte_size;
+    }
+
+    [[nodiscard]] static std::uint32_t make_pte0(
+        std::uint32_t vsid, std::uint64_t ea, bool secondary) noexcept {
+        const auto api = static_cast<std::uint32_t>((ea >> 22U) & 0x3FU);
+        return valid_bit | ((vsid & vsid_mask) << 7U) |
+               (secondary ? secondary_hash_bit : 0U) | api;
+    }
+
+    [[nodiscard]] static std::uint32_t make_pte1(
+        std::uint32_t physical_page, std::uint8_t pp) noexcept {
+        return (physical_page & rpn_mask) | (pp & 3U);
+    }
+
+    [[nodiscard]] static bool read_word(const PhysicalMemory& ram,
+                                        std::uint64_t address,
+                                        std::uint32_t& value) noexcept {
+        std::array<std::uint8_t,4> bytes{};
+        if (ram.read(address, bytes) != MemoryResult::Ok) return false;
+        value = (static_cast<std::uint32_t>(bytes[0]) << 24U) |
+                (static_cast<std::uint32_t>(bytes[1]) << 16U) |
+                (static_cast<std::uint32_t>(bytes[2]) << 8U) | bytes[3];
+        return true;
+    }
+
+    [[nodiscard]] static bool write_word(PhysicalMemory& ram,
+                                         std::uint64_t address,
+                                         std::uint32_t value) noexcept {
+        const std::array<std::uint8_t,4> bytes{
+            static_cast<std::uint8_t>(value >> 24U),
+            static_cast<std::uint8_t>(value >> 16U),
+            static_cast<std::uint8_t>(value >> 8U),
+            static_cast<std::uint8_t>(value)};
+        return ram.write(address, bytes) == MemoryResult::Ok;
+    }
+
+    [[nodiscard]] MemoryResult insert_in_group(
+        std::uint32_t hash, bool secondary, std::uint32_t vsid,
+        std::uint64_t ea, std::uint32_t physical_page, std::uint8_t pp,
+        PhysicalMemory& ram) const noexcept {
+        const auto first = group_address(hash);
+        for (std::size_t i = 0; i < entries_per_group; ++i) {
+            const auto pte = first + i * pte_size;
+            std::uint32_t pte0{};
+            if (!read_word(ram, pte, pte0)) return MemoryResult::OutOfRange;
+            if ((pte0 & valid_bit) != 0U) continue;
+            if (!write_word(ram, pte + 4U, make_pte1(physical_page, pp)) ||
+                !write_word(ram, pte, make_pte0(vsid, ea, secondary)))
+                return MemoryResult::OutOfRange;
+            return MemoryResult::Ok;
+        }
+        return MemoryResult::Unmapped;
+    }
+
+    [[nodiscard]] Lookup lookup_group(
+        std::uint32_t hash, bool secondary, std::uint32_t vsid,
+        std::uint64_t ea, const PhysicalMemory& ram) const noexcept {
+        const auto first = group_address(hash);
+        const auto expected = make_pte0(vsid, ea, secondary);
+        for (std::size_t i = 0; i < entries_per_group; ++i) {
+            const auto pte = first + i * pte_size;
+            std::uint32_t pte0{}, pte1{};
+            if (!read_word(ram, pte, pte0) ||
+                !read_word(ram, pte + 4U, pte1))
+                return {MemoryResult::OutOfRange};
+            if ((pte0 & (valid_bit | (vsid_mask << 7U) |
+                         secondary_hash_bit | 0x3FU)) != expected)
+                continue;
+            const auto page_offset = effective_page_offset(ea);
+            return {MemoryResult::Ok,
+                    static_cast<std::uint64_t>(pte1 & rpn_mask) + page_offset,
+                    static_cast<std::uint8_t>(pte1 & 3U), secondary, pte};
+        }
+        return {MemoryResult::Unmapped};
+    }
+
+    [[nodiscard]] static constexpr std::uint64_t effective_page_offset(
+        std::uint64_t ea) noexcept { return ea & 0xFFFU; }
+
+    std::uint32_t base_{};
+    std::size_t groups_{};
+    bool configured_{};
+};
+
+} // namespace wx360::memory
