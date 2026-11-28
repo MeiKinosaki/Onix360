@@ -1,17 +1,17 @@
-#include "wx360/kernel/xex_import_resolver.hpp"
+#include "onix360/kernel/xex_import_resolver.hpp"
 
 #include <array>
 #include <cstdlib>
 #include <iostream>
 
-using wx360::kernel::ImportKind;
-using wx360::kernel::ImportResolveError;
-using wx360::kernel::KernelExport;
-using wx360::kernel::XexImport;
-using wx360::kernel::XexImportResolver;
+using onix360::kernel::ImportKind;
+using onix360::kernel::ImportResolveError;
+using onix360::kernel::KernelExport;
+using onix360::kernel::XexImport;
+using onix360::kernel::XexImportResolver;
 
 int main() {
-    wx360::memory::PhysicalMemory ram(0x4000);
+    onix360::memory::PhysicalMemory ram(0x4000);
     XexImportResolver resolver;
 
     // These are test-only guest addresses. Function entries represent
@@ -116,9 +116,9 @@ int main() {
     }
     // Exercise the same resolver through guest virtual addresses rather
     // than bypassing the Xenon address space with physical offsets.
-    wx360::memory::AddressSpace address_space;
+    onix360::memory::AddressSpace address_space;
     if (address_space.map_page(0x10000, 0x1000, 7) !=
-        wx360::memory::MemoryResult::Ok) {
+        onix360::memory::MemoryResult::Ok) {
         std::cerr << "Could not install guest import test mapping\\n";
         return EXIT_FAILURE;
     }

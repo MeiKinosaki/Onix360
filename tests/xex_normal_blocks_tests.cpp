@@ -1,4 +1,4 @@
-#include "wx360/xex/xex_normal_blocks.hpp"
+#include "onix360/xex/xex_normal_blocks.hpp"
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -14,7 +14,7 @@ static void be32(std::vector<std::uint8_t>& b, std::size_t p, std::uint32_t v) {
 static void descriptor(std::vector<std::uint8_t>& b, std::size_t p,
                        const std::vector<std::uint8_t>& next) {
     be32(b, p, static_cast<std::uint32_t>(next.size()));
-    const auto digest = wx360::crypto::sha1(next);
+    const auto digest = onix360::crypto::sha1(next);
     std::copy(digest.begin(), digest.end(), b.begin() + static_cast<std::ptrdiff_t>(p + 4));
 }
 static std::vector<std::uint8_t> make_block(const std::string& payload) {
@@ -25,13 +25,13 @@ static std::vector<std::uint8_t> make_block(const std::string& payload) {
     return block;
 }
 int main() {
-    using namespace wx360::xex;
+    using namespace onix360::xex;
 
     // Single authenticated block with a u16-sized chunk and terminator.
     auto single = make_block("hello");
     NormalBlockDescriptor first{};
     first.block_size = static_cast<std::uint32_t>(single.size());
-    first.hash = wx360::crypto::sha1(single);
+    first.hash = onix360::crypto::sha1(single);
     std::vector<std::uint8_t> output;
     if (unpack_normal_chunks(single, first, 5, output) != NormalBlockError::Ok ||
         output.size() != 5 || std::string(output.begin(), output.end()) != "hello") {
@@ -50,7 +50,7 @@ int main() {
     std::copy_n("hello", 5, first_block.begin() + 26);
     NormalBlockDescriptor chain{};
     chain.block_size = static_cast<std::uint32_t>(first_block.size());
-    chain.hash = wx360::crypto::sha1(first_block);
+    chain.hash = onix360::crypto::sha1(first_block);
     std::vector<std::uint8_t> chained = first_block;
     chained.insert(chained.end(), second.begin(), second.end());
     if (unpack_normal_chunks(chained, chain, 10, output) != NormalBlockError::Ok ||

@@ -1,4 +1,4 @@
-#include "wx360/xex/xex_image_loader.hpp"
+#include "onix360/xex/xex_image_loader.hpp"
 
 #include <array>
 #include <cstdlib>
@@ -22,13 +22,13 @@ int main() {
     put_be32(bytes, 20, 1);
     put_be32(bytes, 24, 0x00010100);
     put_be32(bytes, 28, 0x82000000);
-    const auto path = std::filesystem::temp_directory_path() / "wx360_xex_loader_test.xex";
+    const auto path = std::filesystem::temp_directory_path() / "onix360_xex_loader_test.xex";
     {
         std::ofstream out(path, std::ios::binary);
         out.write(reinterpret_cast<const char*>(bytes.data()),
                   static_cast<std::streamsize>(bytes.size()));
     }
-    const auto result = wx360::xex::XexImageLoader::inspect(path);
+    const auto result = onix360::xex::XexImageLoader::inspect(path);
     std::error_code ec;
     std::filesystem::remove(path, ec);
     if (!result || result.plan.entry_point != 0x82000000 ||
@@ -39,19 +39,19 @@ int main() {
     // An XEX that declares imports must not be treated as validated unless
     // both the kernel export registry and guest MMU are supplied. The early
     // rejection must leave caller RAM and mappings untouched.
-    wx360::memory::PhysicalMemory guarded_ram(0x4000);
+    onix360::memory::PhysicalMemory guarded_ram(0x4000);
     const std::array<std::uint8_t, 4> guard{{0x11, 0x22, 0x33, 0x44}};
-    if (guarded_ram.write(0x1000, guard) != wx360::memory::MemoryResult::Ok)
+    if (guarded_ram.write(0x1000, guard) != onix360::memory::MemoryResult::Ok)
         return EXIT_FAILURE;
-    wx360::memory::AddressSpace guarded_as;
-    wx360::xex::FullXexImage import_image{};
+    onix360::memory::AddressSpace guarded_as;
+    onix360::xex::FullXexImage import_image{};
     import_image.header.has_import_libraries = true;
-    const auto rejected_import_image = wx360::xex::XexImageLoader::load_validated(
+    const auto rejected_import_image = onix360::xex::XexImageLoader::load_validated(
         import_image, guarded_ram, 0x1000, 0x82000000);
     std::array<std::uint8_t, 4> after_guard{};
     if (rejected_import_image ||
-        guarded_ram.read(0x1000, after_guard) != wx360::memory::MemoryResult::Ok ||
-        after_guard != guard || guarded_as.translate(0x82000000, wx360::memory::Access::Read, guarded_ram).result != wx360::memory::MemoryResult::Unmapped) {
+        guarded_ram.read(0x1000, after_guard) != onix360::memory::MemoryResult::Ok ||
+        after_guard != guard || guarded_as.translate(0x82000000, onix360::memory::Access::Read, guarded_ram).result != onix360::memory::MemoryResult::Unmapped) {
         std::cerr << "XEX loader accepted unresolved imports or mutated guest state\\n";
         return EXIT_FAILURE;
     }
