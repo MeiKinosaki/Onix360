@@ -24,6 +24,15 @@ struct RendererSelection {
     bool available{};
 };
 
+[[nodiscard]] constexpr RendererAvailability compiled_renderer_availability() noexcept {
+    RendererAvailability result{};
+    result.software = true;
+#ifdef _WIN32
+    result.direct3d11 = true;
+#endif
+    return result;
+}
+
 [[nodiscard]] constexpr bool renderer_available(
     RendererBackend backend, const RendererAvailability& availability) noexcept {
     switch (backend) {
