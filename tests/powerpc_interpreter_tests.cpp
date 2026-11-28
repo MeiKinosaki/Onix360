@@ -68,6 +68,19 @@ int main() {
     check(s.fpr[8] == std::bit_cast<std::uint64_t>(
               static_cast<double>(static_cast<float>(3.375))),
           "FMULS reads FRC and stores a binary32-rounded result");
+
+    s.fpr[1] = std::bit_cast<std::uint64_t>(2.0);
+    s.fpr[2] = std::bit_cast<std::uint64_t>(11.0);
+    s.fpr[3] = std::bit_cast<std::uint64_t>(-7.0);
+    const std::uint32_t fsel = (63U << 26U) | (9U << 21U) |
+        (1U << 16U) | (2U << 11U) | (3U << 6U) | (23U << 1U);
+    check(execute(s, fsel) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[9]) == 11.0,
+          "FSEL selects FRB when FRA is nonnegative");
+    s.fpr[1] = std::bit_cast<std::uint64_t>(-2.0);
+    check(execute(s, fsel) == StepResult::Executed &&
+          std::bit_cast<double>(s.fpr[9]) == -7.0,
+          "FSEL selects FRC when FRA is negative");
     s.fpscr = 0xA0000000U;
     check(execute(s, fadd | 1U) == StepResult::Executed, "FADD. executes with Rc set");
     check(s.condition_field(1) == 0xA,
