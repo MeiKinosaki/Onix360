@@ -1259,6 +1259,12 @@ int main() {
           "segment register decoder extracts the 24-bit VSID field");
     check(segment_fields.key_supervisor && segment_fields.key_problem,
           "segment register decoder extracts both protection key bits");
+    check(decode_segment_register(segment_key_supervisor_mask).key_supervisor &&
+          !decode_segment_register(segment_key_supervisor_mask).key_problem,
+          "segment register Ks is the architectural bit 1");
+    check(decode_segment_register(segment_key_problem_mask).key_problem &&
+          !decode_segment_register(segment_key_problem_mask).key_supervisor,
+          "segment register Kp is the architectural bit 2");
     check(segment_fields.no_execute && segment_fields.translation_enabled,
           "segment register decoder extracts N and translation-enable bits");
     const auto plain_segment = decode_segment_register(0x00123456U);
