@@ -1,4 +1,4 @@
-#include "wx360/state/state_file.hpp"
+#include "onix360/state/state_file.hpp"
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -6,7 +6,7 @@
 #include <fstream>
 namespace { int failures=0; void check(bool ok,const char*m){if(!ok){std::cerr<<"FAIL: "<<m<<'\n';++failures;}} }
 int main(){
- using namespace wx360;
+ using namespace onix360;
  state::Snapshot source; source.cpu.pc=0x123456789ABCDEF0ULL;source.cpu.gpr[3]=0xDEADBEEF12345678ULL;
  source.cpu.lr=0x1000;source.cpu.ctr=77;source.cpu.xer=0x20000000;source.cpu.cr=0xA1234567;
  source.cpu.msr=0x8000000000000000ULL;source.cpu.fpscr=0xCAFEBABE;
@@ -16,7 +16,7 @@ int main(){
  source.cpu.reservation_valid=true;source.cpu.reservation_address=0x82001000ULL;
  source.cpu.decrementer=0x10203040U;source.cpu.timebase_ticks=0x1122334455667788ULL;source.cpu.exception_vector=0x500U;
  source.ram={0,1,2,3,0xFE,0xFF};
- const char* path="wx360_state_test.bin";std::string error;
+ const char* path="onix360_state_test.bin";std::string error;
  check(state::StateFile::save(path,source,&error),"saves CPU and RAM snapshot");
  state::Snapshot restored;check(state::StateFile::load(path,restored,&error),"loads valid snapshot");
  check(restored.cpu.pc==source.cpu.pc&&restored.cpu.gpr[3]==source.cpu.gpr[3],"restores PC and GPR");
@@ -37,8 +37,8 @@ int main(){
  put32(legacy_payload,0x12345678U);put64(legacy_payload,0x8000U);put32(legacy_payload,0xCAFEBABEU);
  std::uint64_t hash=1469598103934665603ULL;
  for(auto byte:legacy_payload){hash^=byte;hash*=1099511628211ULL;}
- const char* legacy_path="wx360_state_v1_legacy.bin";
- {std::ofstream out(legacy_path,std::ios::binary|std::ios::trunc);out.write("WX360ST\0",8);
+ const char* legacy_path="onix360_state_v1_legacy.bin";
+ {std::ofstream out(legacy_path,std::ios::binary|std::ios::trunc);out.write("Onix360ST\0",8);
   auto write32=[&](std::uint32_t v){for(unsigned i=0;i<4;++i)out.put(static_cast<char>(v>>(8*i)));};
   auto write64=[&](std::uint64_t v){for(unsigned i=0;i<8;++i)out.put(static_cast<char>(v>>(8*i)));};
   write32(1);write64(0);write64(legacy_payload.size());write64(hash);

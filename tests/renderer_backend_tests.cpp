@@ -1,10 +1,10 @@
-#include "wx360/gpu/renderer_backend.hpp"
-#include "wx360/gpu/renderer_interface.hpp"
-#include "wx360/gpu/renderer_factory.hpp"
+#include "onix360/gpu/renderer_backend.hpp"
+#include "onix360/gpu/renderer_interface.hpp"
+#include "onix360/gpu/renderer_factory.hpp"
 #include <array>
 #include <cstdlib>
 #include <iostream>
-using namespace wx360::gpu;
+using namespace onix360::gpu;
 int main() {
     int failures = 0;
     auto check = [&](bool ok, const char* label) {

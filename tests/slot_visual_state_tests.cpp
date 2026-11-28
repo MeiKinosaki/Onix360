@@ -1,11 +1,11 @@
-#include "wx360/ui/slot_visual_state.hpp"
+#include "onix360/ui/slot_visual_state.hpp"
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 int main() {
- using namespace wx360;
- const auto dir = std::filesystem::temp_directory_path() / "wx360_slot_visual_tests";
+ using namespace onix360;
+ const auto dir = std::filesystem::temp_directory_path() / "onix360_slot_visual_tests";
  std::error_code ec; std::filesystem::remove_all(dir, ec);
  state::StateSlots slots(dir);
  if (ui::slot_visual_state(slots, 0) != ui::SlotVisualState::Empty) return EXIT_FAILURE;
@@ -19,6 +19,6 @@ int main() {
  if (ui::slot_visual_state(slots, 0) != ui::SlotVisualState::Empty) return EXIT_FAILURE;
  if (ui::slot_visual_state(slots, state::StateSlots::kSlotCount) != ui::SlotVisualState::Empty) return EXIT_FAILURE;
  std::filesystem::remove_all(dir, ec);
- std::cout << "WX360 slot visual state tests passed\\n";
+ std::cout << "Onix360 slot visual state tests passed\\n";
  return EXIT_SUCCESS;
 }
