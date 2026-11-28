@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wx360/storage/stfs_package.hpp"
+#include "onix360/storage/stfs_package.hpp"
 
 #include <algorithm>
 #include <array>
@@ -14,7 +14,7 @@
 #include <limits>
 #include <vector>
 
-namespace wx360::storage {
+namespace onix360::storage {
 
 [[nodiscard]] inline bool parse_fragment_name(
     const std::string& filename, std::uint32_t& index) noexcept {
@@ -140,4 +140,4 @@ public:
     }
 };
 
-} // namespace wx360::storage
+} // namespace onix360::storage

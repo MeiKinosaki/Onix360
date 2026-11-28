@@ -11,15 +11,15 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "wx360/storage/data_directories.hpp"
-#include "wx360/storage/game_library.hpp"
-#include "wx360/storage/content_library.hpp"
-#include "wx360/state/state_slots.hpp"
-#include "wx360/ui/slot_visual_state.hpp"
-#include "wx360/ui/clock_display.hpp"
-#include "wx360/xex/xex_image_loader.hpp"
+#include "onix360/storage/data_directories.hpp"
+#include "onix360/storage/game_library.hpp"
+#include "onix360/storage/content_library.hpp"
+#include "onix360/state/state_slots.hpp"
+#include "onix360/ui/slot_visual_state.hpp"
+#include "onix360/ui/clock_display.hpp"
+#include "onix360/xex/xex_image_loader.hpp"
 
-namespace wx360::ui {
+namespace onix360::ui {
 class AuroraWindow {
 public:
  int run(HINSTANCE instance, int show, std::filesystem::path rom_root = {}) {
@@ -33,12 +33,12 @@ public:
   WNDCLASSW wc{};
   wc.lpfnWndProc = window_proc;
   wc.hInstance = instance;
-  wc.lpszClassName = L"WX360AuroraWindow";
+  wc.lpszClassName = L"Onix360AuroraWindow";
   wc.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
   wc.hbrBackground = nullptr;
   RegisterClassW(&wc);
   instance_ = instance;
-  HWND window = CreateWindowExW(0, wc.lpszClassName, L"WX360 | Aurora-style Dashboard",
+  HWND window = CreateWindowExW(0, wc.lpszClassName, L"Onix360 | Aurora-style Dashboard",
       WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 1180, 760,
       nullptr, nullptr, instance, this);
   if (!window) return 1;
@@ -217,7 +217,7 @@ private:
       DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
       CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
   HGDIOBJ old = SelectObject(dc, title);
-  draw_text(dc, 28, 28, L"WX360", RGB(235, 244, 255));
+  draw_text(dc, 28, 28, L"Onix360", RGB(235, 244, 255));
   SelectObject(dc, normal);
   const wchar_t* nav[] = {L"INICIO", L"BIBLIOTECA", L"ARQUIVOS", L"SAVE STATES", L"CONFIGURACOES"};
   for (int i = 0; i < 5; ++i) {
@@ -230,11 +230,11 @@ private:
   draw_text(dc, std::max(260, r.right - 190), 20, clock_time_.c_str(), RGB(105, 225, 245));
   draw_text(dc, std::max(260, r.right - 190), 43, clock_date_.c_str(), RGB(170, 195, 215));
   SelectObject(dc, normal);
-  draw_text(dc, 252, 78, L"Dashboard inspirado no Aurora | WX360", RGB(130, 205, 225));
+  draw_text(dc, 252, 78, L"Dashboard inspirado no Aurora | Onix360", RGB(130, 205, 225));
   panel(dc, 250, 125, r.right - 280, 135, RGB(23, 43, 62));
 
   if (selected_nav_ == 0) {
-   draw_text(dc, 278, 155, L"BEM-VINDO AO WX360", RGB(255, 255, 255));
+   draw_text(dc, 278, 155, L"BEM-VINDO AO Onix360", RGB(255, 255, 255));
    draw_text(dc, 280, 205, L"Emulador experimental Xbox 360 para Windows x64", RGB(174, 197, 215));
    const wchar_t* cards[] = {L"BIBLIOTECA", L"FORMATOS", L"SAVE STATES"};
    const wchar_t* details[] = {L"Gerencie sua colecao", L"ISO e XEX em desenvolvimento", L"10 slots CPU/RAM"};
@@ -249,7 +249,7 @@ private:
    draw_text(dc, 278, 155, L"SUA BIBLIOTECA", RGB(255, 255, 255));
    draw_text(dc, 280, 205, L"Arquivos ISO/XEX encontrados (clique em um XEX para ler):", RGB(174, 197, 215));
    if (games_.empty()) {
-    draw_text(dc, 252, 300, L"Nenhum ISO ou XEX encontrado na pasta WX360-data/roms.", RGB(190, 205, 220));
+    draw_text(dc, 252, 300, L"Nenhum ISO ou XEX encontrado na pasta Onix360-data/roms.", RGB(190, 205, 220));
    } else {
     const int visible = std::min<int>(static_cast<int>(games_.size()), 8);
     for (int i = 0; i < visible; ++i) {
@@ -265,7 +265,7 @@ private:
    draw_text(dc, 278, 155, L"FORMATOS CONTENT DETECTADOS", RGB(255, 255, 255));
    draw_text(dc, 280, 205, L"Pastas GOD/XBLA/DLC/TU e candidatos STFS identificados:", RGB(174, 197, 215));
    if (content_entries_.empty()) {
-    draw_text(dc, 252, 300, L"Nenhum item Content/GOD encontrado em WX360-data/roms.", RGB(190, 205, 220));
+    draw_text(dc, 252, 300, L"Nenhum item Content/GOD encontrado em Onix360-data/roms.", RGB(190, 205, 220));
    } else {
     const int visible = std::min<int>(static_cast<int>(content_entries_.size()), 7);
     for (int i = 0; i < visible; ++i) {
@@ -297,7 +297,7 @@ private:
    draw_text(dc, 252, 300, L"Perfil de memoria, renderer grafico e configuracoes por jogo ainda pendentes.", RGB(190, 205, 220));
    draw_text(dc, 252, 340, L"Meta: PCs Windows 10/11 com ate 4 GB RAM (sem garantia de jogos completos).", RGB(140, 165, 188));
   }
-  draw_text(dc, 252, r.bottom - 38, L"WX360 v0.7b | CPU Xenon em desenvolvimento | ESC para sair", RGB(110, 135, 158));
+  draw_text(dc, 252, r.bottom - 38, L"Onix360 v0.7b | CPU Xenon em desenvolvimento | ESC para sair", RGB(110, 135, 158));
   SelectObject(dc, old);
   DeleteObject(title);
   DeleteObject(normal);

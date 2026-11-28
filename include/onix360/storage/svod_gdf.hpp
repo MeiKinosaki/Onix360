@@ -1,7 +1,7 @@
 #pragma once
 
-#include "wx360/storage/stfs_package.hpp"
-#include "wx360/storage/svod_container.hpp"
+#include "onix360/storage/stfs_package.hpp"
+#include "onix360/storage/svod_container.hpp"
 
 #include <algorithm>
 #include <array>
@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace wx360::storage {
+namespace onix360::storage {
 
 struct SvodGdfEntry {
     std::string name;
@@ -330,4 +330,4 @@ private:
     }
 };
 
-} // namespace wx360::storage
+} // namespace onix360::storage
