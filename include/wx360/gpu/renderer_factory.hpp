@@ -4,6 +4,7 @@
 #include "wx360/gpu/renderer_d3d11.hpp"
 #endif
 #include <memory>
+#include <utility>
 
 namespace wx360::gpu {
 
