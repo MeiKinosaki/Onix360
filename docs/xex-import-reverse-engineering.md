@@ -1,4 +1,4 @@
-# WX360 XEX import reverse-engineering notes
+# Onix360 XEX import reverse-engineering notes
 
 ## References inspected
 
@@ -23,9 +23,9 @@ The import library contains an array of guest addresses. Each address points to 
 
 The record address itself is not interchangeable with the value stored in that record. In particular, writing a kernel export address into a type-1 thunk record would corrupt the executable thunk.
 
-## WX360 implementation boundary
+## Onix360 implementation boundary
 
-WX360 now keeps `value_address` and `thunk_address` separate, pairs records by library and ordinal, and patches function value slots with thunk addresses while variable slots receive registered guest variable addresses. Function thunk storage is checked before patching.
+Onix360 now keeps `value_address` and `thunk_address` separate, pairs records by library and ordinal, and patches function value slots with thunk addresses while variable slots receive registered guest variable addresses. Function thunk storage is checked before patching.
 
 Still required before claiming real XEX import compatibility:
 

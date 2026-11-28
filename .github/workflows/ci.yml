@@ -1,4 +1,4 @@
-name: WX360 CI
+name: Onix360 CI
 
 on:
   push:
@@ -34,8 +34,8 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          Write-Host 'Running wx360_core_tests.exe directly to capture its last diagnostic checkpoint.'
-          & build/Release/wx360_core_tests.exe
+          Write-Host 'Running onix360_core_tests.exe directly to capture its last diagnostic checkpoint.'
+          & build/Release/onix360_core_tests.exe
           Write-Host "Direct test exit code: $LASTEXITCODE"
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
@@ -43,16 +43,16 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist/WX360/WX360-data/roms, dist/WX360/WX360-data/covers, dist/WX360/WX360-data/saves, dist/WX360/WX360-data/configs | Out-Null
-          Copy-Item build/Release/WX360.exe dist/WX360/WX360.exe
-          Copy-Item build/Release/WX360-Test.exe dist/WX360/WX360-Test.exe
-          Copy-Item build/Release/WX360-XEX-Probe.exe dist/WX360/WX360-XEX-Probe.exe
-          Copy-Item README.md dist/WX360/README.txt
-          Compress-Archive -Path dist/WX360 -DestinationPath dist/WX360-Windows-x64-Portable.zip -Force
+          New-Item -ItemType Directory -Force -Path dist/Onix360/Onix360-data/roms, dist/Onix360/Onix360-data/covers, dist/Onix360/Onix360-data/saves, dist/Onix360/Onix360-data/configs | Out-Null
+          Copy-Item build/Release/Onix360.exe dist/Onix360/Onix360.exe
+          Copy-Item build/Release/Onix360-Test.exe dist/Onix360/Onix360-Test.exe
+          Copy-Item build/Release/Onix360-XEX-Probe.exe dist/Onix360/Onix360-XEX-Probe.exe
+          Copy-Item README.md dist/Onix360/README.txt
+          Compress-Archive -Path dist/Onix360 -DestinationPath dist/Onix360-Windows-x64-Portable.zip -Force
       - name: Upload portable Windows package
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: WX360-Windows-x64-Portable
-          path: dist/WX360-Windows-x64-Portable.zip
+          name: Onix360-Windows-x64-Portable
+          path: dist/Onix360-Windows-x64-Portable.zip
           if-no-files-found: error

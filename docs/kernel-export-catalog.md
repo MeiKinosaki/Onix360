@@ -43,7 +43,7 @@ title or every kernel revision uses an identical export table.
   function implementations must fail closed. Do not synthesize addresses.
 * A metadata entry does not imply that its implementation exists.
 
-The current WX360 resolver is still a minimal address patcher. It does not yet
+The current Onix360 resolver is still a minimal address patcher. It does not yet
 provide a complete function-trampoline registry or variable-storage allocator.
 Consequently this catalog is preparatory and must not be described as complete
 kernel import support.

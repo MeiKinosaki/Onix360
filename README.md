@@ -1,4 +1,4 @@
-# WX360
+# Onix360
 
 **Windows Xbox 360 Emulator** — emulador experimental do Xbox 360 para Windows x64, com foco em computadores modestos.
 
@@ -17,7 +17,7 @@
 
 - O dashboard Win32 mantém o tema escuro azul/ciano e agora exibe no cabeçalho a hora local do Windows em formato 24 horas (`HH:MM:SS`) e a data (`DD/MM/AAAA`).
 - A interface atualiza o relógio com um timer Win32 de 1 segundo e consulta `GetLocalTime`; não depende de internet nem de sincronização externa.
-- A formatação está isolada em `include/wx360/ui/clock_display.hpp` e possui teste determinístico em `tests/clock_display_tests.cpp`.
+- A formatação está isolada em `include/onix360/ui/clock_display.hpp` e possui teste determinístico em `tests/clock_display_tests.cpp`.
 - O relógio não altera a temporização do hardware emulado: é apenas um relógio de interface.
 
 ## Estado de desenvolvimento e limites
