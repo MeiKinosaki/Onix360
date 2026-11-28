@@ -180,6 +180,7 @@ private:
                          secondary_hash_bit | 0x3FU)) != expected)
                 continue;
             const auto page_offset = effective_page_offset(ea);
+            // PTE1 reference/change bits are set by the memory access path.
             return {MemoryResult::Ok,
                     static_cast<std::uint64_t>(pte1 & rpn_mask) + page_offset,
                     static_cast<std::uint8_t>(pte1 & 3U), secondary, pte};
