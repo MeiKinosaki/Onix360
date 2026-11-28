@@ -593,6 +593,36 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
                                  (b.lane[lane] & c.lane[lane]);
             break;
         }
+        if (va_xo == 43U) { // vperm
+            const unsigned vc = (instruction >> 6U) & 0x1FU;
+            const auto& control = state.vr[vc];
+            std::array<std::uint8_t,16> source_a{}, source_b{}, selectors{}, result{};
+            for (unsigned lane = 0; lane < 4; ++lane) {
+                for (unsigned byte = 0; byte < 4; ++byte) {
+                    const unsigned shift = 24U - byte * 8U;
+                    source_a[lane * 4U + byte] =
+                        static_cast<std::uint8_t>(a.lane[lane] >> shift);
+                    source_b[lane * 4U + byte] =
+                        static_cast<std::uint8_t>(b.lane[lane] >> shift);
+                    selectors[lane * 4U + byte] =
+                        static_cast<std::uint8_t>(control.lane[lane] >> shift);
+                }
+            }
+            for (unsigned byte = 0; byte < 16; ++byte) {
+                const unsigned selector = selectors[byte] & 0x1FU;
+                result[byte] = selector < 16U
+                    ? source_a[selector] : source_b[selector - 16U];
+            }
+            for (unsigned lane = 0; lane < 4; ++lane) {
+                const unsigned offset = lane * 4U;
+                out.lane[lane] =
+                    (std::uint32_t(result[offset]) << 24U) |
+                    (std::uint32_t(result[offset + 1U]) << 16U) |
+                    (std::uint32_t(result[offset + 2U]) << 8U) |
+                    std::uint32_t(result[offset + 3U]);
+            }
+            break;
+        }
         // VX-form VMX encodings carry an 11-bit extended opcode including bit 0.
         const unsigned xo = instruction & 0x7FFU;
         if (xo == 0U || xo == 1024U) { // vaddubm / vsububm
