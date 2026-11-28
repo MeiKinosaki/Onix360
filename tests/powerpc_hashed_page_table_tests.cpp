@@ -41,6 +41,9 @@ int main() {
     check(sdr1_table.configure_from_sdr1(0x00010005U, ram) ==
               MemoryResult::AlignmentFault,
           "rejects non-contiguous SDR1 HTAB mask");
+    check(sdr1_table.configure_from_sdr1(0x00018000U, ram) ==
+              MemoryResult::AlignmentFault,
+          "rejects nonzero reserved SDR1 bits");
     check(table.insert(vsid, ea + 1U, 0x9001, 2, ram) == MemoryResult::AlignmentFault,
           "rejects unaligned physical page");
 
