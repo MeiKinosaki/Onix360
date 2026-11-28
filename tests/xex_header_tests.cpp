@@ -1,4 +1,4 @@
-#include "wx360/xex/xex_header.hpp"
+#include "onix360/xex/xex_header.hpp"
 
 #include <array>
 #include <cstdlib>
@@ -18,7 +18,7 @@ void put_be32(std::array<std::uint8_t, 64>& bytes, std::size_t at, std::uint32_t
 }
 
 int main() {
-    using namespace wx360::xex;
+    using namespace onix360::xex;
     std::array<std::uint8_t, 64> file{};
     file[0] = 'X'; file[1] = 'E'; file[2] = 'X'; file[3] = '2';
     put_be32(file, 8, 48);
@@ -44,6 +44,6 @@ int main() {
     std::array<std::uint8_t, 8> short_file{};
     check(parse_header(short_file, header) == ParseResult::TooSmall,
           "reject undersized XEX file");
-    if (failures == 0) std::cout << "WX360 XEX header tests passed\n";
+    if (failures == 0) std::cout << "Onix360 XEX header tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

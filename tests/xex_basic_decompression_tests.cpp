@@ -1,4 +1,4 @@
-#include "wx360/xex/xex_header.hpp"
+#include "onix360/xex/xex_header.hpp"
 
 #include <cstdlib>
 #include <cstdint>
@@ -28,25 +28,25 @@ int main() {
     put_be32(file, 0x5C, 3); // zero bytes
     file[0x80] = 'P'; file[0x81] = 'E'; file[0x82] = 'X';
 
-    wx360::xex::Header header{};
-    if (wx360::xex::parse_header(file, header, file.size()) != wx360::xex::ParseResult::Ok) {
+    onix360::xex::Header header{};
+    if (onix360::xex::parse_header(file, header, file.size()) != onix360::xex::ParseResult::Ok) {
         std::cerr << "XEX header parse failed\n"; return EXIT_FAILURE;
     }
-    wx360::xex::FileFormatInfo format{};
-    if (wx360::xex::parse_file_format_info(file, header, format) !=
-        wx360::xex::FormatParseResult::Ok) {
+    onix360::xex::FileFormatInfo format{};
+    if (onix360::xex::parse_file_format_info(file, header, format) !=
+        onix360::xex::FormatParseResult::Ok) {
         std::cerr << "XEX file-format metadata parse failed\n"; return EXIT_FAILURE;
     }
     std::vector<std::uint8_t> decoded;
-    if (wx360::xex::decompress_basic(file, header, format, decoded) !=
-        wx360::xex::BasicDecompressResult::Ok ||
+    if (onix360::xex::decompress_basic(file, header, format, decoded) !=
+        onix360::xex::BasicDecompressResult::Ok ||
         decoded.size() != 6 || decoded[0] != 'P' || decoded[1] != 'E' ||
         decoded[2] != 'X' || decoded[3] != 0 || decoded[5] != 0) {
         std::cerr << "XEX Basic decompression output mismatch\n"; return EXIT_FAILURE;
     }
-    format.encryption = wx360::xex::XexEncryption::Normal;
-    if (wx360::xex::decompress_basic(file, header, format, decoded) !=
-        wx360::xex::BasicDecompressResult::EncryptedInput) {
+    format.encryption = onix360::xex::XexEncryption::Normal;
+    if (onix360::xex::decompress_basic(file, header, format, decoded) !=
+        onix360::xex::BasicDecompressResult::EncryptedInput) {
         std::cerr << "Encrypted XEX must not be passed to the Basic decoder\n";
         return EXIT_FAILURE;
     }

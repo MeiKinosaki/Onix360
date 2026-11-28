@@ -1,9 +1,9 @@
-#include "wx360/gpu/xenos_framebuffer.hpp"
+#include "onix360/gpu/xenos_framebuffer.hpp"
 #include <array>
 #include <cstdlib>
 #include <iostream>
 int main(){
- wx360::gpu::XenosFramebuffer fb;int failures=0;
+ onix360::gpu::XenosFramebuffer fb;int failures=0;
  auto check=[&](bool ok,const char* s){if(!ok){std::cerr<<"FAIL: "<<s<<'\n';++failures;}};
  check(fb.resize(640,480),"allocates bounded software framebuffer");
  fb.clear(0xFF112233U);
