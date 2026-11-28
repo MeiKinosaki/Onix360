@@ -558,6 +558,14 @@ inline void update_cr0(XenonThreadState& state, std::uint64_t value,
         case 21: value = a + b; break; // fadd
         case 25: { const unsigned frc = (instruction >> 6U) & 0x1FU;
             value = a * std::bit_cast<double>(state.fpr[frc]); break; } // fmul
+        case 28: case 29: case 30: case 31: {
+            const unsigned frc = (instruction >> 6U) & 0x1FU;
+            const double c = std::bit_cast<double>(state.fpr[frc]);
+            const double addend = fp_xo == 28U || fp_xo == 30U ? -b : b;
+            value = std::fma(a, c, addend);
+            if (fp_xo == 30U || fp_xo == 31U) value = -value;
+            break;
+        }
         case 23: { // fsel: select FRB for nonnegative FRA, otherwise FRC.
             const unsigned frc = (instruction >> 6U) & 0x1FU;
             value = a >= 0.0 ? b : std::bit_cast<double>(state.fpr[frc]);
