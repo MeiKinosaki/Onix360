@@ -784,6 +784,16 @@ int main() {
     check(s.vr[3].lane == std::array<std::uint32_t,4>{
               0x5A5A5A5AU, 0xAAAAAAAAU, 0xAAAAAAAAU, 0x87655678U},
           "VMX VSEL selects each bit from VA or VB using VC");
+    s.vr[1].lane = {0x00010203U, 0x04050607U, 0x08090A0BU, 0x0C0D0E0FU};
+    s.vr[2].lane = {0x10111213U, 0x14151617U, 0x18191A1BU, 0x1C1D1E1FU};
+    s.vr[4].lane = {0x000F101FU, 0x010E111EU, 0x020D121DU, 0x030C131CU};
+    const std::uint32_t vperm = (4U << 26U) | (3U << 21U) |
+        (1U << 16U) | (2U << 11U) | (4U << 6U) | 43U;
+    check(execute(s, vperm) == StepResult::Executed,
+          "VMX VPERM executes with VA, VB and VC");
+    check(s.vr[3].lane == std::array<std::uint32_t,4>{
+              0x000F101FU, 0x010E111EU, 0x020D121DU, 0x030C131CU},
+          "VMX VPERM selects bytes across concatenated VA and VB");
     s.vr[1].lane = {0xFF0180FEU, 0x80000001U, 0xFFFFFFFFU, 0x7FFFFFFFU};
     s.vr[2].lane = {0x0102FF7FU, 0x7FFFFFFFU, 0x00000000U, 0x80000000U};
     check(execute(s, vx_form(3, 1, 2, 2)) == StepResult::Executed &&
