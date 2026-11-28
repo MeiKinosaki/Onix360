@@ -104,14 +104,19 @@ struct AddressSpaceMemoryBus {
     [[nodiscard]] memory::AddressSpace::Translation translate(
         std::uint64_t effective_address, std::size_t length,
         memory::Access access) const noexcept {
-        if (!address_space || !physical_memory || !thread_state)
+        if (!address_space || !physical_memory)
             return {memory::MemoryResult::Unmapped, 0};
-        const unsigned segment =
-            static_cast<unsigned>((effective_address >> 28U) & 0xFU);
-        const auto fields = decode_segment_register(
-            thread_state->segment_registers[segment]);
-        if (fields.direct_store) return {memory::MemoryResult::Unmapped, 0};
-        if (hashed_page_table && hashed_page_table->configured()) {
+        const bool use_hashed_table = hashed_page_table && hashed_page_table->configured();
+        if (use_hashed_table && !thread_state)
+            return {memory::MemoryResult::Unmapped, 0};
+        if (thread_state) {
+            const unsigned segment =
+                static_cast<unsigned>((effective_address >> 28U) & 0xFU);
+            const auto fields = decode_segment_register(
+                thread_state->segment_registers[segment]);
+            if (fields.direct_store) return {memory::MemoryResult::Unmapped, 0};
+        }
+        if (use_hashed_table) {
             if (length == 0 ||
                 length - 1U > std::numeric_limits<std::uint64_t>::max() -
                                   effective_address)
