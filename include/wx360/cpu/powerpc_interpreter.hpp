@@ -42,7 +42,7 @@ struct SegmentRegisterFields {
     bool key_supervisor{};
     bool key_problem{};
     bool no_execute{};
-    bool translation_enabled{};
+    bool direct_store{};
 };
 
 [[nodiscard]] constexpr SegmentRegisterFields decode_segment_register(
@@ -102,7 +102,8 @@ struct AddressSpaceMemoryBus {
             static_cast<unsigned>((effective_address >> 28U) & 0xFU);
         const auto fields = decode_segment_register(
             thread_state->segment_registers[segment]);
-        if (fields.translation_enabled) {
+        if (fields.direct_store) return {memory::MemoryResult::Unmapped, 0};
+        if (hashed_page_table && hashed_page_table->configured()) {
             if (!hashed_page_table || !hashed_page_table->configured() ||
                 length == 0 ||
                 length > memory::PhysicalMemory::page_size -
