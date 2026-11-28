@@ -1,12 +1,12 @@
 #pragma once
-#include "wx360/crypto/sha1.hpp"
+#include "onix360/crypto/sha1.hpp"
 #include <algorithm>
 #include <array>
 #include <cstdint>
 #include <span>
 #include <vector>
 
-namespace wx360::xex {
+namespace onix360::xex {
 struct NormalBlockDescriptor {
     std::uint32_t block_size{};
     crypto::Sha1Digest hash{};
@@ -77,4 +77,4 @@ enum class NormalBlockError : std::uint8_t {
     output=std::move(decoded);
     return NormalBlockError::Ok;
 }
-} // namespace wx360::xex
+} // namespace onix360::xex

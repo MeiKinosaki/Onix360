@@ -1,8 +1,8 @@
 #pragma once
-#include "wx360/xex/xex_header.hpp"
-#include "wx360/kernel/xex_import_resolver.hpp"
-#include "wx360/memory/physical_memory.hpp"
-#include "wx360/memory/address_space.hpp"
+#include "onix360/xex/xex_header.hpp"
+#include "onix360/kernel/xex_import_resolver.hpp"
+#include "onix360/memory/physical_memory.hpp"
+#include "onix360/memory/address_space.hpp"
 #include <array>
 #include <map>
 #include <optional>
@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace wx360::xex {
+namespace onix360::xex {
 struct ImportLibraryRecord {
     std::string name;
     std::uint32_t library_id{}, version{}, minimum_version{};
@@ -206,4 +206,4 @@ struct ImportTable {
     if (!header.has_import_libraries) return ImportTableError::MissingHeader;
     return parse_import_table(file, header.import_libraries_offset, output);
 }
-} // namespace wx360::xex
+} // namespace onix360::xex

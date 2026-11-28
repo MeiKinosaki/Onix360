@@ -1,13 +1,13 @@
 #pragma once
 
-#include "wx360/xex/xex_header.hpp"
-#include "wx360/xex/xex_security_info.hpp"
-#include "wx360/xex/xex_import_table.hpp"
-#include "wx360/crypto/aes128.hpp"
-#include "wx360/xex/xex_pe_mapper.hpp"
-#include "wx360/kernel/xex_import_resolver.hpp"
-#include "wx360/kernel/kernel_runtime.hpp"
-#include "wx360/compression/lzx_decoder.hpp"
+#include "onix360/xex/xex_header.hpp"
+#include "onix360/xex/xex_security_info.hpp"
+#include "onix360/xex/xex_import_table.hpp"
+#include "onix360/crypto/aes128.hpp"
+#include "onix360/xex/xex_pe_mapper.hpp"
+#include "onix360/kernel/xex_import_resolver.hpp"
+#include "onix360/kernel/kernel_runtime.hpp"
+#include "onix360/compression/lzx_decoder.hpp"
 #include <bit>
 
 #include <algorithm>
@@ -19,7 +19,7 @@
 #include <utility>
 #include <vector>
 
-namespace wx360::xex {
+namespace onix360::xex {
 
 enum class LoadError : std::uint8_t {
     None,
@@ -426,4 +426,4 @@ public:
     }
 };
 
-} // namespace wx360::xex
+} // namespace onix360::xex
