@@ -1,8 +1,8 @@
-#include "wx360/crypto/sha1.hpp"
-#include "wx360/xex/xex_security_info.hpp"
-#include "wx360/xex/xex_import_table.hpp"
-#include "wx360/kernel/kernel_runtime.hpp"
-#include "wx360/kernel/xbox360_export_metadata.hpp"
+#include "onix360/crypto/sha1.hpp"
+#include "onix360/xex/xex_security_info.hpp"
+#include "onix360/xex/xex_import_table.hpp"
+#include "onix360/kernel/kernel_runtime.hpp"
+#include "onix360/kernel/xbox360_export_metadata.hpp"
 #include <array>
 #include <cstdint>
 #include <cstdlib>
@@ -10,7 +10,7 @@
 #include <string_view>
 #include <vector>
 
-static void test_kernel_service(wx360::cpu::XenonThreadState& state) noexcept {
+static void test_kernel_service(onix360::cpu::XenonThreadState& state) noexcept {
     state.gpr[3] = 0x360U;
 }
 
@@ -26,11 +26,11 @@ int main(){
     constexpr std::array<std::uint8_t,20> million_a_expected{
         0x34,0xAA,0x97,0x3C,0xD4,0xC4,0xDA,0xA4,0xF6,0x1E,
         0xEB,0x2B,0xDB,0xAD,0x27,0x31,0x65,0x34,0x01,0x6F};
-    if (wx360::crypto::sha1(million_a) != million_a_expected) {
+    if (onix360::crypto::sha1(million_a) != million_a_expected) {
         std::cerr << "SHA-1 million-a FIPS known-answer vector failed\\n";
         return EXIT_FAILURE;
     }
-    const auto digest=wx360::crypto::sha1(std::span(
+    const auto digest=onix360::crypto::sha1(std::span(
         reinterpret_cast<const std::uint8_t*>(abc.data()),abc.size()));
     constexpr std::array<std::uint8_t,20> expected{
         0xA9,0x99,0x3E,0x36,0x47,0x06,0x81,0x6A,0xBA,0x3E,
@@ -42,8 +42,8 @@ int main(){
     be32(security,0x10C,0x10000000); // XEX_IMAGE_PAGE_SIZE_4KB
     be32(security,0x110,0x82000000);be32(security,0x128,0);
     be32(security,0x180,1);be32(security,0x184,0x21);
-    wx360::xex::SecurityInfo parsed{};
-    if(wx360::xex::parse_security_info(security,0,parsed)!=wx360::xex::SecurityParseError::Ok ||
+    onix360::xex::SecurityInfo parsed{};
+    if(onix360::xex::parse_security_info(security,0,parsed)!=onix360::xex::SecurityParseError::Ok ||
        parsed.image_size!=0x2000 || parsed.pages.size()!=1 ||
        parsed.pages[0].type!=1 || parsed.pages[0].page_count!=2){
         std::cerr<<"XEX security info parse failed\n";return EXIT_FAILURE;
@@ -51,7 +51,7 @@ int main(){
 
     std::vector<std::uint8_t> page_image(0x2000, 0x5A);
     parsed.pages[0].raw = 0x21;
-    parsed.pages[0].digest = wx360::crypto::sha1(page_image);
+    parsed.pages[0].digest = onix360::crypto::sha1(page_image);
     std::vector<std::uint8_t> authenticated(0x2000 + 24, 0);
     std::copy(page_image.begin(), page_image.end(), authenticated.begin());
     authenticated[0x2000] = 0x00;
@@ -60,73 +60,73 @@ int main(){
     authenticated[0x2003] = 0x21;
     std::copy(parsed.pages[0].digest.begin(), parsed.pages[0].digest.end(),
               authenticated.begin() + 0x2004);
-    parsed.section_digest = wx360::crypto::sha1(authenticated);
-    if (wx360::xex::verify_page_hashes(page_image, parsed) !=
-        wx360::xex::PageHashResult::Ok) {
+    parsed.section_digest = onix360::crypto::sha1(authenticated);
+    if (onix360::xex::verify_page_hashes(page_image, parsed) !=
+        onix360::xex::PageHashResult::Ok) {
         std::cerr << "XEX chained page SHA-1 positive vector failed\\n"; return EXIT_FAILURE;
     }
     page_image[0] ^= 1;
-    if (wx360::xex::verify_page_hashes(page_image, parsed) !=
-        wx360::xex::PageHashResult::DigestMismatch) {
+    if (onix360::xex::verify_page_hashes(page_image, parsed) !=
+        onix360::xex::PageHashResult::DigestMismatch) {
         std::cerr << "Corrupted XEX page was not rejected\\n"; return EXIT_FAILURE;
     }
     page_image[0] ^= 1;
     parsed.section_digest[0] ^= 1;
-    if (wx360::xex::verify_page_hashes(page_image, parsed) !=
-        wx360::xex::PageHashResult::DigestMismatch) {
+    if (onix360::xex::verify_page_hashes(page_image, parsed) !=
+        onix360::xex::PageHashResult::DigestMismatch) {
         std::cerr << "Corrupted XEX root digest was not rejected\\n"; return EXIT_FAILURE;
     }
     parsed.section_digest[0] ^= 1;
     parsed.pages[0].raw = 0x31;
-    if (wx360::xex::verify_page_hashes(page_image, parsed) !=
-        wx360::xex::PageHashResult::DescriptorOverflow) {
+    if (onix360::xex::verify_page_hashes(page_image, parsed) !=
+        onix360::xex::PageHashResult::DescriptorOverflow) {
         std::cerr << "Inconsistent XEX page descriptor was not rejected\\n"; return EXIT_FAILURE;
     }
 
     // Two-descriptor chain: the first descriptor digest authenticates the
     // next descriptor's page plus its serialized descriptor bytes.
-    wx360::xex::SecurityInfo chained{};
+    onix360::xex::SecurityInfo chained{};
     chained.image_size = 0x2000;
     chained.image_flags = 0x10000000;
     std::vector<std::uint8_t> chained_image(0x2000, 0);
     std::fill(chained_image.begin(), chained_image.begin() + 0x1000, 0x31);
     std::fill(chained_image.begin() + 0x1000, chained_image.end(), 0x72);
-    wx360::xex::PageDescriptor second{};
+    onix360::xex::PageDescriptor second{};
     second.raw = 0x11; second.type = 1; second.page_count = 1;
     const std::vector<std::uint8_t> terminal{0x57,0x58,0x45,0x58};
-    second.digest = wx360::crypto::sha1(terminal);
+    second.digest = onix360::crypto::sha1(terminal);
     std::vector<std::uint8_t> second_auth(0x1000, 0x72);
     second_auth.insert(second_auth.end(), {0,0,0,0x11});
     second_auth.insert(second_auth.end(), second.digest.begin(), second.digest.end());
-    wx360::xex::PageDescriptor first{};
+    onix360::xex::PageDescriptor first{};
     first.raw = 0x11; first.type = 1; first.page_count = 1;
-    first.digest = wx360::crypto::sha1(second_auth);
+    first.digest = onix360::crypto::sha1(second_auth);
     std::vector<std::uint8_t> first_auth(0x1000, 0x31);
     first_auth.insert(first_auth.end(), {0,0,0,0x11});
     first_auth.insert(first_auth.end(), first.digest.begin(), first.digest.end());
-    chained.section_digest = wx360::crypto::sha1(first_auth);
+    chained.section_digest = onix360::crypto::sha1(first_auth);
     chained.pages = {first, second};
-    if (wx360::xex::verify_page_hashes(chained_image, chained) !=
-        wx360::xex::PageHashResult::Ok) {
+    if (onix360::xex::verify_page_hashes(chained_image, chained) !=
+        onix360::xex::PageHashResult::Ok) {
         std::cerr << "Two-descriptor XEX SHA-1 chain positive vector failed\\n";
         return EXIT_FAILURE;
     }
     chained_image[0x1000] ^= 1;
-    if (wx360::xex::verify_page_hashes(chained_image, chained) !=
-        wx360::xex::PageHashResult::DigestMismatch) {
+    if (onix360::xex::verify_page_hashes(chained_image, chained) !=
+        onix360::xex::PageHashResult::DigestMismatch) {
         std::cerr << "Tampered second XEX page was not rejected\\n";
         return EXIT_FAILURE;
     }
 
     // Without the 4 KiB flag, XEX2 page hashes use 64 KiB units.
-    wx360::xex::SecurityInfo large_pages{};
+    onix360::xex::SecurityInfo large_pages{};
     large_pages.image_size = 0x10000;
     std::vector<std::uint8_t> large_image(0x10000, 0xA5);
-    wx360::xex::PageDescriptor large_descriptor{};
+    onix360::xex::PageDescriptor large_descriptor{};
     large_descriptor.raw = 0x11;
     large_descriptor.type = 1;
     large_descriptor.page_count = 1;
-    large_descriptor.digest = wx360::crypto::sha1(large_image);
+    large_descriptor.digest = onix360::crypto::sha1(large_image);
     large_pages.pages.push_back(large_descriptor);
     // The root digest authenticates the 64 KiB page plus the serialized
     // descriptor and its page digest, just like the 4 KiB chain above.
@@ -135,10 +135,10 @@ int main(){
     large_authenticated.insert(large_authenticated.end(), {0,0,0,0x11});
     large_authenticated.insert(large_authenticated.end(),
         large_descriptor.digest.begin(), large_descriptor.digest.end());
-    large_pages.section_digest = wx360::crypto::sha1(large_authenticated);
-    if (wx360::xex::xex_page_size(large_pages) != 0x10000 ||
-        wx360::xex::verify_page_hashes(large_image, large_pages) !=
-            wx360::xex::PageHashResult::Ok) {
+    large_pages.section_digest = onix360::crypto::sha1(large_authenticated);
+    if (onix360::xex::xex_page_size(large_pages) != 0x10000 ||
+        onix360::xex::verify_page_hashes(large_image, large_pages) !=
+            onix360::xex::PageHashResult::Ok) {
         std::cerr << "XEX 64 KiB page SHA-1 validation failed\\n";
         return EXIT_FAILURE;
     }
@@ -152,8 +152,8 @@ int main(){
     be32(imports,24+0x1C,0x00010002);be32(imports,24+0x20,0x00010000);
     be16(imports,24+0x24,0);be16(imports,24+0x26,1);
     be32(imports,24+0x28,0x82001000);
-    wx360::xex::ImportTable table{};
-    if(wx360::xex::parse_import_table(imports,0,table)!=wx360::xex::ImportTableError::Ok ||
+    onix360::xex::ImportTable table{};
+    if(onix360::xex::parse_import_table(imports,0,table)!=onix360::xex::ImportTableError::Ok ||
        table.libraries.size()!=1 || table.libraries[0].name!="xboxkrnl" ||
        table.libraries[0].import_thunks.size()!=1 ||
        table.libraries[0].import_thunks[0]!=0x82001000){
@@ -162,8 +162,8 @@ int main(){
     const auto original_library_count=table.libraries.size();
     auto malformed_imports=imports;
     be16(malformed_imports,24+0x24,1);
-    if (wx360::xex::parse_import_table(malformed_imports,0,table)!=
-            wx360::xex::ImportTableError::InvalidLibrary ||
+    if (onix360::xex::parse_import_table(malformed_imports,0,table)!=
+            onix360::xex::ImportTableError::InvalidLibrary ||
         table.libraries.size()!=original_library_count ||
         table.libraries[0].name!="xboxkrnl") {
         std::cerr<<"Malformed import library changed previously parsed output\\n";
@@ -171,35 +171,35 @@ int main(){
     }
     malformed_imports=imports;
     be32(malformed_imports,4,4);
-    if (wx360::xex::parse_import_table(malformed_imports,0,table)!=
-        wx360::xex::ImportTableError::InvalidStringTable) {
+    if (onix360::xex::parse_import_table(malformed_imports,0,table)!=
+        onix360::xex::ImportTableError::InvalidStringTable) {
         std::cerr<<"Truncated import string table was not rejected\\n";
         return EXIT_FAILURE;
     }
     malformed_imports=imports;
     be32(malformed_imports,24,0xFFFFFFFF);
-    if (wx360::xex::parse_import_table(malformed_imports,0,table)!=
-        wx360::xex::ImportTableError::InvalidLibrary) {
+    if (onix360::xex::parse_import_table(malformed_imports,0,table)!=
+        onix360::xex::ImportTableError::InvalidLibrary) {
         std::cerr<<"Out-of-range import library record was not rejected\\n";
         return EXIT_FAILURE;
     }
-    wx360::memory::PhysicalMemory guest(0x1000);
+    onix360::memory::PhysicalMemory guest(0x1000);
     const std::array<std::uint8_t, 8> thunk_bytes{
         0x00, 0x00, 0x01, 0x23, // function value slot, ordinal 0x0123
         0x01, 0x00, 0x01, 0x23  // function code thunk, same ordinal
     };
-    if (guest.write(0x100, thunk_bytes) != wx360::memory::MemoryResult::Ok) {
+    if (guest.write(0x100, thunk_bytes) != onix360::memory::MemoryResult::Ok) {
         std::cerr << "Could not prepare guest import thunk records\\n";
         return EXIT_FAILURE;
     }
     table.libraries[0].import_thunks = {0x100, 0x104};
-    std::vector<wx360::kernel::XexImport> decoded_imports;
-    if (wx360::xex::decode_import_records(table, guest, decoded_imports) !=
-            wx360::xex::ImportTableError::Ok ||
+    std::vector<onix360::kernel::XexImport> decoded_imports;
+    if (onix360::xex::decode_import_records(table, guest, decoded_imports) !=
+            onix360::xex::ImportTableError::Ok ||
         decoded_imports.size() != 1 ||
         decoded_imports[0].library != "xboxkrnl.exe" ||
         decoded_imports[0].ordinal != 0x123 ||
-        decoded_imports[0].kind != wx360::kernel::ImportKind::Function ||
+        decoded_imports[0].kind != onix360::kernel::ImportKind::Function ||
         decoded_imports[0].value_address != 0x100 ||
         decoded_imports[0].thunk_address != 0x104) {
         std::cerr << "XEX import thunk records were not decoded correctly\\n";
@@ -212,17 +212,17 @@ int main(){
         0x00,0x00,0x01,0x24, // function value descriptor 0x124
         0x01,0x00,0x01,0x24  // immediately paired function thunk 0x124
     };
-    if (guest.write(0x120, sequential_records) != wx360::memory::MemoryResult::Ok)
+    if (guest.write(0x120, sequential_records) != onix360::memory::MemoryResult::Ok)
         return EXIT_FAILURE;
     table.libraries[0].import_thunks = {0x120, 0x124, 0x128};
-    if (wx360::xex::decode_import_records(table, guest, decoded_imports) !=
-            wx360::xex::ImportTableError::Ok ||
+    if (onix360::xex::decode_import_records(table, guest, decoded_imports) !=
+            onix360::xex::ImportTableError::Ok ||
         decoded_imports.size() != 2 ||
         decoded_imports[0].ordinal != 0x123 ||
-        decoded_imports[0].kind != wx360::kernel::ImportKind::Variable ||
+        decoded_imports[0].kind != onix360::kernel::ImportKind::Variable ||
         decoded_imports[0].value_address != 0x120 ||
         decoded_imports[1].ordinal != 0x124 ||
-        decoded_imports[1].kind != wx360::kernel::ImportKind::Function ||
+        decoded_imports[1].kind != onix360::kernel::ImportKind::Function ||
         decoded_imports[1].value_address != 0x124 ||
         decoded_imports[1].thunk_address != 0x128) {
         std::cerr << "Sequential XEX import records were not decoded correctly\\n";
@@ -231,11 +231,11 @@ int main(){
     const std::array<std::uint8_t, 12> mismatched_pair{
         0x00,0x00,0x01,0x23, 0x00,0x00,0x01,0x24, 0x01,0x00,0x01,0x23
     };
-    if (guest.write(0x140, mismatched_pair) != wx360::memory::MemoryResult::Ok)
+    if (guest.write(0x140, mismatched_pair) != onix360::memory::MemoryResult::Ok)
         return EXIT_FAILURE;
     table.libraries[0].import_thunks = {0x140, 0x144, 0x148};
-    if (wx360::xex::decode_import_records(table, guest, decoded_imports) !=
-            wx360::xex::ImportTableError::InvalidThunkRecord) {
+    if (onix360::xex::decode_import_records(table, guest, decoded_imports) !=
+            onix360::xex::ImportTableError::InvalidThunkRecord) {
         std::cerr << "Non-adjacent XEX function thunk pairing was not rejected\\n";
         return EXIT_FAILURE;
     }
@@ -243,65 +243,65 @@ int main(){
     const auto previous_decoded_count = decoded_imports.size();
     table.libraries[0].import_thunks = {0x108};
     const std::array<std::uint8_t, 4> invalid_type{0x02, 0x00, 0x00, 0x01};
-    if (guest.write(0x108, invalid_type) != wx360::memory::MemoryResult::Ok ||
-        wx360::xex::decode_import_records(table, guest, decoded_imports) !=
-            wx360::xex::ImportTableError::InvalidThunkRecord ||
+    if (guest.write(0x108, invalid_type) != onix360::memory::MemoryResult::Ok ||
+        onix360::xex::decode_import_records(table, guest, decoded_imports) !=
+            onix360::xex::ImportTableError::InvalidThunkRecord ||
         decoded_imports.size() != previous_decoded_count) {
         std::cerr << "Invalid XEX import record type was not rejected atomically\\n";
         return EXIT_FAILURE;
     }
     table.libraries[0].import_thunks = {0xFFF};
-    if (wx360::xex::decode_import_records(table, guest, decoded_imports) !=
-            wx360::xex::ImportTableError::InvalidThunkAddress) {
+    if (onix360::xex::decode_import_records(table, guest, decoded_imports) !=
+            onix360::xex::ImportTableError::InvalidThunkAddress) {
         std::cerr << "Out-of-range XEX import thunk address was not rejected\\n";
         return EXIT_FAILURE;
     }
-    wx360::memory::PhysicalMemory resolved_guest(0x1000);
+    onix360::memory::PhysicalMemory resolved_guest(0x1000);
     const std::array<std::uint8_t, 8> function_record{
         0x00, 0x00, 0x01, 0x23, 0x01, 0x00, 0x01, 0x23};
-    if (resolved_guest.write(0x180, function_record) != wx360::memory::MemoryResult::Ok) {
+    if (resolved_guest.write(0x180, function_record) != onix360::memory::MemoryResult::Ok) {
         std::cerr << "Could not prepare end-to-end import record\\n";
         return EXIT_FAILURE;
     }
-    wx360::xex::ImportTable end_to_end_table{};
+    onix360::xex::ImportTable end_to_end_table{};
     end_to_end_table.libraries.push_back({"xboxkrnl", 0, 0, 0, 0, 2, {0x180, 0x184}});
-    wx360::kernel::XexImportResolver end_to_end_resolver;
+    onix360::kernel::XexImportResolver end_to_end_resolver;
     if (!end_to_end_resolver.register_export(
             {"xboxkrnl.exe", 0x123, 0x82001000,
-             wx360::kernel::ImportKind::Function})) {
+             onix360::kernel::ImportKind::Function})) {
         std::cerr << "Could not register test kernel export\\n";
         return EXIT_FAILURE;
     }
-    wx360::kernel::ImportResolveError resolution_error =
-        wx360::kernel::ImportResolveError::MissingExport;
-    if (wx360::xex::resolve_import_table(end_to_end_table, resolved_guest,
-            end_to_end_resolver, resolution_error) != wx360::xex::ImportTableError::Ok ||
-        resolution_error != wx360::kernel::ImportResolveError::None) {
+    onix360::kernel::ImportResolveError resolution_error =
+        onix360::kernel::ImportResolveError::MissingExport;
+    if (onix360::xex::resolve_import_table(end_to_end_table, resolved_guest,
+            end_to_end_resolver, resolution_error) != onix360::xex::ImportTableError::Ok ||
+        resolution_error != onix360::kernel::ImportResolveError::None) {
         std::cerr << "XEX table to kernel ordinal resolution failed\\n";
         return EXIT_FAILURE;
     }
     std::array<std::uint8_t, 4> resolved_bytes{};
-    if (resolved_guest.read(0x180, resolved_bytes) != wx360::memory::MemoryResult::Ok ||
+    if (resolved_guest.read(0x180, resolved_bytes) != onix360::memory::MemoryResult::Ok ||
         resolved_bytes != std::array<std::uint8_t, 4>{0xDE, 0xAD, 0xC0, 0xDE}) {
         std::cerr << "Function import descriptor sentinel was not written\\n";
         return EXIT_FAILURE;
     }
     // The import directory stores guest virtual addresses. Verify the
     // decoder reads them through the MMU rather than treating them as RAM offsets.
-    wx360::memory::AddressSpace import_address_space;
+    onix360::memory::AddressSpace import_address_space;
     // map_page requires page-aligned physical addresses. The import records
     // live at physical offsets 0x80/0x84 in this fixture, within physical page 0.
-    if (resolved_guest.write(0x80, function_record) != wx360::memory::MemoryResult::Ok ||
+    if (resolved_guest.write(0x80, function_record) != onix360::memory::MemoryResult::Ok ||
         import_address_space.map_page(0x82000000, 0x00000000, 7) !=
-            wx360::memory::MemoryResult::Ok) {
+            onix360::memory::MemoryResult::Ok) {
         std::cerr << "Could not map virtual import-record test page\\n";
         return EXIT_FAILURE;
     }
     end_to_end_table.libraries[0].import_thunks = {0x82000080, 0x82000084};
-    std::vector<wx360::kernel::XexImport> virtual_decoded;
-    if (wx360::xex::decode_import_records_virtual(
+    std::vector<onix360::kernel::XexImport> virtual_decoded;
+    if (onix360::xex::decode_import_records_virtual(
             end_to_end_table, import_address_space, resolved_guest, virtual_decoded) !=
-            wx360::xex::ImportTableError::Ok ||
+            onix360::xex::ImportTableError::Ok ||
         virtual_decoded.size() != 1 ||
         virtual_decoded[0].value_address != 0x82000080 ||
         virtual_decoded[0].thunk_address != 0x82000084 ||
@@ -311,25 +311,25 @@ int main(){
     }
     // Exercise the actual KernelRuntime virtual-import path: registered
     // export, MMU permission checks, patching and thunk-to-service dispatch.
-    wx360::memory::PhysicalMemory runtime_guest(0x2000);
-    wx360::memory::AddressSpace runtime_as;
+    onix360::memory::PhysicalMemory runtime_guest(0x2000);
+    onix360::memory::AddressSpace runtime_as;
     if (runtime_as.map_page(0x82000000, 0x00000000, 7) !=
-        wx360::memory::MemoryResult::Ok) {
+        onix360::memory::MemoryResult::Ok) {
         std::cerr << "Could not map KernelRuntime import test page\\n";
         return EXIT_FAILURE;
     }
-    wx360::kernel::KernelRuntime runtime;
+    onix360::kernel::KernelRuntime runtime;
     if (!runtime.register_function_export("xboxkrnl.exe", 0x123, 7,
             0x300, &test_kernel_service, runtime_guest)) {
         std::cerr << "Could not register KernelRuntime test export\\n";
         return EXIT_FAILURE;
     }
-    const std::array<wx360::kernel::XexImport, 1> runtime_imports{{
+    const std::array<onix360::kernel::XexImport, 1> runtime_imports{{
         {"xboxkrnl.exe", 0x123, 0x82000100,
-         wx360::kernel::ImportKind::Function, 0x82000080}
+         onix360::kernel::ImportKind::Function, 0x82000080}
     }};
     if (runtime.resolve_imports_virtual(runtime_imports, runtime_as, runtime_guest) !=
-        wx360::kernel::ImportResolveError::None) {
+        onix360::kernel::ImportResolveError::None) {
         std::cerr << "KernelRuntime virtual import resolution failed\\n";
         return EXIT_FAILURE;
     }
@@ -341,12 +341,12 @@ int main(){
     };
     std::array<std::uint8_t, 16> actual_runtime_thunk{};
     if (runtime_guest.read(0x100, actual_runtime_thunk) !=
-            wx360::memory::MemoryResult::Ok ||
+            onix360::memory::MemoryResult::Ok ||
         actual_runtime_thunk != expected_runtime_thunk) {
         std::cerr << "Kernel import thunk does not match Xenia LEV=2 sequence\\n";
         return EXIT_FAILURE;
     }
-    wx360::cpu::XenonThreadState dispatched{};
+    onix360::cpu::XenonThreadState dispatched{};
     if (!runtime.dispatch_import_thunk(0x82000100, dispatched) ||
         dispatched.gpr[3] != 0x360U) {
         std::cerr << "Resolved virtual import did not dispatch its registered service\\n";
@@ -354,34 +354,34 @@ int main(){
     }
 
     // Missing exports must fail before changing either guest import patch.
-    wx360::memory::PhysicalMemory atomic_guest(0x2000);
-    wx360::memory::AddressSpace atomic_as;
+    onix360::memory::PhysicalMemory atomic_guest(0x2000);
+    onix360::memory::AddressSpace atomic_as;
     if (atomic_as.map_page(0x82000000, 0x00000000, 7) !=
-        wx360::memory::MemoryResult::Ok) return EXIT_FAILURE;
+        onix360::memory::MemoryResult::Ok) return EXIT_FAILURE;
     const std::array<std::uint8_t, 4> sentinel{{0xAA,0xBB,0xCC,0xDD}};
-    if (atomic_guest.write(0x80, sentinel) != wx360::memory::MemoryResult::Ok ||
-        atomic_guest.write(0x100, sentinel) != wx360::memory::MemoryResult::Ok)
+    if (atomic_guest.write(0x80, sentinel) != onix360::memory::MemoryResult::Ok ||
+        atomic_guest.write(0x100, sentinel) != onix360::memory::MemoryResult::Ok)
         return EXIT_FAILURE;
-    wx360::kernel::KernelRuntime missing_runtime;
+    onix360::kernel::KernelRuntime missing_runtime;
     if (missing_runtime.resolve_imports_virtual(runtime_imports, atomic_as, atomic_guest) !=
-            wx360::kernel::ImportResolveError::MissingExport) {
+            onix360::kernel::ImportResolveError::MissingExport) {
         std::cerr << "Unknown virtual import was not rejected\\n";
         return EXIT_FAILURE;
     }
     std::array<std::uint8_t, 4> unchanged_value{}, unchanged_thunk{};
-    if (atomic_guest.read(0x80, unchanged_value) != wx360::memory::MemoryResult::Ok ||
-        atomic_guest.read(0x100, unchanged_thunk) != wx360::memory::MemoryResult::Ok ||
+    if (atomic_guest.read(0x80, unchanged_value) != onix360::memory::MemoryResult::Ok ||
+        atomic_guest.read(0x100, unchanged_thunk) != onix360::memory::MemoryResult::Ok ||
         unchanged_value != sentinel || unchanged_thunk != sentinel) {
         std::cerr << "Failed virtual import resolution partially patched guest memory\\n";
         return EXIT_FAILURE;
     }
     // Cross-check the metadata-only export subset against its public source
     // table transcription. Metadata must never imply a callable service.
-    const auto* dbg = wx360::kernel::find_export_metadata("xboxkrnl.exe", 0x0003);
-    const auto* xam_socket = wx360::kernel::find_export_metadata("xam.xex", 0x0003);
-    const auto* unknown = wx360::kernel::find_export_metadata("xboxkrnl.exe", 0xFFFF);
+    const auto* dbg = onix360::kernel::find_export_metadata("xboxkrnl.exe", 0x0003);
+    const auto* xam_socket = onix360::kernel::find_export_metadata("xam.xex", 0x0003);
+    const auto* unknown = onix360::kernel::find_export_metadata("xboxkrnl.exe", 0xFFFF);
     if (!dbg || dbg->name != "DbgPrint" ||
-        dbg->kind != wx360::kernel::ExportMetadataKind::Function ||
+        dbg->kind != onix360::kernel::ExportMetadataKind::Function ||
         !xam_socket || xam_socket->name != "NetDll_socket" ||
         unknown != nullptr) {
         std::cerr << "Source-verified export metadata lookup failed\\n";
@@ -389,15 +389,15 @@ int main(){
     }
     // Metadata can only be bound to an explicitly supplied handler;
     // unknown ordinals and variable exports cannot become fake functions.
-    wx360::memory::PhysicalMemory known_export_ram(0x2000);
-    wx360::kernel::KernelRuntime known_export_runtime;
+    onix360::memory::PhysicalMemory known_export_ram(0x2000);
+    onix360::kernel::KernelRuntime known_export_runtime;
     if (!known_export_runtime.register_known_function_export(
             "XBOXKRNL.EXE", 0x0003, 0x41, 0x400,
             &test_kernel_service, known_export_ram)) {
         std::cerr << "Could not bind implemented DbgPrint metadata to handler\\n";
         return EXIT_FAILURE;
     }
-    wx360::cpu::XenonThreadState known_export_state{};
+    onix360::cpu::XenonThreadState known_export_state{};
     known_export_state.gpr[0] = 0x41U; // service ID is dispatched from r0
     known_export_state.gpr[3] = 0;
     if (!known_export_runtime.dispatch(known_export_state) ||

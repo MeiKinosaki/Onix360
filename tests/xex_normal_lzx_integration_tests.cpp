@@ -1,5 +1,5 @@
-#include "wx360/xex/xex_image_loader.hpp"
-#include "wx360/crypto/sha1.hpp"
+#include "onix360/xex/xex_image_loader.hpp"
+#include "onix360/crypto/sha1.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-#ifndef WX360_TEST_DATA_DIR
-#error WX360_TEST_DATA_DIR must point to generated LZX reference vectors
+#ifndef Onix360_TEST_DATA_DIR
+#error Onix360_TEST_DATA_DIR must point to generated LZX reference vectors
 #endif
 
 static void be32(std::vector<std::uint8_t>& b, std::size_t p, std::uint32_t v) {
@@ -22,10 +22,10 @@ static void be32(std::vector<std::uint8_t>& b, std::size_t p, std::uint32_t v) {
 }
 
 int main() {
-    using namespace wx360;
-    using namespace wx360::xex;
+    using namespace onix360;
+    using namespace onix360::xex;
 
-    const std::string data_dir = WX360_TEST_DATA_DIR;
+    const std::string data_dir = Onix360_TEST_DATA_DIR;
     std::ifstream compressed_file(data_dir + "/lzx_reference.bin", std::ios::binary);
     std::ifstream expected_file(data_dir + "/lzx_reference.expected", std::ios::binary);
     if (!compressed_file || !expected_file) {
