@@ -1,5 +1,5 @@
-#include "wx360/crypto/aes128.hpp"
-#include "wx360/xex/xex_image_loader.hpp"
+#include "onix360/crypto/aes128.hpp"
+#include "onix360/xex/xex_image_loader.hpp"
 #include <array>
 #include <algorithm>
 #include <cstdint>
@@ -8,7 +8,7 @@
 #include <vector>
 
 int main(){
-    using namespace wx360::crypto;
+    using namespace onix360::crypto;
     const Aes128Key key{0x2b,0x7e,0x15,0x16,0x28,0xae,0xd2,0xa6,0xab,0xf7,0x15,0x88,0x09,0xcf,0x4f,0x3c};
     const Aes128Key iv{0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f};
     const Aes128Key cipher{0x76,0x49,0xab,0xac,0x81,0x19,0xb2,0x46,0xce,0xe9,0x8e,0x9b,0x12,0xe9,0x19,0x7d};
@@ -52,11 +52,11 @@ int main(){
         std::cerr << "XEX2 Retail/Devkit master-key unwrap vectors failed\\n";
         return EXIT_FAILURE;
     }
-    wx360::xex::SecurityInfo devkit_security{};
+    onix360::xex::SecurityInfo devkit_security{};
     devkit_security.encrypted_image_key = {
         0xf6,0x30,0x59,0xb4,0x70,0x5c,0x34,0x69,
         0x16,0x0e,0x7e,0x42,0x37,0x34,0xf3,0x5a};
-    if (wx360::xex::XexImageLoader::decrypt_xex_normal_payload(
+    if (onix360::xex::XexImageLoader::decrypt_xex_normal_payload(
             devkit_security, XexKeySet::Devkit, zero_iv_cipher, decoded) != AesResult::Ok ||
         decoded.size() != plain.size() ||
         !std::equal(decoded.begin(), decoded.end(), plain.begin())) {

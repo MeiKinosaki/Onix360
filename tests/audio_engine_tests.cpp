@@ -1,8 +1,8 @@
-#include "wx360/audio/audio_engine.hpp"
+#include "onix360/audio/audio_engine.hpp"
 #include <cstdlib>
 #include <vector>
 int main() {
-    wx360::audio::AudioEngine audio(4);
+    onix360::audio::AudioEngine audio(4);
     if (!audio.submit_pcm16({1, -1, 2, -2})) return EXIT_FAILURE;
     if (audio.frames() != 2 || audio.pending()[1] != -1) return EXIT_FAILURE;
     if (audio.submit_pcm16({1, 2, 3})) return EXIT_FAILURE; // odd sample count

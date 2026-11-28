@@ -1,8 +1,8 @@
-#include "wx360/memory/address_space.hpp"
+#include "onix360/memory/address_space.hpp"
 #include <cstdlib>
 #include <iostream>
 int main() {
- using namespace wx360::memory;
+ using namespace onix360::memory;
  PhysicalMemory ram(2U * 1024U * 1024U); AddressSpace mmu; int failures=0;
  auto check=[&](bool ok,const char* label){if(!ok){std::cerr<<"FAIL: "<<label<<'\\n';++failures;}};
  check(mmu.map_page(0x1000,0x5000,3)==MemoryResult::Ok,"maps page");
