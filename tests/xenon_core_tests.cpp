@@ -27,6 +27,35 @@ int main() {
     check(core.state.gpr[3] == 42 && core.state.pc == 0x104,
           "core updates GPR and PC after instruction execution");
 
+    // The real XenonCore step loop must use the segment/HTAB bus, not only
+    // the standalone translation helper.
+    memory::PhysicalMemory hashed_ram(1U << 20U);
+    machine::XenonCore hashed_core;
+    check(hashed_core.configure_hashed_mmu(0x00010000U, hashed_ram) ==
+              memory::MemoryResult::Ok,
+          "XenonCore configures HTAB from SDR1");
+    constexpr std::uint32_t guest_vsid = 0x12345U;
+    constexpr std::uint64_t guest_ea = 0x234U;
+    check(hashed_core.hashed_page_table.insert(
+              guest_vsid, guest_ea, 0x8000U, 0, hashed_ram) ==
+              memory::MemoryResult::Ok,
+          "XenonCore test installs guest segment PTE");
+    const std::array<std::uint8_t,4> hashed_addi{0x38,0x60,0x00,0x2A};
+    check(hashed_ram.write(0x8234U, hashed_addi) == memory::MemoryResult::Ok,
+          "places instruction at translated physical address");
+    hashed_core.state.reset(guest_ea);
+    hashed_core.state.segment_registers[0] = guest_vsid;
+    check(hashed_core.step(hashed_ram) == machine::RunResult::Executed &&
+          hashed_core.state.gpr[3] == 42 && hashed_core.state.pc == guest_ea + 4U,
+          "XenonCore fetch and execute uses segment VSID and HTAB PTE");
+    const auto hashed_pte = hashed_core.hashed_page_table.lookup(
+        guest_vsid, guest_ea, hashed_ram);
+    std::array<std::uint8_t,4> hashed_pte1{};
+    check(hashed_pte.result == memory::MemoryResult::Ok &&
+          hashed_ram.read(hashed_pte.pte_address + 4U, hashed_pte1) ==
+              memory::MemoryResult::Ok && (hashed_pte1[2] & 0x08U) != 0U,
+          "XenonCore instruction fetch sets PTE reference bit");
+
     std::cerr << "CHECKPOINT 1\n";
     // The scheduler-facing run loop must honor its instruction budget.
     memory::PhysicalMemory batch_ram(0x4000);
