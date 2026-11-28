@@ -29,12 +29,13 @@ struct MemoryAccess {
     bool (*fetch)(void*, std::uint64_t, std::span<std::uint8_t>) noexcept{};
 };
 
-// PowerPC segment-register N bit (architectural bit 3, numeric bit 28)
+// PowerPC segment-register fields: T=direct-store, Ks/Kp keys, N=execute inhibit.
 // disables instruction fetches from the selected 256 MiB segment.
 inline constexpr std::uint32_t segment_no_execute_mask = std::uint32_t{1} << 28U;
 inline constexpr std::uint32_t segment_key_supervisor_mask = std::uint32_t{1} << 30U;
 inline constexpr std::uint32_t segment_key_problem_mask = std::uint32_t{1} << 29U;
-inline constexpr std::uint32_t segment_translation_mask = std::uint32_t{1} << 31U;
+inline constexpr std::uint32_t segment_direct_store_mask = std::uint32_t{1} << 31U;
+inline constexpr std::uint32_t segment_translation_mask = segment_direct_store_mask; // legacy name
 inline constexpr std::uint32_t segment_vsid_mask = 0x00FFFFFFU;
 
 struct SegmentRegisterFields {
