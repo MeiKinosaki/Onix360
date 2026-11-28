@@ -1,4 +1,4 @@
-#include "wx360/library/cover_library.hpp"
+#include "onix360/library/cover_library.hpp"
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -15,8 +15,8 @@ bool failed_download(std::string_view,const std::filesystem::path&,void*){return
 bool html_download(std::string_view,const std::filesystem::path& path,void*){std::ofstream out(path,std::ios::binary);out<<"<html>not an image</html>";out.close();return !out.fail();}
 }
 int main(){
- using namespace wx360::covers;
- const std::filesystem::path dir="wx360_cover_test";std::error_code ec;std::filesystem::remove_all(dir,ec);
+ using namespace onix360::covers;
+ const std::filesystem::path dir="onix360_cover_test";std::error_code ec;std::filesystem::remove_all(dir,ec);
  CoverLibrary library(dir);CoverRecord game{"GAME-123","Example Game","https://covers.example/game.jpg"};
  unsigned calls=0;
  check(!library.has_cover(game.game_id),"cover cache starts empty");

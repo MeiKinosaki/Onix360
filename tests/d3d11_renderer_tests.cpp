@@ -1,11 +1,11 @@
-#include "wx360/gpu/renderer_d3d11.hpp"
+#include "onix360/gpu/renderer_d3d11.hpp"
 #include <array>
 #include <cstdlib>
 #include <iostream>
 
 int main() {
 #ifdef _WIN32
-    wx360::gpu::Direct3D11RendererBackend renderer;
+    onix360::gpu::Direct3D11RendererBackend renderer;
     if (!renderer.initialize(16, 16)) {
         std::cerr << "D3D11 device/texture initialization failed\n";
         return EXIT_FAILURE;

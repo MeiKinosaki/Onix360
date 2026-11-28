@@ -1,4 +1,4 @@
-#include "wx360/cpu/xenon_state.hpp"
+#include "onix360/cpu/xenon_state.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -14,7 +14,7 @@ void check(bool condition, const char* message) {
 }
 
 int main() {
-    wx360::cpu::XenonThreadState state;
+    onix360::cpu::XenonThreadState state;
     state.gpr[3] = 0x1234;
     state.lr = 0x88;
     state.set_condition_field(2, 0xB);
@@ -33,6 +33,6 @@ int main() {
     check(state.condition_field(3) == 0xF, "CR field is masked to four bits");
     check(state.condition_field(8) == 0, "out-of-range CR read is safe");
 
-    if (failures == 0) std::cout << "WX360 Xenon state tests passed\n";
+    if (failures == 0) std::cout << "Onix360 Xenon state tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
