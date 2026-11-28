@@ -1265,12 +1265,12 @@ int main() {
     check(decode_segment_register(segment_key_problem_mask).key_problem &&
           !decode_segment_register(segment_key_problem_mask).key_supervisor,
           "segment register Kp is the architectural bit 2");
-    check(segment_fields.no_execute && segment_fields.translation_enabled,
-          "segment register decoder extracts N and translation-enable bits");
+    check(segment_fields.no_execute && segment_fields.direct_store,
+          "segment register decoder extracts N and direct-store bits");
     const auto plain_segment = decode_segment_register(0x00123456U);
     check(plain_segment.vsid == 0x00123456U &&
           !plain_segment.key_supervisor && !plain_segment.key_problem &&
-          !plain_segment.no_execute && !plain_segment.translation_enabled,
+          !plain_segment.no_execute && !plain_segment.direct_store,
           "segment register decoder handles a plain VSID");
     constexpr std::uint64_t hash_test_ea = 0x12345ABCULL;
     static_assert(segment_page_index(hash_test_ea) == 0x2345U);
@@ -1341,7 +1341,7 @@ int main() {
         ram.raw_bytes()[0x8237] = 0x00U;
         s.reset(effective);
         s.segment_registers[0] =
-            segment_translation_mask | vsid;
+            vsid;
         wx360::cpu::AddressSpaceMemoryBus bus{
             &software_mmu, &ram, &s, &htab};
         const auto callbacks = bus.callbacks();
@@ -1357,7 +1357,7 @@ int main() {
               readback == replacement,
               "data read resolves the same translated physical page");
         s.segment_registers[0] =
-            segment_translation_mask | segment_key_problem_mask | vsid;
+            segment_key_problem_mask | vsid;
         s.msr = (1ULL << 14U); // Problem state selects Kp.
         check(!callbacks.read(callbacks.context, effective, readback),
               "user key is denied by PP=00");
@@ -1370,9 +1370,9 @@ int main() {
         check(callbacks.read(callbacks.context, user_rw_ea, readback) &&
               readback == replacement,
               "user key can read PP=10 mapping");
-        s.segment_registers[0] = vsid; // T clear: use the software loader map.
+        s.segment_registers[0] = segment_translation_mask | vsid; // T=1 is direct-store.
         check(!callbacks.fetch(callbacks.context, effective, fetched),
-              "T-clear segment does not silently use the HTAB mapping");
+              "direct-store segment is rejected instead of treated as hashed-page translation");
     }
 
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
