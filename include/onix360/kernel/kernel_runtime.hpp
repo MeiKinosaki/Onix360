@@ -1,13 +1,13 @@
 #pragma once
-#include "wx360/cpu/xenon_state.hpp"
-#include "wx360/kernel/xex_import_resolver.hpp"
-#include "wx360/kernel/kernel_heap.hpp"
-#include "wx360/kernel/kernel_thread_scheduler.hpp"
-#include "wx360/kernel/kernel_synchronization.hpp"
-#include "wx360/storage/guest_file_system.hpp"
-#include "wx360/kernel/xbox360_export_metadata.hpp"
-#include "wx360/memory/physical_memory.hpp"
-#include "wx360/memory/address_space.hpp"
+#include "onix360/cpu/xenon_state.hpp"
+#include "onix360/kernel/xex_import_resolver.hpp"
+#include "onix360/kernel/kernel_heap.hpp"
+#include "onix360/kernel/kernel_thread_scheduler.hpp"
+#include "onix360/kernel/kernel_synchronization.hpp"
+#include "onix360/storage/guest_file_system.hpp"
+#include "onix360/kernel/xbox360_export_metadata.hpp"
+#include "onix360/memory/physical_memory.hpp"
+#include "onix360/memory/address_space.hpp"
 #include <array>
 #include <cstdint>
 #include <map>
@@ -16,7 +16,7 @@
 #include <vector>
 #include <string>
 
-namespace wx360::kernel {
+namespace onix360::kernel {
 
 // Small host-backed system-call table and guest-visible PowerPC SC stubs.
 // This is a development bridge, not a complete xboxkrnl/xam implementation.
@@ -363,4 +363,4 @@ private:
     std::map<std::uint32_t,std::uint16_t> thunk_services_;
     XexImportResolver imports_;
 };
-} // namespace wx360::kernel
+} // namespace onix360::kernel

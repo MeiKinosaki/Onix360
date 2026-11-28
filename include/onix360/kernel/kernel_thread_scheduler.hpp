@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wx360/cpu/xenon_state.hpp"
+#include "onix360/cpu/xenon_state.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -9,7 +9,7 @@
 #include <map>
 #include <optional>
 
-namespace wx360::kernel {
+namespace onix360::kernel {
 
 enum class ThreadStatus : std::uint8_t { Ready, Running, Blocked, Terminated };
 
@@ -139,4 +139,4 @@ private:
     std::optional<std::uint32_t> current_;
 };
 
-} // namespace wx360::kernel
+} // namespace onix360::kernel

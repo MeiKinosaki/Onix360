@@ -7,7 +7,7 @@
 #include <optional>
 #include <vector>
 
-namespace wx360::kernel {
+namespace onix360::kernel {
 
 enum class WaitResult : std::uint8_t { Acquired, Blocked, InvalidObject };
 
@@ -143,4 +143,4 @@ private:
     std::map<std::uint32_t, Semaphore> semaphores_;
 };
 
-} // namespace wx360::kernel
+} // namespace onix360::kernel
