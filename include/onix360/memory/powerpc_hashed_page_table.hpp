@@ -60,6 +60,10 @@ public:
     // Decode the 32-bit OEA SDR1 layout: HTABORG[0:15], HTABMASK[23:31].
     [[nodiscard]] MemoryResult configure_from_sdr1(
         std::uint32_t sdr1, const PhysicalMemory& ram) noexcept {
+        // SDR1[16:31] carries HTABORG; [23:31] is HTABMASK in the
+        // architectural view used here. Bits 9:15 of the low half are reserved.
+        if ((sdr1 & 0x0000FE00U) != 0U)
+            return MemoryResult::AlignmentFault;
         const std::uint32_t mask = sdr1 & 0x1FFU;
         unsigned extra_bits = 0;
         bool saw_zero = false;
