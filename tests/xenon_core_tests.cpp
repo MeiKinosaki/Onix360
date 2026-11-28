@@ -26,6 +26,12 @@ int main() {
           "core fetches and executes instruction from guest RAM");
     check(core.state.gpr[3] == 42 && core.state.pc == 0x104,
           "core updates GPR and PC after instruction execution");
+    const std::array<std::uint8_t,4> alias_bytes{0x11,0x22,0x33,0x44};
+    std::array<std::uint8_t,4> alias_readback{};
+    check(core.write_guest(ram, 0xA0000200U, alias_bytes) == memory::MemoryResult::Ok &&
+          core.read_guest(ram, 0xC0000200U, alias_readback) == memory::MemoryResult::Ok &&
+          alias_readback == alias_bytes,
+          "XenonCore resolves 64 KiB and 16 MiB physical aliases to shared RAM");
 
     // The real XenonCore step loop must use the segment/HTAB bus, not only
     // the standalone translation helper.
