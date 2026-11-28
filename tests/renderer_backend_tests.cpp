@@ -1,5 +1,6 @@
 #include "wx360/gpu/renderer_backend.hpp"
 #include "wx360/gpu/renderer_interface.hpp"
+#include "wx360/gpu/renderer_factory.hpp"
 #include <array>
 #include <cstdlib>
 #include <iostream>
@@ -41,6 +42,14 @@ int main() {
           "explicit available backend is selected");
     check(renderer_name(RendererBackend::Software) == "Software Renderer",
           "backend exposes readable software renderer name");
+    auto factory_software = create_renderer(RendererBackend::Software, 2, 2);
+    check(factory_software && factory_software.selected == RendererBackend::Software &&
+          !factory_software.fallback,
+          "renderer factory creates requested software backend");
+    auto factory_fallback = create_renderer(RendererBackend::Vulkan, 2, 2);
+    check(factory_fallback && factory_fallback.selected == RendererBackend::Software &&
+          factory_fallback.fallback,
+          "renderer factory falls back to software for unavailable Vulkan backend");
     SoftwareRendererBackend software;
     check(software.backend() == RendererBackend::Software,
           "software presentation adapter identifies its backend");
