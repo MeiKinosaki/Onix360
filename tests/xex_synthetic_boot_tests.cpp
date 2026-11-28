@@ -1,6 +1,6 @@
-#include "wx360/machine/xenon_core.hpp"
-#include "wx360/xex/xex_image_loader.hpp"
-#include "wx360/crypto/sha1.hpp"
+#include "onix360/machine/xenon_core.hpp"
+#include "onix360/xex/xex_image_loader.hpp"
+#include "onix360/crypto/sha1.hpp"
 
 #include <algorithm>
 #include <array>
@@ -12,7 +12,7 @@
 #include <vector>
 
 namespace {
-void synthetic_kernel_service(wx360::cpu::XenonThreadState& state) noexcept {
+void synthetic_kernel_service(onix360::cpu::XenonThreadState& state) noexcept {
     state.gpr[3] = 0xBEEFU;
 }
 void put16(std::vector<std::uint8_t>& b, std::size_t o, std::uint16_t v) {
@@ -67,22 +67,22 @@ std::vector<std::uint8_t> make_synthetic_xex2(const std::vector<std::uint8_t>& p
     std::copy(pe.begin(), pe.end(), xex.begin() + pe_offset);
     std::vector<std::uint8_t> padded_page(0x1000, 0);
     std::copy(pe.begin(), pe.end(), padded_page.begin());
-    const auto page_digest = wx360::crypto::sha1(padded_page);
+    const auto page_digest = onix360::crypto::sha1(padded_page);
     std::copy(page_digest.begin(), page_digest.end(), xex.begin() + security_info + 0x188);
     std::vector<std::uint8_t> authenticated = padded_page;
     authenticated.insert(authenticated.end(), xex.begin() + security_info + 0x184,
                          xex.begin() + security_info + 0x19C);
-    const auto root_digest = wx360::crypto::sha1(authenticated);
+    const auto root_digest = onix360::crypto::sha1(authenticated);
     std::copy(root_digest.begin(), root_digest.end(), xex.begin() + security_info + 0x114);
     return xex;
 }
 }
 
 int main() {
-    using namespace wx360;
+    using namespace onix360;
     const auto pe = make_synthetic_xbox_pe();
     const auto xex_bytes = make_synthetic_xex2(pe);
-    const auto path = std::filesystem::temp_directory_path() / "wx360_synthetic_boot.xex";
+    const auto path = std::filesystem::temp_directory_path() / "onix360_synthetic_boot.xex";
     {
         std::ofstream out(path, std::ios::binary);
         out.write(reinterpret_cast<const char*>(xex_bytes.data()),
@@ -200,6 +200,6 @@ int main() {
         std::cerr << "MMU-backed guest PM4 clear/present bridge failed\\n";
         return EXIT_FAILURE;
     }
-    std::cout << "WX360 synthetic XEX2-to-bounded-Xenon-batches test passed\n";
+    std::cout << "Onix360 synthetic XEX2-to-bounded-Xenon-batches test passed\n";
     return EXIT_SUCCESS;
 }
