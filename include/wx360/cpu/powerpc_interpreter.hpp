@@ -82,6 +82,13 @@ struct AddressSpaceMemoryBus {
     XenonThreadState* thread_state{};
     memory::PowerPcHashedPageTable* hashed_page_table{};
 
+    [[nodiscard]] memory::MemoryResult configure_htab_from_sdr1(
+        std::uint32_t sdr1) noexcept {
+        if (!hashed_page_table || !physical_memory)
+            return memory::MemoryResult::Unmapped;
+        return hashed_page_table->configure_from_sdr1(sdr1, *physical_memory);
+    }
+
     [[nodiscard]] static constexpr bool pte_allows_access(
         std::uint8_t pp, bool key, memory::Access access) noexcept {
         if (pp > 3U) return false;
