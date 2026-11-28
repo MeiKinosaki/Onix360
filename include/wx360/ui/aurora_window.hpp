@@ -16,6 +16,7 @@
 #include "wx360/storage/content_library.hpp"
 #include "wx360/state/state_slots.hpp"
 #include "wx360/ui/slot_visual_state.hpp"
+#include "wx360/ui/clock_display.hpp"
 #include "wx360/xex/xex_image_loader.hpp"
 
 namespace wx360::ui {
@@ -52,6 +53,7 @@ public:
  }
 
 private:
+ static constexpr UINT_PTR kClockTimerId = 0x3601;
  static LRESULT CALLBACK window_proc(HWND h, UINT m, WPARAM w, LPARAM l) {
   AuroraWindow* self = reinterpret_cast<AuroraWindow*>(GetWindowLongPtrW(h, GWLP_USERDATA));
   if (m == WM_NCCREATE) {
@@ -61,9 +63,23 @@ private:
   }
   if (!self) return DefWindowProcW(h, m, w, l);
   switch (m) {
+   case WM_CREATE:
+    self->update_clock();
+    SetTimer(h, kClockTimerId, 1000, nullptr);
+    return 0;
+   case WM_TIMER:
+    if (w == kClockTimerId) {
+     self->update_clock();
+     InvalidateRect(h, nullptr, FALSE);
+     return 0;
+    }
+    break;
    case WM_PAINT: self->paint(h); return 0;
    case WM_ERASEBKGND: return 1;
-   case WM_DESTROY: PostQuitMessage(0); return 0;
+   case WM_DESTROY:
+    KillTimer(h, kClockTimerId);
+    PostQuitMessage(0);
+    return 0;
    case WM_KEYDOWN:
     if (w == VK_ESCAPE) DestroyWindow(h);
     else if (w == VK_DOWN || w == VK_RIGHT) {
@@ -132,6 +148,15 @@ private:
   return DefWindowProcW(h, m, w, l);
  }
 
+ void update_clock() {
+  SYSTEMTIME now{};
+  GetLocalTime(&now);
+  const auto formatted = format_clock({now.wYear, now.wMonth, now.wDay,
+      now.wHour, now.wMinute, now.wSecond});
+  clock_time_ = formatted.time;
+  clock_date_ = formatted.date;
+ }
+
  static std::wstring hex_value(std::uint32_t value) {
   static constexpr wchar_t digits[] = L"0123456789ABCDEF";
   std::wstring result(8, L'0');
@@ -188,6 +213,9 @@ private:
   HFONT normal = CreateFontW(18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
       DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
       CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+  HFONT small = CreateFontW(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+      DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+      CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
   HGDIOBJ old = SelectObject(dc, title);
   draw_text(dc, 28, 28, L"WX360", RGB(235, 244, 255));
   SelectObject(dc, normal);
@@ -198,6 +226,10 @@ private:
   }
   const wchar_t* headings[] = {L"INICIO", L"BIBLIOTECA DE JOGOS", L"ARQUIVOS DE JOGOS", L"SAVE STATES", L"CONFIGURACOES"};
   draw_text(dc, 250, 35, headings[selected_nav_], RGB(255, 255, 255));
+  SelectObject(dc, small);
+  draw_text(dc, std::max(260, r.right - 190), 20, clock_time_.c_str(), RGB(105, 225, 245));
+  draw_text(dc, std::max(260, r.right - 190), 43, clock_date_.c_str(), RGB(170, 195, 215));
+  SelectObject(dc, normal);
   draw_text(dc, 252, 78, L"Dashboard inspirado no Aurora | WX360", RGB(130, 205, 225));
   panel(dc, 250, 125, r.right - 280, 135, RGB(23, 43, 62));
 
@@ -269,6 +301,7 @@ private:
   SelectObject(dc, old);
   DeleteObject(title);
   DeleteObject(normal);
+  DeleteObject(small);
   EndPaint(h, &ps);
  }
 
@@ -277,6 +310,8 @@ private:
  std::array<std::wstring, state::StateSlots::kSlotCount> slot_labels_{};
  std::wstring slot_message_;
  std::wstring xex_message_;
+ std::wstring clock_time_;
+ std::wstring clock_date_;
  std::filesystem::path rom_root_;
  std::vector<storage::GameFile> games_;
  std::vector<storage::ContentEntry> content_entries_;
