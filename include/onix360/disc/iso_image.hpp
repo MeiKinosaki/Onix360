@@ -5,7 +5,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-namespace wx360::disc {
+namespace onix360::disc {
 struct XdvdfsFileEntry { std::string name; std::uint32_t first_sector{0}; std::uint32_t size{0}; bool is_directory{false}; };
 class IsoImage {
 public:

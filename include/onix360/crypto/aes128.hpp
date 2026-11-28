@@ -8,7 +8,7 @@ extern "C" {
 #include <vector>
 #include <utility>
 
-namespace wx360::crypto {
+namespace onix360::crypto {
 using Aes128Key = std::array<std::uint8_t,16>;
 enum class AesResult : std::uint8_t { Ok, InvalidLength, KeyUnavailable };
 
@@ -59,4 +59,4 @@ enum class XexKeySet : std::uint8_t { Retail, Devkit };
     XexKeySet set, const Aes128Key& encrypted_session_key) {
     return unwrap_xex_session_key(xex_master_key(set), encrypted_session_key);
 }
-} // namespace wx360::crypto
+} // namespace onix360::crypto

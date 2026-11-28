@@ -5,7 +5,7 @@
 #include <span>
 #include <vector>
 
-namespace wx360::crypto {
+namespace onix360::crypto {
 using Sha1Digest = std::array<std::uint8_t, 20>;
 
 [[nodiscard]] inline Sha1Digest sha1(std::span<const std::uint8_t> input) {
@@ -48,4 +48,4 @@ using Sha1Digest = std::array<std::uint8_t, 20>;
         out[i*4+j]=static_cast<std::uint8_t>(words[i]>>(24-8*j));
     return out;
 }
-} // namespace wx360::crypto
+} // namespace onix360::crypto
