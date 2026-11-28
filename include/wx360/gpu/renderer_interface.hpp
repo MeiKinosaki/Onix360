@@ -1,5 +1,6 @@
 #pragma once
 #include "wx360/gpu/renderer_backend.hpp"
+#include "wx360/gpu/xenos_framebuffer.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <span>
@@ -50,6 +51,12 @@ public:
         std::copy(frame.rgba8.begin(), frame.rgba8.end(), front_buffer_.begin());
         ++present_count_;
         return true;
+    }
+
+    [[nodiscard]] bool present(const XenosFramebuffer& framebuffer) {
+        const auto& source = framebuffer.pixels();
+        return present({framebuffer.width(), framebuffer.height(),
+                        std::span<const std::uint32_t>(source.data(), source.size())});
     }
 
     [[nodiscard]] std::span<const std::uint32_t> front_buffer() const noexcept {
