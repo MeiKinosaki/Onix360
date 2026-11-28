@@ -1,12 +1,12 @@
 #pragma once
-#include "wx360/gpu/renderer_backend.hpp"
-#include "wx360/gpu/xenos_framebuffer.hpp"
+#include "onix360/gpu/renderer_backend.hpp"
+#include "onix360/gpu/xenos_framebuffer.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <span>
 #include <vector>
 
-namespace wx360::gpu {
+namespace onix360::gpu {
 
 struct RendererFrameView {
     std::uint32_t width{};
@@ -76,4 +76,4 @@ private:
     std::vector<std::uint32_t> front_buffer_{};
     std::uint64_t present_count_{};
 };
-} // namespace wx360::gpu
+} // namespace onix360::gpu

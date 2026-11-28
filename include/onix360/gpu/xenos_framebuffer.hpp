@@ -7,9 +7,9 @@
 #include <vector>
 #include <span>
 
-namespace wx360::gpu {
+namespace onix360::gpu {
 
-// Host-side software framebuffer scaffold. Its command IDs are WX360-internal;
+// Host-side software framebuffer scaffold. Its command IDs are Onix360-internal;
 // they are not claimed to decode native Xenos PM4 packets.
 class XenosFramebuffer {
 public:
@@ -103,4 +103,4 @@ private:
     std::vector<std::uint32_t> pixels_,front_buffer_;
     std::uint64_t present_count_{},generation_{};
 };
-} // namespace wx360::gpu
+} // namespace onix360::gpu

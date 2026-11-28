@@ -5,9 +5,9 @@
 #include <array>
 #include <vector>
 #include <bit>
-#include "wx360/gpu/xenos_framebuffer.hpp"
+#include "onix360/gpu/xenos_framebuffer.hpp"
 
-namespace wx360::gpu {
+namespace onix360::gpu {
 
 // Bounds-checked decoder for the outer Xbox 360 PM4 packet envelope.
 // It deliberately does not claim that an opcode is implemented by the GPU.
@@ -28,12 +28,12 @@ struct Pm4PacketView {
 
 class XenosCommandProcessor {
 public:
-    // WX360 development extension: 0xF0 carries three XY float pairs and RGBA.
+    // Onix360 development extension: 0xF0 carries three XY float pairs and RGBA.
     // It is NOT asserted to be a native Xbox 360 Xenos PM4 opcode.
-    static constexpr std::uint8_t wx360_draw_triangle_opcode = 0xF0U;
-    static constexpr std::uint8_t wx360_clear_opcode = 0xF1U;
-    static constexpr std::uint8_t wx360_present_opcode = 0xF2U;
-    static constexpr std::uint8_t wx360_texture_blit_opcode = 0xF3U;
+    static constexpr std::uint8_t onix360_draw_triangle_opcode = 0xF0U;
+    static constexpr std::uint8_t onix360_clear_opcode = 0xF1U;
+    static constexpr std::uint8_t onix360_present_opcode = 0xF2U;
+    static constexpr std::uint8_t onix360_texture_blit_opcode = 0xF3U;
     [[nodiscard]] bool configure_framebuffer(std::uint32_t width, std::uint32_t height) {
         return framebuffer_.resize(width, height);
     }
@@ -41,12 +41,12 @@ public:
         if (packet.type == Pm4PacketType::Type0) return execute_type0(packet);
         if (packet.type == Pm4PacketType::Type2) return packet.payload.empty();
         if (packet.type != Pm4PacketType::Type3) return false;
-        if (packet.opcode == wx360_clear_opcode && packet.payload.size() == 1U) {
+        if (packet.opcode == onix360_clear_opcode && packet.payload.size() == 1U) {
             framebuffer_.clear(packet.payload[0]);
             return true;
         }
-        if (packet.opcode == wx360_present_opcode && packet.payload.size() == 1U && packet.payload[0] == 0U) return framebuffer_.present();
-        if (packet.opcode == wx360_texture_blit_opcode && packet.payload.size() >= 7U) {
+        if (packet.opcode == onix360_present_opcode && packet.payload.size() == 1U && packet.payload[0] == 0U) return framebuffer_.present();
+        if (packet.opcode == onix360_texture_blit_opcode && packet.payload.size() >= 7U) {
             const auto& p = packet.payload;
             const std::uint64_t pixel_count =
                 static_cast<std::uint64_t>(p[0]) * p[1];
@@ -55,7 +55,7 @@ public:
             return framebuffer_.blit_rgba8(p.subspan(6), p[0], p[1],
                 p[2], p[3], p[4], p[5]);
         }
-        if (packet.opcode != wx360_draw_triangle_opcode || packet.payload.size() != 7U) return false;
+        if (packet.opcode != onix360_draw_triangle_opcode || packet.payload.size() != 7U) return false;
         const auto& p = packet.payload;
         return framebuffer_.draw_triangle(
             std::bit_cast<float>(p[0]), std::bit_cast<float>(p[1]),
@@ -132,4 +132,4 @@ private:
     XenosFramebuffer framebuffer_{};
 };
 
-} // namespace wx360::gpu
+} // namespace onix360::gpu
