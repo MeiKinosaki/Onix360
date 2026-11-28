@@ -32,8 +32,8 @@ struct MemoryAccess {
 // PowerPC segment-register N bit (architectural bit 3, numeric bit 28)
 // disables instruction fetches from the selected 256 MiB segment.
 inline constexpr std::uint32_t segment_no_execute_mask = std::uint32_t{1} << 28U;
-inline constexpr std::uint32_t segment_key_supervisor_mask = std::uint32_t{1} << 29U;
-inline constexpr std::uint32_t segment_key_problem_mask = std::uint32_t{1} << 30U;
+inline constexpr std::uint32_t segment_key_supervisor_mask = std::uint32_t{1} << 30U;
+inline constexpr std::uint32_t segment_key_problem_mask = std::uint32_t{1} << 29U;
 inline constexpr std::uint32_t segment_translation_mask = std::uint32_t{1} << 31U;
 inline constexpr std::uint32_t segment_vsid_mask = 0x00FFFFFFU;
 
