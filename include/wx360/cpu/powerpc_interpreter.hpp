@@ -65,7 +65,7 @@ struct SegmentRegisterFields {
 }
 [[nodiscard]] constexpr std::uint32_t segment_secondary_hash(
     std::uint32_t vsid, std::uint64_t effective_address) noexcept {
-    return ~segment_primary_hash(vsid, effective_address) & 0x00FFFFFFU;
+    return ~segment_primary_hash(vsid, effective_address);
 }
 
 [[nodiscard]] inline bool segment_allows_instruction_fetch(
