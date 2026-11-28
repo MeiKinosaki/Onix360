@@ -38,7 +38,7 @@ int main() {
     check(sdr1_table.configure_from_sdr1(0x00010000U, ram) == MemoryResult::Ok &&
           sdr1_table.group_count() == 1024,
           "decodes SDR1 origin and minimum HTAB size");
-    check(sdr1_table.configure_from_sdr1(0x00010003U, ram) ==
+    check(sdr1_table.configure_from_sdr1(0x00010005U, ram) ==
               MemoryResult::AlignmentFault,
           "rejects non-contiguous SDR1 HTAB mask");
     check(table.insert(vsid, ea + 1U, 0x9001, 2, ram) == MemoryResult::AlignmentFault,
