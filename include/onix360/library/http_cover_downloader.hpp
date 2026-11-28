@@ -1,5 +1,5 @@
 #pragma once
-#include "wx360/library/cover_library.hpp"
+#include "onix360/library/cover_library.hpp"
 #include <cstdint>
 #include <fstream>
 #include <string>
@@ -10,7 +10,7 @@
 #include <windows.h>
 #include <winhttp.h>
 #endif
-namespace wx360::covers {
+namespace onix360::covers {
 class HttpCoverDownloader {
 public:
  static constexpr std::uint64_t kMaxImageBytes=8ULL*1024ULL*1024ULL;
@@ -25,7 +25,7 @@ public:
   std::wstring host(parts.lpszHostName,parts.dwHostNameLength);
   std::wstring path(parts.lpszUrlPath,parts.dwUrlPathLength);
   if(parts.dwExtraInfoLength)path.append(parts.lpszExtraInfo,parts.dwExtraInfoLength);
-  HINTERNET session=WinHttpOpen(L"WX360 Cover Downloader/1.0",WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0);
+  HINTERNET session=WinHttpOpen(L"Onix360 Cover Downloader/1.0",WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0);
   if(!session)return false;
   WinHttpSetTimeouts(session,5000,5000,10000,10000);
   HINTERNET connection=WinHttpConnect(session,host.c_str(),parts.nPort,0);

@@ -1,15 +1,15 @@
 #pragma once
 
-#include "wx360/cpu/powerpc_interpreter.hpp"
-#include "wx360/memory/physical_memory.hpp"
-#include "wx360/memory/address_space.hpp"
-#include "wx360/memory/xenon_address_layout.hpp"
-#include "wx360/kernel/kernel_runtime.hpp"
-#include "wx360/xex/xex_image_loader.hpp"
-#include "wx360/audio/audio_engine.hpp"
-#include "wx360/input/controller_state.hpp"
-#include "wx360/input/xinput_backend.hpp"
-#include "wx360/gpu/xenos_command_processor.hpp"
+#include "onix360/cpu/powerpc_interpreter.hpp"
+#include "onix360/memory/physical_memory.hpp"
+#include "onix360/memory/address_space.hpp"
+#include "onix360/memory/xenon_address_layout.hpp"
+#include "onix360/kernel/kernel_runtime.hpp"
+#include "onix360/xex/xex_image_loader.hpp"
+#include "onix360/audio/audio_engine.hpp"
+#include "onix360/input/controller_state.hpp"
+#include "onix360/input/xinput_backend.hpp"
+#include "onix360/gpu/xenos_command_processor.hpp"
 
 #include <array>
 #include <cstddef>
@@ -18,7 +18,7 @@
 #include <optional>
 #include <vector>
 
-namespace wx360::machine {
+namespace onix360::machine {
 
 enum class RunResult : std::uint8_t {
     Executed,
@@ -376,4 +376,4 @@ struct XenonCore {
 
 };
 
-} // namespace wx360::machine
+} // namespace onix360::machine

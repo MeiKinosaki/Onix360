@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wx360/memory/physical_memory.hpp"
+#include "onix360/memory/physical_memory.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -9,7 +9,7 @@
 #include <span>
 #include <vector>
 
-namespace wx360::memory {
+namespace onix360::memory {
 
 // Initial software translation cache for 4 KiB guest virtual pages.
 class AddressSpace {
@@ -165,4 +165,4 @@ private:
     std::vector<Entry> entries_{};
     std::array<BatEntry, bat_entries> bats_{};
 };
-} // namespace wx360::memory
+} // namespace onix360::memory
