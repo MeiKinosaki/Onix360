@@ -297,3 +297,32 @@ O probe é uma ferramenta de diagnóstico para imagens compatíveis com o subcon
 | v1.0 | Marco de estabilidade baseado em evidências |
 
 **Regra de qualidade:** não declarar builds, testes, compatibilidade ou execução de jogos como concluídos sem evidência reproduzível.
+
+
+## Atualização de arquitetura e estado de desenvolvimento — 28/11/2026
+
+Este bloco registra o estado incremental do código mais recente; ele não substitui as limitações documentadas nas seções anteriores.
+
+### CPU e memória
+
+- O interpretador possui subconjuntos adicionais de FPU e VMX, incluindo transferências de FPSCR e operações vetoriais. A ISA Xenon ainda não está completa.
+- Existe um modelo experimental de tabela hash PowerPC OEA de 32 bits (SDR1, PTEG, PTE0/PTE1, busca primária/secundária e bits R/C), conectado opcionalmente ao barramento do XenonCore.
+- **Não classificar esse modelo como MMU final do Xbox 360.** A tradução de endereços Xenon específica do hypervisor/L2, endereços físicos estendidos e flags criptográficas continuam pendentes.
+- Há um classificador separado para janelas de endereços virtuais, imagens XEX e aliases físicos. A classificação de janelas não autentica nem implementa a tabela privada do hypervisor.
+
+### Renderização
+
+- O Software Renderer continua sendo o backend funcional de referência para o framebuffer.
+- O Direct3D 11 tem uma implementação inicial de criação de dispositivo, textura off-screen e upload de frame; a apresentação em janela, shaders e pipeline Xenos ainda não estão concluídos.
+- Vulkan, Direct3D 12 e OpenGL ainda não possuem backends nativos completos. A seleção/fallback não deve ser anunciada como compatibilidade gráfica implementada.
+
+### Save states
+
+- O formato v2 serializa contexto CPU GPR/FPR/VMX, registradores de controle/segmento/exceção e RAM, mantendo leitura do formato v1.
+- Ainda não salva/restaura o estado integral de GPU, áudio, controladores, kernel, scheduler, filesystem e dispositivos. Portanto, não é um save state integral de uma sessão Xbox 360.
+
+### Critério de validação
+
+- Os commits e testes sintéticos adicionados ao repositório não significam, por si só, que os testes passaram.
+- Só considerar uma build aprovada quando existir uma execução CI concluída com sucesso para o commit correspondente.
+- Nenhum XEX comercial ou jogo real foi executado como parte desta etapa. Não há compatibilidade de jogos comprovada por estes incrementos.
