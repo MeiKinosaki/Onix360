@@ -1,4 +1,4 @@
-#include "wx360/storage/game_library.hpp"
+#include "onix360/storage/game_library.hpp"
 
 #include <array>
 #include <cstdlib>
@@ -37,8 +37,8 @@ void write(const std::filesystem::path& p, const std::vector<std::uint8_t>& b) {
 
 int main() {
     namespace fs = std::filesystem;
-    using namespace wx360;
-    const auto root = fs::temp_directory_path() / "wx360_library_xex_open_tests";
+    using namespace onix360;
+    const auto root = fs::temp_directory_path() / "onix360_library_xex_open_tests";
     std::error_code ec; fs::remove_all(root, ec); fs::create_directories(root, ec);
     const auto valid = root / "valid.xex";
     const auto truncated = root / "truncated.xex";
@@ -77,6 +77,6 @@ int main() {
     check(storage::GameLibrary::open_xex(forged, output) == xex::LoadError::InvalidHeader,
           "non-XEX library entry cannot be passed as XEX");
     fs::remove_all(root, ec);
-    if (failures == 0) std::cout << "WX360 library XEX open tests passed\n";
+    if (failures == 0) std::cout << "Onix360 library XEX open tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
