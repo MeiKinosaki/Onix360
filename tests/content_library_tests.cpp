@@ -1,4 +1,4 @@
-#include "wx360/storage/content_library.hpp"
+#include "onix360/storage/content_library.hpp"
 
 #include <cstdlib>
 #include <filesystem>
@@ -7,7 +7,7 @@
 
 int main() {
     int failures = 0;
-    const auto root = std::filesystem::temp_directory_path() / "wx360_content_library_test";
+    const auto root = std::filesystem::temp_directory_path() / "onix360_content_library_test";
     std::error_code ec;
     std::filesystem::remove_all(root, ec);
 
@@ -31,7 +31,7 @@ int main() {
     touch(root / "Packages" / "sample.pirs");
     touch(root / "Packages" / "ignore.bin");
 
-    const auto entries = wx360::storage::ContentLibrary::scan(root);
+    const auto entries = onix360::storage::ContentLibrary::scan(root);
     if (entries.size() != 7) {
         std::cerr << "Expected four content folders and three STFS package candidates; got "
                   << entries.size() << "\n";
@@ -47,7 +47,7 @@ int main() {
         std::cerr << "Content type identification failed\n";
         ++failures;
     }
-    if (!wx360::storage::ContentLibrary::scan(root / "missing").empty()) {
+    if (!onix360::storage::ContentLibrary::scan(root / "missing").empty()) {
         std::cerr << "Missing folder should produce an empty content library\n";
         ++failures;
     }
