@@ -38,7 +38,7 @@ int main(){
  std::uint64_t hash=1469598103934665603ULL;
  for(auto byte:legacy_payload){hash^=byte;hash*=1099511628211ULL;}
  const char* legacy_path="wx360_state_v1_legacy.bin";
- {std::ofstream out(legacy_path,std::ios::binary|std::ios::trunc);out.write("WX360ST\\0",8);
+ {std::ofstream out(legacy_path,std::ios::binary|std::ios::trunc);out.write("WX360ST\0",8);
   auto write32=[&](std::uint32_t v){for(unsigned i=0;i<4;++i)out.put(static_cast<char>(v>>(8*i)));};
   auto write64=[&](std::uint64_t v){for(unsigned i=0;i<8;++i)out.put(static_cast<char>(v>>(8*i)));};
   write32(1);write64(0);write64(legacy_payload.size());write64(hash);
