@@ -227,8 +227,8 @@ private:
   const wchar_t* headings[] = {L"INICIO", L"BIBLIOTECA DE JOGOS", L"ARQUIVOS DE JOGOS", L"SAVE STATES", L"CONFIGURACOES"};
   draw_text(dc, 250, 35, headings[selected_nav_], RGB(255, 255, 255));
   SelectObject(dc, small);
-  draw_text(dc, std::max(260, r.right - 190), 20, clock_time_.c_str(), RGB(105, 225, 245));
-  draw_text(dc, std::max(260, r.right - 190), 43, clock_date_.c_str(), RGB(170, 195, 215));
+  draw_text(dc, (std::max)(260, static_cast<int>(r.right) - 190), 20, clock_time_.c_str(), RGB(105, 225, 245));
+  draw_text(dc, (std::max)(260, static_cast<int>(r.right) - 190), 43, clock_date_.c_str(), RGB(170, 195, 215));
   SelectObject(dc, normal);
   draw_text(dc, 252, 78, L"Dashboard inspirado no Aurora | Onix360", RGB(130, 205, 225));
   panel(dc, 250, 125, r.right - 280, 135, RGB(23, 43, 62));
