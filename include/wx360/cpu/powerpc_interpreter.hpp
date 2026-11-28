@@ -53,6 +53,21 @@ struct SegmentRegisterFields {
             (value & segment_translation_mask) != 0};
 }
 
+// Hashed-page-table hash inputs for 4 KiB PowerPC pages. These helpers
+// intentionally do not perform HTAB lookup or PTE permission checks yet.
+[[nodiscard]] constexpr std::uint32_t segment_page_index(
+    std::uint64_t effective_address) noexcept {
+    return static_cast<std::uint32_t>((effective_address >> 12U) & 0xFFFFU);
+}
+[[nodiscard]] constexpr std::uint32_t segment_primary_hash(
+    std::uint32_t vsid, std::uint64_t effective_address) noexcept {
+    return (vsid & segment_vsid_mask) ^ segment_page_index(effective_address);
+}
+[[nodiscard]] constexpr std::uint32_t segment_secondary_hash(
+    std::uint32_t vsid, std::uint64_t effective_address) noexcept {
+    return ~segment_primary_hash(vsid, effective_address) & 0x00FFFFFFU;
+}
+
 [[nodiscard]] inline bool segment_allows_instruction_fetch(
     const XenonThreadState& state, std::uint64_t effective_address) noexcept {
     const unsigned segment = static_cast<unsigned>((effective_address >> 28U) & 0xFU);
