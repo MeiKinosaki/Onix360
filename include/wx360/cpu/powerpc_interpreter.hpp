@@ -31,10 +31,32 @@ struct MemoryAccess {
 // PowerPC segment-register N bit (architectural bit 3, numeric bit 28)
 // disables instruction fetches from the selected 256 MiB segment.
 inline constexpr std::uint32_t segment_no_execute_mask = std::uint32_t{1} << 28U;
+inline constexpr std::uint32_t segment_key_supervisor_mask = std::uint32_t{1} << 29U;
+inline constexpr std::uint32_t segment_key_problem_mask = std::uint32_t{1} << 30U;
+inline constexpr std::uint32_t segment_translation_mask = std::uint32_t{1} << 31U;
+inline constexpr std::uint32_t segment_vsid_mask = 0x00FFFFFFU;
+
+struct SegmentRegisterFields {
+    std::uint32_t vsid{};
+    bool key_supervisor{};
+    bool key_problem{};
+    bool no_execute{};
+    bool translation_enabled{};
+};
+
+[[nodiscard]] constexpr SegmentRegisterFields decode_segment_register(
+    std::uint32_t value) noexcept {
+    return {value & segment_vsid_mask,
+            (value & segment_key_supervisor_mask) != 0,
+            (value & segment_key_problem_mask) != 0,
+            (value & segment_no_execute_mask) != 0,
+            (value & segment_translation_mask) != 0};
+}
+
 [[nodiscard]] inline bool segment_allows_instruction_fetch(
     const XenonThreadState& state, std::uint64_t effective_address) noexcept {
     const unsigned segment = static_cast<unsigned>((effective_address >> 28U) & 0xFU);
-    return (state.segment_registers[segment] & segment_no_execute_mask) == 0;
+    return !decode_segment_register(state.segment_registers[segment]).no_execute;
 }
 
 struct AddressSpaceMemoryBus {
