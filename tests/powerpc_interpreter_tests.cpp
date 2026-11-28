@@ -761,6 +761,16 @@ int main() {
           s.vr[3].lane[0] == (0xFF01FE02U ^ 0x01020304U), "VMX VXOR executes");
     check(execute(s, vx_form(3, 1, 2, 1156)) == StepResult::Executed &&
           s.vr[3].lane[0] == (0xFF01FE02U | 0x01020304U), "VMX VOR executes");
+    s.vr[1].lane = {0xAAAAAAAAU, 0x00000000U, 0xFFFFFFFFU, 0x12345678U};
+    s.vr[2].lane = {0x55555555U, 0xFFFFFFFFU, 0x00000000U, 0x87654321U};
+    s.vr[4].lane = {0xF0F0F0F0U, 0xAAAAAAAAU, 0x55555555U, 0xFFFF0000U};
+    const std::uint32_t vsel = (4U << 26U) | (3U << 21U) |
+        (1U << 16U) | (2U << 11U) | (4U << 6U) | 42U;
+    check(execute(s, vsel) == StepResult::Executed,
+          "VMX VSEL executes with its third vector operand");
+    check(s.vr[3].lane == std::array<std::uint32_t,4>{
+              0x5A5A5A5AU, 0xAAAAAAAAU, 0x55555555U, 0x87650000U},
+          "VMX VSEL selects each bit from VA or VB using VC");
     s.vr[1].lane = {0xFF0180FEU, 0x80000001U, 0xFFFFFFFFU, 0x7FFFFFFFU};
     s.vr[2].lane = {0x0102FF7FU, 0x7FFFFFFFU, 0x00000000U, 0x80000000U};
     check(execute(s, vx_form(3, 1, 2, 2)) == StepResult::Executed &&
