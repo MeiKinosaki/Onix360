@@ -3,6 +3,7 @@
 #include "wx360/cpu/powerpc_interpreter.hpp"
 #include "wx360/memory/physical_memory.hpp"
 #include "wx360/memory/address_space.hpp"
+#include "wx360/memory/xenon_address_layout.hpp"
 #include "wx360/kernel/kernel_runtime.hpp"
 #include "wx360/xex/xex_image_loader.hpp"
 #include "wx360/audio/audio_engine.hpp"
@@ -37,6 +38,11 @@ struct XenonCore {
     gpu::XenosCommandProcessor gpu{};
     input::ControllerState controller{};
     input::XInputBackend xinput{};
+
+    [[nodiscard]] static constexpr memory::XenonAddressRegionInfo
+    classify_guest_address(std::uint32_t address) noexcept {
+        return memory::classify_xenon_address(address);
+    }
 
     [[nodiscard]] bool poll_controller(unsigned user_index = 0) noexcept {
         return xinput.poll(controller, user_index);
