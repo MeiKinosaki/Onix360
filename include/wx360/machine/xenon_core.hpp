@@ -104,6 +104,15 @@ struct XenonCore {
     audio::AudioEngine audio{};
     memory::AddressSpace address_space{};
     bool mmu_enabled{false};
+    memory::PowerPcHashedPageTable hashed_page_table{};
+    bool hashed_mmu_enabled{false};
+
+    [[nodiscard]] memory::MemoryResult configure_hashed_mmu(
+        std::uint32_t sdr1, memory::PhysicalMemory& ram) noexcept {
+        const auto result = hashed_page_table.configure_from_sdr1(sdr1, ram);
+        hashed_mmu_enabled = result == memory::MemoryResult::Ok;
+        return result;
+    }
 
     [[nodiscard]] memory::MemoryResult map_guest_page(std::uint64_t virtual_address,
         std::uint64_t physical_address, std::uint8_t permissions) noexcept {
@@ -123,12 +132,12 @@ struct XenonCore {
         auto& context = *static_cast<InterpreterBusContext*>(opaque);
         auto& core = *context.core;
         auto& ram = *context.ram;
-        if (!core.mmu_enabled)
+        if (!core.mmu_enabled && !core.hashed_mmu_enabled)
             return ram.read(guest_address, output, memory::Access::Read) == memory::MemoryResult::Ok;
-        const auto translated = core.address_space.translate_range(
-            guest_address, output.size(), memory::Access::Read, ram);
-        return translated.result == memory::MemoryResult::Ok &&
-            ram.read(translated.physical_address, output, memory::Access::Read) == memory::MemoryResult::Ok;
+        cpu::AddressSpaceMemoryBus bus{&core.address_space, &ram, &core.state,
+            core.hashed_mmu_enabled ? &core.hashed_page_table : nullptr};
+        const auto callbacks = bus.callbacks();
+        return callbacks.read(callbacks.context, guest_address, output);
     }
 
     [[nodiscard]] static bool interpreter_write(
@@ -137,12 +146,12 @@ struct XenonCore {
         auto& context = *static_cast<InterpreterBusContext*>(opaque);
         auto& core = *context.core;
         auto& ram = *context.ram;
-        if (!core.mmu_enabled)
+        if (!core.mmu_enabled && !core.hashed_mmu_enabled)
             return ram.write(guest_address, input) == memory::MemoryResult::Ok;
-        const auto translated = core.address_space.translate_range(
-            guest_address, input.size(), memory::Access::Write, ram);
-        return translated.result == memory::MemoryResult::Ok &&
-            ram.write(translated.physical_address, input) == memory::MemoryResult::Ok;
+        cpu::AddressSpaceMemoryBus bus{&core.address_space, &ram, &core.state,
+            core.hashed_mmu_enabled ? &core.hashed_page_table : nullptr};
+        const auto callbacks = bus.callbacks();
+        return callbacks.write(callbacks.context, guest_address, input);
     }
 
     [[nodiscard]] static bool interpreter_fetch(
@@ -151,15 +160,13 @@ struct XenonCore {
         auto& context = *static_cast<InterpreterBusContext*>(opaque);
         auto& core = *context.core;
         auto& ram = *context.ram;
-        std::uint64_t physical_address = guest_address;
-        if (core.mmu_enabled) {
-            const auto translated = core.address_space.translate_range(
-                guest_address, output.size(), memory::Access::Execute, ram);
-            if (translated.result != memory::MemoryResult::Ok) return false;
-            physical_address = translated.physical_address;
-        }
-        return ram.read(physical_address, output, memory::Access::Execute) ==
-            memory::MemoryResult::Ok;
+        if (!core.mmu_enabled && !core.hashed_mmu_enabled)
+            return ram.read(guest_address, output, memory::Access::Execute) ==
+                memory::MemoryResult::Ok;
+        cpu::AddressSpaceMemoryBus bus{&core.address_space, &ram, &core.state,
+            core.hashed_mmu_enabled ? &core.hashed_page_table : nullptr};
+        const auto callbacks = bus.callbacks();
+        return callbacks.fetch(callbacks.context, guest_address, output);
     }
 
     // Install all PE section mappings emitted by the validated XEX loader.
