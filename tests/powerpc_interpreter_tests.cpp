@@ -1203,6 +1203,10 @@ int main() {
         check(callbacks.fetch(callbacks.context, 0x1000, fetched_bytes) &&
               fetched_bytes[0] == 0x60U && fetched_bytes[3] == 0x00U,
               "bus fetch succeeds after segment execute permission is restored");
+        wx360::cpu::AddressSpaceMemoryBus unbound_bus{&mmu, &ram, nullptr};
+        const auto unbound_callbacks = unbound_bus.callbacks();
+        check(!unbound_callbacks.fetch(unbound_callbacks.context, 0x1000, fetched_bytes),
+              "bus fails closed when no thread state is bound for segment permission checks");
         fetched_word = (static_cast<std::uint32_t>(fetched_bytes[0]) << 24U) |
                        (static_cast<std::uint32_t>(fetched_bytes[1]) << 16U) |
                        (static_cast<std::uint32_t>(fetched_bytes[2]) << 8U) |
