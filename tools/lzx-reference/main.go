@@ -8,8 +8,8 @@ import (
 
 func main() {
 	// CAB-compatible regular LZX reference stream generated independently
-	// from WX360's libmspack decoder. A short final frame is intentional.
-	const plain = "WX360 independent LZX encoder reference vector"
+	// from Onix360's libmspack decoder. A short final frame is intentional.
+	const plain = "Onix360 independent LZX encoder reference vector"
 	enc, err := lzx.NewEncoder(15)
 	if err != nil { panic(err) }
 	compressed, err := enc.Encode(nil, []byte(plain))
