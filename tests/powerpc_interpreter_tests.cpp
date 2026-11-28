@@ -1383,14 +1383,14 @@ int main() {
         check(callbacks.read(callbacks.context, effective, readback) &&
               readback == replacement,
               "data read resolves the same translated physical page");
-        constexpr std::uint64_t crossing_ea = 0x0FFCU;
-        check(htab.insert(vsid, 0x1000U, 0x9000U, 0, ram) ==
+        constexpr std::uint64_t crossing_ea = 0x2FFCU;
+        check(htab.insert(vsid, 0x2000U, 0xA000U, 0, ram) ==
                   wx360::memory::MemoryResult::Ok,
               "maps adjacent virtual page to adjacent physical page");
         const auto crossing = bus.translate(
             crossing_ea, 8, wx360::memory::Access::Read);
         check(crossing.result == wx360::memory::MemoryResult::Ok &&
-              crossing.physical_address == 0x8FFCU,
+              crossing.physical_address == 0xAFFCU,
               "hashed MMU translates an access spanning adjacent pages");
         s.segment_registers[0] =
             segment_key_problem_mask | vsid;
