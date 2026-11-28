@@ -1317,6 +1317,44 @@ int main() {
               "segment-protected bus preserves big-endian instruction bytes");
     }
 
+    // End-to-end segment T-bit translation through the guest HTAB/PTE walker.
+    {
+        wx360::memory::PhysicalMemory ram(1U << 20U);
+        wx360::memory::AddressSpace software_mmu;
+        wx360::memory::PowerPcHashedPageTable htab;
+        constexpr std::uint32_t vsid = 0x12345U;
+        constexpr std::uint64_t effective = 0x234U;
+        check(htab.configure(0x1000, 8, ram) == wx360::memory::MemoryResult::Ok,
+              "configures HTAB for bus integration");
+        check(htab.insert(vsid, effective, 0x8000, 0, ram) ==
+                  wx360::memory::MemoryResult::Ok,
+              "inserts segment translation PTE");
+        ram.raw_bytes()[0x8234] = 0x60U;
+        ram.raw_bytes()[0x8235] = 0x00U;
+        ram.raw_bytes()[0x8236] = 0x00U;
+        ram.raw_bytes()[0x8237] = 0x00U;
+        s.reset(effective);
+        s.segment_registers[0] =
+            segment_translation_mask | vsid;
+        wx360::cpu::AddressSpaceMemoryBus bus{
+            &software_mmu, &ram, &s, &htab};
+        const auto callbacks = bus.callbacks();
+        std::array<std::uint8_t,4> fetched{};
+        check(callbacks.fetch(callbacks.context, effective, fetched) &&
+              fetched[0] == 0x60U && fetched[3] == 0x00U,
+              "instruction fetch resolves through segment VSID and HTAB PTE");
+        const std::array<std::uint8_t,4> replacement{0x12U,0x34U,0x56U,0x78U};
+        check(callbacks.write(callbacks.context, effective, replacement),
+              "data write resolves through segment HTAB translation");
+        std::array<std::uint8_t,4> readback{};
+        check(callbacks.read(callbacks.context, effective, readback) &&
+              readback == replacement,
+              "data read resolves the same translated physical page");
+        s.segment_registers[0] = vsid; // T clear: use the software loader map.
+        check(!callbacks.fetch(callbacks.context, effective, fetched),
+              "T-clear segment does not silently use the HTAB mapping");
+    }
+
     if (failures == 0) std::cout << "WX360 PowerPC interpreter tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
