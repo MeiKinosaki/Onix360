@@ -127,6 +127,8 @@ struct AddressSpaceMemoryBus {
                     thread_state->segment_registers[current_segment]);
                 if (current_fields.direct_store)
                     return {memory::MemoryResult::Unmapped, 0};
+                if (access == memory::Access::Execute && current_fields.no_execute)
+                    return {memory::MemoryResult::PermissionDenied, 0};
                 const bool key = problem_state
                     ? current_fields.key_problem : current_fields.key_supervisor;
                 const auto pte = hashed_page_table->lookup(
