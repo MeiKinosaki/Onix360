@@ -866,6 +866,8 @@ int main() {
     check(execute(s, vx_form(3, 1, 2, 388)) == StepResult::Executed &&
           s.vr[3].lane[2] == 0xFFFFFFFFU,
           "VMX VAVGSW rounds negative odd word averages correctly");
+    s.vr[1].lane = {0xFF0180FEU, 0x80000001U, 0xFFFFFFFFU, 0x7FFFFFFFU};
+    s.vr[2].lane = {0x0102FF7FU, 0x7FFFFFFFU, 0x00000000U, 0x80000000U};
     check(execute(s, vx_form(3, 1, 2, 386)) == StepResult::Executed &&
           s.vr[3].lane[0] == 0xFF0180FEU &&
           s.vr[3].lane[1] == 0x80000001U &&
