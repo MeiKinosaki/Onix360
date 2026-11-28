@@ -1368,6 +1368,9 @@ int main() {
             vsid;
         wx360::cpu::AddressSpaceMemoryBus bus{
             &software_mmu, &ram, &s, &htab};
+        check(bus.configure_htab_from_sdr1(0x00010000U) ==
+                  wx360::memory::MemoryResult::Ok,
+              "configures integrated HTAB through guest SDR1 value");
         const auto callbacks = bus.callbacks();
         std::array<std::uint8_t,4> fetched{};
         check(callbacks.fetch(callbacks.context, effective, fetched) &&
