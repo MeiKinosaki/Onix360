@@ -1,4 +1,4 @@
-#include "wx360/storage/svod_gdf.hpp"
+#include "onix360/storage/svod_gdf.hpp"
 
 #include <array>
 #include <cstdlib>
@@ -64,7 +64,7 @@ int main() {
     const std::string payload = "XEX2!";
     std::copy(payload.begin(), payload.end(), bytes.begin() + 0x10000);
 
-    const auto root = std::filesystem::temp_directory_path() / "wx360_svod_single_file_test";
+    const auto root = std::filesystem::temp_directory_path() / "onix360_svod_single_file_test";
     std::error_code ec;
     std::filesystem::remove_all(root, ec);
     std::filesystem::create_directories(root, ec);
@@ -75,7 +75,7 @@ int main() {
                   static_cast<std::streamsize>(bytes.size()));
     }
 
-    const auto parsed = wx360::storage::SvodGdfReader::read(package);
+    const auto parsed = onix360::storage::SvodGdfReader::read(package);
     if (!parsed || parsed.entries.size() != 2 ||
         parsed.entries[1].relative_path.generic_string() != "game/default.xex" ||
         parsed.entries[1].size != payload.size()) {
@@ -84,9 +84,9 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    wx360::storage::StfsParseError error{};
+    onix360::storage::StfsParseError error{};
     const auto destination = root / "extracted";
-    if (!wx360::storage::SvodGdfReader::extract(package, destination, error)) {
+    if (!onix360::storage::SvodGdfReader::extract(package, destination, error)) {
         std::cerr << "SVOD GDF extraction failed: " << static_cast<int>(error) << "\n";
         std::filesystem::remove_all(root, ec);
         return EXIT_FAILURE;

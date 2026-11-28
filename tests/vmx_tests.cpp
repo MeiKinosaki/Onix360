@@ -1,9 +1,9 @@
-#include "wx360/cpu/vmx.hpp"
+#include "onix360/cpu/vmx.hpp"
 #include <bit>
 #include <cstdlib>
 #include <iostream>
 int main() {
- using namespace wx360::cpu;
+ using namespace onix360::cpu;
  XenonThreadState s; s.reset();
  int failures=0;
  auto check=[&](bool ok,const char* msg){if(!ok){std::cerr<<"FAIL: "<<msg<<'\n';++failures;}};
