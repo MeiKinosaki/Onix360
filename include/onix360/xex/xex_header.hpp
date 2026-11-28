@@ -6,9 +6,9 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
-#include "wx360/xex/xex_normal_blocks.hpp"
+#include "onix360/xex/xex_normal_blocks.hpp"
 
-namespace wx360::xex {
+namespace onix360::xex {
 
 enum class ParseResult : std::uint8_t {
     Ok,
@@ -203,4 +203,4 @@ enum class BasicDecompressResult : std::uint8_t {
     return BasicDecompressResult::Ok;
 }
 
-} // namespace wx360::xex
+} // namespace onix360::xex

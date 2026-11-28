@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-namespace wx360::ui {
+namespace onix360::ui {
 struct ClockDateTime {
  unsigned year = 0;
  unsigned month = 0;
