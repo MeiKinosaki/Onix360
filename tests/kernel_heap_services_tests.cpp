@@ -1,12 +1,12 @@
-#include "wx360/kernel/kernel_heap.hpp"
-#include "wx360/kernel/kernel_runtime.hpp"
+#include "onix360/kernel/kernel_heap.hpp"
+#include "onix360/kernel/kernel_runtime.hpp"
 
 #include <array>
 #include <cstdlib>
 #include <iostream>
 
 int main() {
-    using namespace wx360;
+    using namespace onix360;
     memory::PhysicalMemory ram(0x10000);
     kernel::KernelHeap heap(ram, 0x4000, 0x4000);
     kernel::KernelRuntime runtime;

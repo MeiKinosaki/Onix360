@@ -1,4 +1,4 @@
-#include "wx360/disc/iso_image.hpp"
+#include "onix360/disc/iso_image.hpp"
 #include <algorithm>
 #include <array>
 #include <cstdio>
@@ -9,12 +9,12 @@
 namespace {
 int failures=0;
 void check(bool ok,const char* message){if(!ok){std::cerr<<"FAIL: "<<message<<'\n';++failures;}}
-void put_le16(std::array<unsigned char,wx360::disc::IsoImage::kSectorSize>& b,std::size_t p,std::uint16_t v){b[p]=static_cast<unsigned char>(v);b[p+1]=static_cast<unsigned char>(v>>8);}
-void put_le32(std::array<unsigned char,wx360::disc::IsoImage::kSectorSize>& b,std::size_t p,std::uint32_t v){for(unsigned i=0;i<4;++i)b[p+i]=static_cast<unsigned char>(v>>(8*i));}
+void put_le16(std::array<unsigned char,onix360::disc::IsoImage::kSectorSize>& b,std::size_t p,std::uint16_t v){b[p]=static_cast<unsigned char>(v);b[p+1]=static_cast<unsigned char>(v>>8);}
+void put_le32(std::array<unsigned char,onix360::disc::IsoImage::kSectorSize>& b,std::size_t p,std::uint32_t v){for(unsigned i=0;i<4;++i)b[p+i]=static_cast<unsigned char>(v>>(8*i));}
 }
 int main(){
- using wx360::disc::IsoImage;
- const std::string path="wx360_test_disc.iso";
+ using onix360::disc::IsoImage;
+ const std::string path="onix360_test_disc.iso";
  {
   std::ofstream out(path,std::ios::binary); std::array<unsigned char,IsoImage::kSectorSize> sector{};
   for(unsigned i=0;i<35;++i){
@@ -37,7 +37,7 @@ int main(){
  check(image.is_open(),"image remains open after validation");
  check(image.root_sector()==33,"reads root directory sector");
  check(image.root_size()==2048,"reads root directory size");
- wx360::disc::XdvdfsFileEntry executable;
+ onix360::disc::XdvdfsFileEntry executable;
  check(image.find_root_file("DEFAULT.XEX",executable),"finds default.xex case-insensitively");
  check(executable.first_sector==34&&executable.size==16,"reads executable extent");
  check(!executable.is_directory,"identifies executable as a file");
@@ -48,7 +48,7 @@ int main(){
  std::array<std::uint8_t,IsoImage::kSectorSize> data{};
  check(image.read_sector(32,data.data(),data.size()),"reads sector on demand");
  image.close(); check(!image.is_open(),"close releases image"); std::remove(path.c_str());
- const std::string invalid="wx360_invalid_disc.iso";
+ const std::string invalid="onix360_invalid_disc.iso";
  {std::ofstream out(invalid,std::ios::binary);std::array<char,34*2048> zeros{};out.write(zeros.data(),zeros.size());}
  check(!image.open(invalid),"rejects image without XDVDFS magic");
  check(!image.error().empty(),"reports validation error"); std::remove(invalid.c_str());

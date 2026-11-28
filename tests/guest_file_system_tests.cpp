@@ -1,11 +1,11 @@
-#include "wx360/storage/guest_file_system.hpp"
+#include "onix360/storage/guest_file_system.hpp"
 
 #include <array>
 #include <cstdlib>
 #include <iostream>
 
 int main() {
-    using namespace wx360::storage;
+    using namespace onix360::storage;
     int failures = 0;
     const auto check = [&](bool ok, const char* label) {
         if (!ok) { std::cerr << "FAIL: " << label << '\n'; ++failures; }
