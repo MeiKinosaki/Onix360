@@ -120,6 +120,10 @@ struct AddressSpaceMemoryBus {
                 pte.physical_address, length, access);
             if (permission != memory::MemoryResult::Ok)
                 return {permission, 0};
+            const auto reference_status = hashed_page_table->mark_access(
+                pte, access, *physical_memory);
+            if (reference_status != memory::MemoryResult::Ok)
+                return {reference_status, 0};
             return {memory::MemoryResult::Ok, pte.physical_address};
         }
         return address_space->translate_range(
