@@ -102,6 +102,22 @@ public:
         return lookup_group(~primary, true, vsid, effective_address, ram);
     }
 
+    [[nodiscard]] MemoryResult mark_access(const Lookup& entry,
+                                                Access access,
+                                                PhysicalMemory& ram) const noexcept {
+        if (!configured_ || entry.result != MemoryResult::Ok ||
+            entry.pte_address < base_ ||
+            entry.pte_address + pte_size > ram.size())
+            return MemoryResult::Unmapped;
+        std::uint32_t pte1{};
+        if (!read_word(ram, entry.pte_address + 4U, pte1))
+            return MemoryResult::OutOfRange;
+        pte1 |= referenced_bit;
+        if (access == Access::Write) pte1 |= changed_bit;
+        return write_word(ram, entry.pte_address + 4U, pte1)
+            ? MemoryResult::Ok : MemoryResult::OutOfRange;
+    }
+
     [[nodiscard]] static constexpr std::uint32_t page_hash(
         std::uint32_t vsid, std::uint64_t effective_address) noexcept {
         const auto page_index =
