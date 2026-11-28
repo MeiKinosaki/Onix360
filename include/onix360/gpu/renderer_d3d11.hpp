@@ -1,11 +1,11 @@
 #pragma once
-#include "wx360/gpu/renderer_interface.hpp"
+#include "onix360/gpu/renderer_interface.hpp"
 
 #ifdef _WIN32
 #include <d3d11.h>
 #include <wrl/client.h>
 
-namespace wx360::gpu {
+namespace onix360::gpu {
 
 // Native D3D11 device and GPU texture upload backend.
 // The texture is an off-screen target; swap-chain presentation and Xenos shaders
@@ -79,5 +79,5 @@ private:
     std::uint32_t height_{};
     std::uint64_t present_count_{};
 };
-} // namespace wx360::gpu
+} // namespace onix360::gpu
 #endif

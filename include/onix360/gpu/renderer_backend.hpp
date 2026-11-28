@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string_view>
 
-namespace wx360::gpu {
+namespace onix360::gpu {
 
 enum class RendererBackend : std::uint8_t {
     Automatic, Vulkan, Direct3D11, Direct3D12, OpenGL, Software
@@ -80,4 +80,4 @@ struct RendererSelection {
 
 // This is backend-selection policy only. A backend becomes available only
 // after its native device/context implementation and integration are built.
-} // namespace wx360::gpu
+} // namespace onix360::gpu

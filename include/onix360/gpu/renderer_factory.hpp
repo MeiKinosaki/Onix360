@@ -1,12 +1,12 @@
 #pragma once
-#include "wx360/gpu/renderer_interface.hpp"
+#include "onix360/gpu/renderer_interface.hpp"
 #ifdef _WIN32
-#include "wx360/gpu/renderer_d3d11.hpp"
+#include "onix360/gpu/renderer_d3d11.hpp"
 #endif
 #include <memory>
 #include <utility>
 
-namespace wx360::gpu {
+namespace onix360::gpu {
 
 struct RendererInstance {
     std::unique_ptr<IRendererBackend> implementation{};
@@ -35,4 +35,4 @@ struct RendererInstance {
             selection.selected != RendererBackend::Software || selection.fallback};
 }
 
-} // namespace wx360::gpu
+} // namespace onix360::gpu
